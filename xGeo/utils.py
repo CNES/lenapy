@@ -1,86 +1,69 @@
 import xarray as xr
 import numpy as np
 
-XGEO_RTER=6371000.
+def lanczos(coupure,ordre):
+    """ 
+    Filtrage de Lanczos
+    Implémente un filtre dont la réponse fréquentielle est une porte de largeur spécifiée par "coupure", 
+    convoluée à une autre porte dont la largeur est plus étroite d'un facteur "ordre". Temporellement,
+    le filtre est tronqué à +/- ordre * coupure / 2
+    Plus "ordre" est grand, plus on se rapproche d'un filtre parfait (sinus cardinal)
 
-def concat(g,*args,**kwargs):
-    t=type(g[0])
-    if len(set([type(u) for u in g]))!=1:
-        raise TypeError("Incompatible types")
-        
-    return t(xr.concat(g,*args,**kwargs))
-
-def normalize_coords_names(gd):
-    for l in ['lon','LON','Longitude','LONGITUDE']:
-        if l in gd.variables:
-            gd=gd.rename({l:'longitude'})
-
-
-    for l in ['lat','LAT','Latitude','LATITUDE']:
-        if l in gd.variables:
-            gd=gd.rename({l:'latitude'})
-            
-    if not('longitude' in gd.coords) or  not('latitude' in gd.coords):
-        lat=gd['latitude']
-        lon=gd['longitude']
-        del(gd['latitude'],gd['longitude'])
-        gd=gd.assign_coords(latitude=lat,longitude=lon)
-
-    return gd
-
-def lanczos(coupure,a):
+    Parameters
+    ----------
+    coupure : integer
+    
+    ordre : integer
+        ordre du filtre
+    """
+    
     c=coupure/2.
-    x = np.arange(-a*c,a*c+1,1)
-    y = np.sinc(x/c)*np.sinc(x/c/a)/c
-    y[np.abs(x)>a*c]=0.
+    x = np.arange(-ordre*c,ordre*c+1,1)
+    y = np.sinc(x/c)*np.sinc(x/c/ordre)/c
+    y[np.abs(x)>ordre*c]=0.
     y=y/np.sum(y)
     return xr.DataArray(y, dims=('x',), coords={'x':x})
 
 
-def filtre(data,coupure, ordre,q=3):
-    k=int(coupure*ordre+1)
-    noyau=xr.DataArray(lanczos(coupure,ordre),dims=['time_win'],coords={'time_win':np.arange(k)})
+def filter(data,filter_name=lanczos,q=3,**kwargs):
+    """
+    Filtre les données en appliquant sur data le filtre filter_name, avec les paramètres définis dans **kwargs
+    Effectue un miroir des données au début et à la fin pour éviter les effets de bords. Ce miroir est réalisé
+    après avoir retiré un un polynome d'ordre q fittant au mieux les données.
+
+    Parameters
+    ----------
+    data : xarray DataArray
+        Données à filtrer
+    filter_name : func (default=Lanczos)
+        nom de la fonction de filtrage
+    q : integer (default=3)
+        ordre du polynome pour l'effet miroir (gestion des bords)
+    **kwargs :
+        paramètres de la fonction de filtrage demandée
+    """
+    
+    # Noyau de convolution
+    data_noyau=filter_name(**kwargs)
+    k=len(data_noyau)
+
+    noyau=xr.DataArray(data_noyau,dims=['time_win'],coords={'time_win':np.arange(k)})
+
+    # Fit avec un polynome d'ordre q
     pf=data.polyfit('time',q)
     v0=xr.polyval(data.time,pf).polyfit_coefficients
+    # Retrait de ce polynome aux données brutes
     v1=data-v0
     v1['time']=v1['time'].astype('float')
+    # Complète les données par effet miroir au début et à la fin
     v2=v1.pad({'time':(k,k)},mode='reflect',reflect_type='even')
     v2['time']=v1['time'].pad({'time':(k,k)},mode='reflect',reflect_type='odd')
+    # Convolution par le noyau
     v3=(v2.rolling(time=k,center=True).construct(time='time_win')*noyau).sum('time_win')
     v3['time']=v3['time'].astype('datetime64[ns]')
-    
+    # Ajout du polynome aux données filtrées
     return v3+v0
-"""
-def surface_cell(data):
-    lon1 = data.longitude.isel(longitude=slice(None,-1)).drop('longitude')
-    lon2 = data.longitude.isel(longitude=slice(1,None)).drop('longitude')
-    lat1 = data.latitude.isel(latitude=slice(None,-1)).drop('latitude')
-    lat2 = data.latitude.isel(latitude=slice(1,None)).drop('latitude')
-    lat = (lat1+lat2)/2.
-    lon = (lon1+lon2)/2.
-    res = xr.DataArray(XGEO_RTER**2*(np.sin(np.radians(lat2))-np.sin(np.radians(lat1)))*(((lon2-lon1)+360) % 360),
-                       dims=['latitude','longitude'],
-                       coords={'latitude':lat,'longitude':lon})
-    res = res.interp(latitude=data.latitude,longitude=data.longitude,kwargs={"fill_value": "extrapolate"})
-    return res    
-"""   
-    
-def compute_auto_weights(data):
-    res=1.
-    if 'longitude' in data.coords and 'latitude' in data.coords:
-        lon1 = data.longitude.isel(longitude=slice(None,-1)).drop('longitude')
-        lon2 = data.longitude.isel(longitude=slice(1,None)).drop('longitude')
-        lat1 = data.latitude.isel(latitude=slice(None,-1)).drop('latitude')
-        lat2 = data.latitude.isel(latitude=slice(1,None)).drop('latitude')
-        lat = (lat1+lat2)/2.
-        lon = (lon1+lon2)/2.
-        res = xr.DataArray(XGEO_RTER**2*(np.sin(np.radians(lat2))-np.sin(np.radians(lat1)))*(((lon2-lon1)+360) % 360),
-                           dims=['latitude','longitude'],
-                           coords={'latitude':lat,'longitude':lon})
-        res = res.interp(latitude=data.latitude,longitude=data.longitude,kwargs={"fill_value": "extrapolate"})
-    if 'depth' in data.coords:
-        res=res*xr.concat((data.depth.isel(depth=0),data.depth.diff(dim='depth')),dim='depth')
-    return res
+
     
 def isosurface(data, target, dim):
     """
@@ -132,28 +115,85 @@ def isosurface(data, target, dim):
 
     return iso.max(dim, skipna=True)
         
-def climato(data, remove_mean=False, remove_trend=False):
-    
-        def func(t,a,b,c,d,e,f):
-            l=2.*np.pi/(365.24219*86400.e9)
-            return a*np.cos(l*t)+b*np.sin(l*t)+c*np.cos(2.*l*t)+d*np.sin(2.*l*t)+e+f*t*l
-    
-        fit=data.curvefit('time',func).curvefit_coefficients
-        a = fit.sel(param='a')
-        b = fit.sel(param='b')
-        c = fit.sel(param='c')
-        d = fit.sel(param='d')
-        e = fit.sel(param='e')
-        f = fit.sel(param='f')
-        time=data.time.astype('float')
-        
-        if not(remove_trend):
-            e=0
-            f=0
+def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs=False):
+    """
+    Analyse du cycle annuel, bi-annuel et de la tendance
+    Decompose les données en entrée en :
+     Un cycle annuel
+     Un cycle bi-annuel
+     Une tendance
+     Une moyenne
+     Un signal résiduel
+    Retourne la combinaison voulue de ces éléments en fonction des arguments choisis (signal, mean, trend, cycle)
+    Si return_coeffs=True, retourne les coefficients des cycles et tendances
 
-        res=data - func(time,a,b,c,d,e,f)
-        if remove_mean:
-            return res-res.mean(['time'])
-        else:
-            return res
-        return 
+    Parameters
+    ----------
+    signal : Bool (default=True)
+        Renvoie le signal résiduel après retrait de la climato, de la tendance, et de la moyenne
+    mean : Bool (default=True)
+        renvoie la valeur moyenne des données d'entrée
+    trend : Bool (default=True)
+        renvoie la tendance
+    cycle : Bool (default=False)
+        renvoie le cycle annuel et bi-annuel
+    return_coeffs : Bool (default=False)
+        retourne en plus les coefficients des cycles et de la tendance linéaire
+    """
+
+    def func(t,a,b,c,d,e,f):
+        l=2.*np.pi/(365.24219*86400.e9)
+        return a*np.cos(l*t)+b*np.sin(l*t)+c*np.cos(2.*l*t)+d*np.sin(2.*l*t)+e+f*t*l
+
+    fit=data.curvefit('time',func).curvefit_coefficients
+    a = fit.sel(param='a')
+    b = fit.sel(param='b')
+    c = fit.sel(param='c')
+    d = fit.sel(param='d')
+    e = fit.sel(param='e')
+    f = fit.sel(param='f')
+    time=data.time.astype('float')
+
+    d_mean  = data.mean(['time'])
+    d_cycle = func(time,a,b,c,d,0,0)
+    d_trend = func(time,0,0,0,0,e,f) - d_mean
+    d_signal= data - d_cycle - d_trend - d_mean
+
+    res=0
+
+    if cycle:
+        res+=d_cycle
+    if trend:
+        res+=d_trend
+    if signal:
+        res+=d_signal
+    if mean:
+        res+=d_mean
+
+    if return_coeffs:
+        return res,[a,b,c,d,e,f]
+    else:
+        return res
+
+def coords_rename(data,**kwargs):
+    
+    data=data.rename(**kwargs)
+        
+    for l in ['lon','LON','Longitude','LONGITUDE']:
+        if l in data.variables:
+            data=data.rename({l:'longitude'})
+
+    for l in ['lat','LAT','Latitude','LATITUDE']:
+        if l in data.variables:
+            data=data.rename({l:'latitude'})
+            
+    if not('longitude' in data.coords) or  not('latitude' in data.coords):
+        lat=data['latitude']
+        lon=data['longitude']
+        del(data['latitude'],data['longitude'])
+        data=data.assign_coords(latitude=lat,longitude=lon)
+
+    return data
+
+def interp_time(self,other,**kwargs):
+    return self.interp(time=other.time,**kwargs)
