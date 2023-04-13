@@ -3,6 +3,7 @@ import xarray as xr
 import xesmf as xe
 import os.path
 from utils import *
+from plotting import *
 
 def open_geodata(fic,*args,rename={},nan=None,**kwargs):
     
@@ -155,4 +156,5 @@ class GeoArray:
     def interp_time(self,other,**kwargs):
         return interp_time(self._obj,other,**kwargs)
     
-    
+    def plot_timeseries_uncertainty(self, **kwargs):
+        plot_timeseries_uncertainty(self, **kwargs)
