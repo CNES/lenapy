@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 
-def plot_timeseries_uncertainty(data, 
+def plot_timeseries_uncertainty(xgeo_data, 
                                 x_dim='time',
                                 y_dim=None,
                                 thick_line='median',
@@ -34,6 +34,7 @@ def plot_timeseries_uncertainty(data,
     """
     # Il faut gérer les assert dimensions
     # Il faut gérer la légende
+    data = xgeo_data._obj
     variable = data.name
     if ax is None:
         ax = plt.gca()
