@@ -5,11 +5,13 @@ class xmask():
     __slots__=('_datamask','_mask','_grout')
     def __init__(self,msk_in):
         if type(msk_in)==type(xr.DataArray()):
+            self._mask = msk_in
+        elif type(msk_in)==type(xr.Dataset()):
             self._datamask = msk_in
         elif type(msk_in)==type('path'):
             self._datamask = xr.open_dataset(msk_in)
         else:
-            raise TypeError('mask should be a file or a dataArray')
+            raise TypeError('mask should be a file, a dataSet or a dataArray')
                
     def set(self,mask):
         self._mask = self._datamask[mask]

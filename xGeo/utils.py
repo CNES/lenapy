@@ -59,8 +59,8 @@ def filter(data,filter_name=lanczos,q=3,**kwargs):
     v2=v1.pad({'time':(k,k)},mode='reflect',reflect_type='even')
     v2['time']=v1['time'].pad({'time':(k,k)},mode='reflect',reflect_type='odd')
     # Convolution par le noyau
-    v3=(v2.rolling(time=k,center=True).construct(time='time_win')*noyau).sum('time_win')
-    v3['time']=v3['time'].astype('datetime64[ns]')
+    v3=(v2.rolling(time=k,center=True).construct(time='time_win')*noyau).sum('time_win').isel(time=slice(k,-k))
+    v3['time']=data['time']
     # Ajout du polynome aux données filtrées
     return v3+v0
 
