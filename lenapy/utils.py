@@ -187,6 +187,10 @@ def coords_rename(data,**kwargs):
     for l in ['lat','LAT','Latitude','LATITUDE']:
         if l in data.variables:
             data=data.rename({l:'latitude'})
+
+    for l in ['TIME','Time']:
+        if l in data.variables:
+            data=data.rename({l:'time'})
             
     if not('longitude' in data.coords) or  not('latitude' in data.coords):
         lat=data['latitude']
@@ -201,8 +205,13 @@ def interp_time(data,other,**kwargs):
 
 def to_datetime(data,input_type):
     if input_type=='frac_year':
-        data_out=data.rename({'dates':'time'})
-        data_out['time']=[ 
+        data=data.rename({'dates':'time'})
+        data['time']=[ 
             pd.to_datetime(f'{int(np.floor(i))}')+pd.to_timedelta(float((i-np.floor(i))*365.25),unit='D') 
-            for i in data_out.time]
-    return data_out
+            for i in data.time]
+    
+    if input_type=='360_day':
+        data.time.attrs['calendar']='360_day'
+        data = xr.decode_cf(data).convert_calendar("standard",align_on="year")
+    
+    return data

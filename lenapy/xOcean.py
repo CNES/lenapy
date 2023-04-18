@@ -79,7 +79,6 @@ class OceanSet(xg.GeoSet):
     # Pression en fonction de la profondeur et de la latitude
     def P(self):
         if NoneType(self.P_):
-            print('Calcul de P')
             if 'latitude' in self._obj.coords:
                 self.P_ = proprietes(gsw.p_from_z(self._obj.depth*-1, self._obj.latitude),
                                   'p_db','Pressure','dbar')
@@ -176,13 +175,13 @@ class OceanArray(xg.GeoArray):
             return self._obj
                     
     def integ_depth(self):
-        return self.add_value_surface().fillna(0).integrate('depth')
+        return self.add_value_surface().fillna(0).integrate('depth').where(self.isel(depth=0)!=0)
     
     def cum_integ_depth(self):
         res=self.add_value_surface()
         ep=res.depth.diff('depth')
         vm=res.rolling(depth=2).mean().isel(depth=slice(1,None))
-        return (vm*ep).fillna(0).cumsum('depth')
+        return (vm*ep).fillna(0).cumsum('depth').where(self.isel(depth=0)!=0)
     
     def above(self,depth,**kwargs):
         return self.cum_integ_depth().xocean.add_value_surface(0).interp({'depth':depth},**kwargs)
