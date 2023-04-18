@@ -1,8 +1,9 @@
 import gsw
 import numpy as np
-import xGeo as xg
 import xarray as xr
-from utils import *
+
+from . import xGeo as xg
+from .utils import *
 
 def open_oceandata(fic,*args,rename={},nan=None,**kwargs):
     return xg.open_geodata(fic,*args,rename=rename,nan=nan,**kwargs)

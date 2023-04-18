@@ -2,8 +2,8 @@ import numpy as np
 import xarray as xr
 import xesmf as xe
 import os.path
-from utils import *
-from plotting import *
+from .utils import *
+from .plotting import *
 
 def open_geodata(fic,*args,rename={},nan=None,**kwargs):
     
