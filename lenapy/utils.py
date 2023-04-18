@@ -1,5 +1,6 @@
 import xarray as xr
 import numpy as np
+import pandas as pd
 
 def lanczos(coupure,ordre):
     """ 
@@ -195,5 +196,13 @@ def coords_rename(data,**kwargs):
 
     return data
 
-def interp_time(self,other,**kwargs):
-    return self.interp(time=other.time,**kwargs)
+def interp_time(data,other,**kwargs):
+    return data.interp(time=other.time,**kwargs)
+
+def to_datetime(data,input_type):
+    if input_type=='frac_year':
+        data_out=data.rename({'dates':'time'})
+        data_out['time']=[ 
+            pd.to_datetime(f'{int(np.floor(i))}')+pd.to_timedelta(float((i-np.floor(i))*365.25),unit='D') 
+            for i in data_out.time]
+    return data_out

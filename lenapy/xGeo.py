@@ -79,6 +79,8 @@ class GeoSet:
                 res[var]=self._obj[var]
         return xr.Dataset(res)
 
+    def to_datetime(self,input_type):
+        return to_datetime(self._obj,input_type)        
     
 @xr.register_dataarray_accessor("xgeo")
 class GeoArray:
@@ -163,3 +165,7 @@ class GeoArray:
     
     def plot_timeseries_uncertainty(self, **kwargs):
         plot_timeseries_uncertainty(self, **kwargs)
+        
+    def to_datetime(self,input_type):
+        return to_datetime(self._obj,input_type)        
+    
