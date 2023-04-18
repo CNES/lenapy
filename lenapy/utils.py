@@ -192,12 +192,16 @@ def coords_rename(data,**kwargs):
         if l in data.variables:
             data=data.rename({l:'time'})
             
-    if not('longitude' in data.coords) or  not('latitude' in data.coords):
-        lat=data['latitude']
+    if 'longitude' in data.variables and not('longitude' in data.coords):
         lon=data['longitude']
-        del(data['latitude'],data['longitude'])
-        data=data.assign_coords(latitude=lat,longitude=lon)
+        del data['longitude']
+        data=data.assign_coords(longitude=lon)
 
+    if 'latitude' in data.variables and not('latitude' in data.coords):
+        lat=data['latitude']
+        del data['latitude']
+        data=data.assign_coords(latitude=lat)
+        
     return data
 
 def interp_time(data,other,**kwargs):

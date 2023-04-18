@@ -70,14 +70,15 @@ class SIO:
                           })
         
         
-class ISAS20:
-    def __init__(self,rep):
+class ISAS:
+    def __init__(self,rep,dataset):
         self.rep = os.path.join(rep,"%04d","%s")
+        self.dataset = dataset
 
     def nommage(self,year, month):
-        a='ISAS20_ARGO_%04d%02d15_fld_%s.nc'
-        self.fictemp=self.rep%(year,a%(year,month,'TEMP'))
-        self.ficsal =self.rep%(year,a%(year,month,'PSAL'))
+        a='ISAS%02d_ARGO_%04d%02d15_fld_%s.nc'
+        self.fictemp=self.rep%(year,a%(self.dataset,year,month,'TEMP'))
+        self.ficsal =self.rep%(year,a%(self.dataset,year,month,'PSAL'))
 
     def charge(self,year, month):
         self.nommage(year,month)
@@ -190,7 +191,7 @@ class EN_422:
         self.nommage(year,month)
         data = xg.open_geodata(self.fic)
 
-        return xr.Dataset({'temp':data.temperature - 273.15,
+        return xr.Dataset({'PT':data.temperature - 273.15,
                            'psal':data.salinity
                           })        
 

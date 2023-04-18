@@ -155,8 +155,11 @@ class OceanSet(xg.GeoSet):
     def ohc_above(self,target):
         res=self.heat.xocean.above(target)
         return proprietes(res.where(res!=0),
-            'ohc','Ocean heat content','J/m²') # [J/m²]
+            'ohc_above','Ocean heat content','J/m²') # [J/m²]
         
+    def gohc_above(self,target):
+        return proprietes(self.ohc_above(target).xocean.mean(['latitude','longitude'],weights=['latitude']),
+                         'gohc_above','Global ocean heat content','J/m²')
 
 
 @xr.register_dataarray_accessor("xocean")
@@ -175,13 +178,13 @@ class OceanArray(xg.GeoArray):
             return self._obj
                     
     def integ_depth(self):
-        return self.add_value_surface().fillna(0).integrate('depth').where(self.isel(depth=0)!=0)
+        return self.add_value_surface().fillna(0).integrate('depth').where(~self._obj.isel(depth=0).isnull())
     
     def cum_integ_depth(self):
         res=self.add_value_surface()
         ep=res.depth.diff('depth')
         vm=res.rolling(depth=2).mean().isel(depth=slice(1,None))
-        return (vm*ep).fillna(0).cumsum('depth').where(self.isel(depth=0)!=0)
+        return (vm*ep).fillna(0).cumsum('depth').where(~self._obj.isel(depth=0).isnull())
     
     def above(self,depth,**kwargs):
         return self.cum_integ_depth().xocean.add_value_surface(0).interp({'depth':depth},**kwargs)

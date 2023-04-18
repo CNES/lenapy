@@ -23,7 +23,7 @@ class GeoSet:
                 res[var]=climato(self._obj[var],**kwargs)
             else:
                 res[var]=self._obj[var]
-        return xr.DataArray(res)
+        return xr.Dataset(res)
 
     def mean(self,*args,**kwargs):
         res={}
