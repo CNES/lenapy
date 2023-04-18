@@ -168,7 +168,7 @@ class OceanArray(xg.GeoArray):
     def add_value_surface(self,value=None):
         if self._obj.depth[0]!=0:
             v0 = self._obj.isel(depth=0)
-            v0['depth']*=0.
+            v0['depth']=v0['depth']*0.
             if value!=None:
                 v0.values=v0.values*0+value
             return xr.concat([v0,self._obj],dim='depth')
