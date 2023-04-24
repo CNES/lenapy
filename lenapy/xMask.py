@@ -4,7 +4,6 @@ import xesmf as xe
 class xmask():
     __slots__=('_datamask','_mask','_grout','_val','value','inverse')
     def __init__(self,msk_in):
-        self.value=None
         if type(msk_in)==type(xr.DataArray()):
             self._mask = msk_in
         elif type(msk_in)==type(xr.Dataset()):
@@ -14,17 +13,22 @@ class xmask():
         else:
             raise TypeError('mask should be a file, a dataSet or a dataArray')
                
+        self.value=None
         self._val=None
+        self.inverse=False
         
-    def set(self,mask,value=None,inverse=False):
-        self._mask = self._datamask[mask]
-        self.value=value
-        self.inverse=inverse
+    def set(self,mask=None,value=None,inverse=False):
+        if type(mask)!=type(None):
+            self._mask = self._datamask[mask]
+        if type(value)!=type(None):
+            self.value=value
+        if type(inverse)!=type(None):
+            self.inverse=inverse
 
     @property
     def val(self):
         if type(self._val)==type(None):
-            if self.value==None:
+            if type(self.value)==type(None):
                 res = ~self._mask.isnull() ^ self.inverse
             else:
                 res = xr.concat(([self._mask==u for u in self.value]),dim='_select').any(dim='_select') ^ self.inverse
