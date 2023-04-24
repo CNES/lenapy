@@ -2,8 +2,9 @@ import xarray as xr
 import xesmf as xe
 
 class xmask():
-    __slots__=('_datamask','_mask','_grout')
+    __slots__=('_datamask','_mask','_grout','_val','value','inverse')
     def __init__(self,msk_in):
+        self.value=None
         if type(msk_in)==type(xr.DataArray()):
             self._mask = msk_in
         elif type(msk_in)==type(xr.Dataset()):
@@ -13,21 +14,31 @@ class xmask():
         else:
             raise TypeError('mask should be a file, a dataSet or a dataArray')
                
-    def set(self,mask):
-        self._mask = self._datamask[mask]
-    
-    def val(self,*args,inverse=False):
-        if len(args)==0:
-            res = ~self._mask.isnull() ^ inverse
-        else:
-            res = xr.concat(([self._mask==u for u in args]),dim='_select').any(dim='_select') ^ inverse
+        self._val=None
         
-        if hasattr(self,'_grout'):
-            m=xr.Dataset({'mask':res})
-            reg=xe.Regridder(m,self._grout,method='conservative_normed')
-            return reg(res)
-        else:
-            return res
+    def set(self,mask,value=None,inverse=False):
+        self._mask = self._datamask[mask]
+        self.value=value
+        self.inverse=inverse
+
+    @property
+    def val(self):
+        if type(self._val)==type(None):
+            if self.value==None:
+                res = ~self._mask.isnull() ^ self.inverse
+            else:
+                res = xr.concat(([self._mask==u for u in self.value]),dim='_select').any(dim='_select') ^ self.inverse
+
+            if hasattr(self,'_grout'):
+                m=xr.Dataset({'mask':res})
+                reg=xe.Regridder(m,self._grout,method='conservative_normed')
+                self._val = reg(res)
+            else:
+                self._val = res
+        return self._val
         
     def regrid(self,gr_out):
-        self._grout=gr_out
+        self._grout=xr.Dataset({
+            "latitude":gr_out.latitude,
+            "longitude":gr_out.longitude
+            })

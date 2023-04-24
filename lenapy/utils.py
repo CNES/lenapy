@@ -195,13 +195,9 @@ def coords_rename(data,**kwargs):
     if 'longitude' in data.variables and not('longitude' in data.coords):
         lon=data['longitude']
         del data['longitude']
-        data=data.assign_coords(longitude=lon)
-
-    if 'latitude' in data.variables and not('latitude' in data.coords):
         lat=data['latitude']
-        del data['latitude']
-        data=data.assign_coords(latitude=lat)
-        
+        del data['latitude']    
+        data=data.assign_coords(longitude=lon,latitude=lat)        
     return data
 
 def interp_time(data,other,**kwargs):
@@ -219,3 +215,9 @@ def to_datetime(data,input_type):
         data = xr.decode_cf(data).convert_calendar("standard",align_on="year")
     
     return data
+
+def diff_3pts(data,dim):
+    y=data.where(~data.isnull()).rolling({dim:3},center=True,min_periods=3).construct('win')
+    x=data[dim].where(~data.isnull()).rolling({dim:3},center=True,min_periods=3).construct('win').astype('float')
+
+    return ((x*y).mean('win')-x.mean('win')*y.mean('win'))/((x**2).mean('win')-(x.mean('win'))**2)

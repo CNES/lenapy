@@ -10,6 +10,11 @@ def open_geodata(fic,*args,rename={},nan=None,**kwargs):
     res=coords_rename(xr.open_dataset(fic,*args,**kwargs),**rename)
     return res.where(res!=nan)
 
+def open_mfgeodata(fic,*args,rename={},nan=None,**kwargs):
+    
+    res=coords_rename(xr.open_mfdataset(fic,*args,**kwargs),**rename)
+    return res.where(res!=nan)
+
 @xr.register_dataset_accessor("xgeo")
 class GeoSet:
     def __init__(self, xarray_obj):
@@ -150,9 +155,14 @@ class GeoArray:
 
     def regridder(self,gr_out,*args,mask_in=None,**kwargs):
         ds=xr.Dataset({'data':self._obj})
+        ds_out=xr.Dataset({
+        "latitude":gr_out.latitude,
+        "longitude":gr_out.longitude
+        })
+        
         if type(mask_in)==xr.DataArray:
             ds['mask']=mask_in
-        return xe.Regridder(ds,gr_out,*args,**kwargs)
+        return xe.Regridder(ds,ds_out,*args,**kwargs)
     
     def regrid(self,regridder,*args,**kwargs):
         return regridder(self._obj,*args,**kwargs)
@@ -169,3 +179,5 @@ class GeoArray:
     def to_datetime(self,input_type):
         return to_datetime(self._obj,input_type)        
     
+    def diff_3pts(self,dim):
+        return diff_3pts(self._obj,dim)

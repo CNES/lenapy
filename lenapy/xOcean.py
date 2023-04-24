@@ -5,10 +5,6 @@ import xarray as xr
 from . import xGeo as xg
 from .utils import *
 
-def open_oceandata(fic,*args,rename={},nan=None,**kwargs):
-    return xg.open_geodata(fic,*args,rename=rename,nan=nan,**kwargs)
-
-
 def proprietes(da,nom,label,unite):
     out = da.rename(nom)
     out.attrs['long_name'] = label
@@ -151,14 +147,19 @@ class OceanSet(xg.GeoSet):
     def gohc(self):
         return proprietes(self.ohc.xocean.mean(['latitude','longitude'],weights=['latitude']),
                          'gohc','Global ocean heat content','J/m²')
+
+    @property
+    def gohc_TOA(self):
+        return proprietes(self.ohc.xocean.mean(['latitude','longitude'],weights=['latitude'],na_eq_zero=True),
+                         'gohc','Global ocean heat content','J/m²')
     
     def ohc_above(self,target):
         res=self.heat.xocean.above(target)
         return proprietes(res.where(res!=0),
             'ohc_above','Ocean heat content','J/m²') # [J/m²]
         
-    def gohc_above(self,target):
-        return proprietes(self.ohc_above(target).xocean.mean(['latitude','longitude'],weights=['latitude']),
+    def gohc_above(self,target,na_eq_zero=False):
+        return proprietes(self.ohc_above(target).xocean.mean(['latitude','longitude'],weights=['latitude'],na_eq_zero=na_eq_zero),
                          'gohc_above','Global ocean heat content','J/m²')
 
 
@@ -172,7 +173,7 @@ class OceanArray(xg.GeoArray):
             v0 = self._obj.isel(depth=0)
             v0['depth']=v0['depth']*0.
             if value!=None:
-                v0.values=v0.values*0+value
+                v0.values=v0.values*0.+value
             return xr.concat([v0,self._obj],dim='depth')
         else:
             return self._obj
@@ -187,5 +188,5 @@ class OceanArray(xg.GeoArray):
         return (vm*ep).fillna(0).cumsum('depth').where(~self._obj.isel(depth=0).isnull())
     
     def above(self,depth,**kwargs):
-        return self.cum_integ_depth().xocean.add_value_surface(0).interp({'depth':depth},**kwargs)
+        return self.cum_integ_depth().xocean.add_value_surface(0.).interp({'depth':depth},**kwargs)
     
