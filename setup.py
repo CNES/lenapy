@@ -7,5 +7,5 @@ author='Sebastien Fourest & EMC2 team',
 author_email='',
 license='MIT',
 packages=['lenapy'],
-install_requires=['xesmf','xarray'],      
+install_requires=['xesmf','xarray','gsw'],      
 zip_safe=False) 
