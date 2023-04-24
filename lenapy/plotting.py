@@ -34,7 +34,7 @@ def plot_timeseries_uncertainty(xgeo_data,
     """
     # Il faut gérer les assert dimensions
     # Il faut gérer la légende
-    data = xgeo_data._obj
+    data = xgeo_data
     variable = data.name
     if ax is None:
         ax = plt.gca()

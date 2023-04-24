@@ -188,7 +188,7 @@ def coords_rename(data,**kwargs):
         if l in data.variables:
             data=data.rename({l:'latitude'})
 
-    for l in ['TIME','Time']:
+    for l in ['date','dates','TIME','Time']:
         if l in data.variables:
             data=data.rename({l:'time'})
             
@@ -204,15 +204,21 @@ def interp_time(data,other,**kwargs):
     return data.interp(time=other.time,**kwargs)
 
 def to_datetime(data,input_type):
+    if not 'time' in data.coords: raise AssertionError('The time coordinates does not exist')
+    if data['time'].dtype=='<M8[ns]':
+        return data
+
+    
     if input_type=='frac_year':
-        data=data.rename({'dates':'time'})
         data['time']=[ 
             pd.to_datetime(f'{int(np.floor(i))}')+pd.to_timedelta(float((i-np.floor(i))*365.25),unit='D') 
             for i in data.time]
-    
-    if input_type=='360_day':
+    elif input_type=='360_day':
         data.time.attrs['calendar']='360_day'
         data = xr.decode_cf(data).convert_calendar("standard",align_on="year")
+    else:
+        raise ValueError(f'Format {input_type} not yet considered, please convert manually to datatime')
+      
     
     return data
 

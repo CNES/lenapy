@@ -4,6 +4,7 @@ import xesmf as xe
 import os.path
 from .utils import *
 from .plotting import *
+from .sandbox import *
 
 def open_geodata(fic,*args,rename={},nan=None,**kwargs):
     
@@ -86,7 +87,10 @@ class GeoSet:
 
     def to_datetime(self,input_type):
         return to_datetime(self._obj,input_type)        
-    
+    def coords_rename(self):
+        res=coords_rename(self._obj)
+        return xr.Dataset(res)
+
 @xr.register_dataarray_accessor("xgeo")
 class GeoArray:
     def __init__(self, xarray_obj):
@@ -174,10 +178,13 @@ class GeoArray:
         return interp_time(self._obj,other,**kwargs)
     
     def plot_timeseries_uncertainty(self, **kwargs):
-        plot_timeseries_uncertainty(self, **kwargs)
+        plot_timeseries_uncertainty(self._obj, **kwargs)
         
     def to_datetime(self,input_type):
         return to_datetime(self._obj,input_type)        
-    
+
     def diff_3pts(self,dim):
         return diff_3pts(self._obj,dim)
+
+    def to_difgri(self,dir_out,prefix,suffix):
+        to_difgri(self._obj,dir_out,prefix,suffix)
