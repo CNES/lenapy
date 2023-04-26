@@ -144,7 +144,7 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
 
     def func(t,a,b,c,d,e,f):
         l=2.*np.pi/(365.24219*86400.e9)
-        return a*np.cos(l*t)+b*np.sin(l*t)+c*np.cos(2.*l*t)+d*np.sin(2.*l*t)+e+f*t*l
+        return a*np.cos(l*t)+b*np.sin(l*t)+c*np.cos(2.*l*t)+d*np.sin(2.*l*t)+e+f*t
 
     fit=data.curvefit('time',func).curvefit_coefficients
     a = fit.sel(param='a')
@@ -175,6 +175,9 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
         return res,[a,b,c,d,e,f]
     else:
         return res
+    
+def trend(data):
+    return data.polyfit(dim='time',deg=1).polyfit_coefficients[0].values*1.e9
 
 def coords_rename(data,**kwargs):
     

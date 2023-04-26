@@ -188,3 +188,6 @@ class GeoArray:
 
     def to_difgri(self,dir_out,prefix,suffix):
         to_difgri(self._obj,dir_out,prefix,suffix)
+
+    def trend(self):
+        return trend(self._obj)
