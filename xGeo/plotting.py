@@ -51,10 +51,9 @@ def plot_timeseries_uncertainty(xgeo_data,
     else:
         raise ValueError("thick_line can only be 'mean', 'median' or None.")
     if thick_line is not None:
-        main_metric.plot(ax=ax, color=thick_line_color, **line_kwargs, label=f"{variable} {thick_line}")
-    if not thick_line_color is None and shaded_area_color is None:
-        shaded_area_color = thick_line_color
-    
+        plot_line = main_metric.plot(ax=ax, color=thick_line_color, **line_kwargs, label=f"{variable} {thick_line}")
+    if shaded_area_color is None:
+        shaded_area_color = plot_line[0].get_color()
     if 'std' in shaded_area:
         data_std = data.std(y_dim)
         if thick_line is None:
