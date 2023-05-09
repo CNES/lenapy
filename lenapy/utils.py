@@ -1,6 +1,7 @@
 import xarray as xr
 import numpy as np
 import pandas as pd
+from .constants import *
 
 def lanczos(coupure,ordre):
     """ 
@@ -9,7 +10,7 @@ def lanczos(coupure,ordre):
     convoluée à une autre porte dont la largeur est plus étroite d'un facteur "ordre". Temporellement,
     le filtre est tronqué à +/- ordre * coupure / 2
     Plus "ordre" est grand, plus on se rapproche d'un filtre parfait (sinus cardinal)
-
+* Ecrire la durée de l'année comme une variable globale (une seule fois dans lenapy)
     Parameters
     ----------
     coupure : integer
@@ -141,18 +142,13 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
     return_coeffs : Bool (default=False)
         retourne en plus les coefficients des cycles et de la tendance linéaire
     """
-
+    
     def func(t,a,b,c,d,e,f):
-        l=2.*np.pi/(365.24219*86400.e9)
+        l=2.*np.pi/(DAY_YEAR*SECONDS_DAY*1.e9)
         return a*np.cos(l*t)+b*np.sin(l*t)+c*np.cos(2.*l*t)+d*np.sin(2.*l*t)+e+f*t
 
     fit=data.curvefit('time',func).curvefit_coefficients
-    a = fit.sel(param='a')
-    b = fit.sel(param='b')
-    c = fit.sel(param='c')
-    d = fit.sel(param='d')
-    e = fit.sel(param='e')
-    f = fit.sel(param='f')
+    a,b,c,d,e,f = fit.sel(param=['a','b','c','d','e','f'])
     time=data.time.astype('float')
 
     d_mean  = data.mean(['time'])
@@ -161,7 +157,6 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
     d_signal= data - d_cycle - d_trend - d_mean
 
     res=0
-
     if cycle:
         res+=d_cycle
     if trend:
@@ -172,7 +167,13 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
         res+=d_mean
 
     if return_coeffs:
-        return res,[a,b,c,d,e,f]
+        return res,xr.Dataset({'Year_amplitude':np.sqrt(a**2+b**2),
+                       'Day0_YearCycle':np.mod(np.arctan2(b,a)/2./np.pi*DAY_YEAR,DAY_YEAR),
+                       'HalfYear_Amplitude':np.sqrt(c**2+d**2),
+                       'Day0_HalfYearCycle':np.mod(np.arctan2(d,c)/2./np.pi*DAY_YEAR,DAY_YEAR/2.),
+                       'MeanValue':e+a*0.,
+                       'Trend':f*DAY_YEAR*SECONDS_DAY*1.e9+a*0.
+                      })
     else:
         return res
     
@@ -214,7 +215,7 @@ def to_datetime(data,input_type):
     
     if input_type=='frac_year':
         data['time']=[ 
-            pd.to_datetime(f'{int(np.floor(i))}')+pd.to_timedelta(float((i-np.floor(i))*365.25),unit='D') 
+            pd.to_datetime(f'{int(np.floor(i))}')+pd.to_timedelta(float((i-np.floor(i))*DAY_YEAR),unit='D') 
             for i in data.time]
     elif input_type=='360_day':
         data.time.attrs['calendar']='360_day'

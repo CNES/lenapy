@@ -46,3 +46,4 @@ class xmask():
             "latitude":gr_out.latitude,
             "longitude":gr_out.longitude
             })
+        self._val=None
