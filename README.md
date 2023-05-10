@@ -37,7 +37,7 @@ data.xgeo.mean(['latitude','longitude'],weights=['latitude']).xgeo.climato()
 * xgeo.to_difgri()
 * xgeo.plot_timeseries_uncertainties()
 
-####For DataSets:
+#### For DataSets:
 * xgeo.climato()
 * xgeo.mean()
 * xgeo.sum()
