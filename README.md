@@ -1,6 +1,4 @@
-# xGeo
-## Name
-LENAPY
+# LENAPY
 
 ## Description
 LENAPY is a set of unctions which are an extension of the xarray DataSet and DataArray. All funcionts can be used by adding the extension .xgeo or .xocean after the object's name. Three main modules are implemented :
