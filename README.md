@@ -80,7 +80,7 @@ Two functions are also available :
 ### xMask
 This class allows to deal with mask. Input is a DataArray, a DataSet, or a file name containing a DataSet.
 
-### Methods :
+#### Methods :
 * set : specify the name of the field to use in a DataSet, the list of values to be consideerd as unmasked data, and a flag to use the complementary of the mask
 * regrid : specify the grid to resample the mask
 * val : return the mask itself, according to parameters used in set and regrid.
