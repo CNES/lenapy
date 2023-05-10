@@ -87,10 +87,14 @@ class GeoSet:
 
     def to_datetime(self,input_type):
         return to_datetime(self._obj,input_type)        
+    
     def coords_rename(self):
         res=coords_rename(self._obj)
         return xr.Dataset(res)
 
+    def fill_time(self):
+        return fill_time(self._obj)
+        
 @xr.register_dataarray_accessor("xgeo")
 class GeoArray:
     def __init__(self, xarray_obj):
@@ -191,3 +195,7 @@ class GeoArray:
 
     def trend(self):
         return trend(self._obj)
+    
+    def fill_time(self):
+        return fill_time(self._obj)
+    

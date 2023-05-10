@@ -10,7 +10,6 @@ def lanczos(coupure,ordre):
     convoluée à une autre porte dont la largeur est plus étroite d'un facteur "ordre". Temporellement,
     le filtre est tronqué à +/- ordre * coupure / 2
     Plus "ordre" est grand, plus on se rapproche d'un filtre parfait (sinus cardinal)
-* Ecrire la durée de l'année comme une variable globale (une seule fois dans lenapy)
     Parameters
     ----------
     coupure : integer
@@ -231,3 +230,26 @@ def diff_3pts(data,dim):
     x=data[dim].where(~data.isnull()).rolling({dim:3},center=True,min_periods=3).construct('win').astype('float')
 
     return ((x*y).mean('win')-x.mean('win')*y.mean('win'))/((x**2).mean('win')-(x.mean('win'))**2)
+
+def fill_time(data):
+    # Complète les trous de données dans une série temporelle en respectant approximativement l'échantillonnage, 
+    #  et en faisant une interpolation linéaire de la donnée là où il y a des trous.
+    
+    assert ("time" in data.coords), "Data must have a coordinate with name 'time'"
+    dt=data.time.diff('time')
+    # Recherche du pas d'echantillonnage temporel le plus régulier
+    tau0=dt.median()
+    tau1=(dt[np.where(np.abs((dt-tau0)/tau0)<0.2)]).mean()
+    
+    # Parours des index temporels, et ajoute des index là où il y a des trous
+    nt=data.time[0].values
+    for k in range(len(data.time)-1):
+        for i in np.arange(1,np.round(dt[k]/tau1)):
+            nt=np.append(nt,data.time[k].values+i*tau1)
+        nt=np.append(nt,data.time[k+1].values)
+    
+    # Génération du nouvel index temporel
+    newtime=(xr.DataArray(nt,dims='time',coords={'time':nt}))
+    
+    # Retourne la donnée interpolée
+    return data.interp(time=newtime)
