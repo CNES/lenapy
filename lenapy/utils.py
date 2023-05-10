@@ -43,7 +43,9 @@ def filter(data,filter_name=lanczos,q=3,**kwargs):
     **kwargs :
         paramètres de la fonction de filtrage demandée
     """
-    
+
+    if not 'time' in data.coords: raise AssertionError('The time coordinates does not exist')
+
     # Noyau de convolution
     data_noyau=filter_name(**kwargs)
     k=len(data_noyau)
@@ -116,7 +118,11 @@ def isosurface(data, target, dim):
 
     return iso.max(dim, skipna=True)
         
-def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs=False):
+    def function_climato(t,a,b,c,d,e,f):
+        l=2.*np.pi/(DAY_YEAR*SECONDS_DAY*1.e9)
+        return a*np.cos(l*t)+b*np.sin(l*t)+c*np.cos(2.*l*t)+d*np.sin(2.*l*t)+e+f*t
+        
+    def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs=False):
     """
     Analyse du cycle annuel, bi-annuel et de la tendance
     Decompose les données en entrée en :
@@ -141,18 +147,17 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
     return_coeffs : Bool (default=False)
         retourne en plus les coefficients des cycles et de la tendance linéaire
     """
-    
-    def func(t,a,b,c,d,e,f):
-        l=2.*np.pi/(DAY_YEAR*SECONDS_DAY*1.e9)
-        return a*np.cos(l*t)+b*np.sin(l*t)+c*np.cos(2.*l*t)+d*np.sin(2.*l*t)+e+f*t
 
-    fit=data.curvefit('time',func).curvefit_coefficients
+    if not 'time' in data.coords: raise AssertionError('The time coordinates does not exist')
+    
+
+    fit=data.curvefit('time',function_climato).curvefit_coefficients
     a,b,c,d,e,f = fit.sel(param=['a','b','c','d','e','f'])
     time=data.time.astype('float')
 
     d_mean  = data.mean(['time'])
-    d_cycle = func(time,a,b,c,d,0,0)
-    d_trend = func(time,0,0,0,0,e,f) - d_mean
+    d_cycle = function_climato(time,a,b,c,d,0,0)
+    d_trend = function_climato(time,0,0,0,0,e,f) - d_mean
     d_signal= data - d_cycle - d_trend - d_mean
 
     res=0
@@ -175,6 +180,14 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
                       })
     else:
         return res
+    
+def generate_climato(time, coefficients, mean=True, trend=True, cycle=False):
+    e=coefficients.MeanValue
+    f=coefficients.Trend/(DAY_YEAR*SECONDS_DAY*1.e9)
+    a=coefficients.Year_amplitude*np.cos(coefficients.Day0_YearCycle/DAY_YEAR*2*np.pi)
+    b=coefficients.Year_amplitude*np.sin(coefficients.Day0_YearCycle/DAY_YEAR*2*np.pi)
+    c=coefficients.HalfYear_Amplitude*np.cos(coefficients.Day0_HalfYearCycle/DAY_YEAR*2*np.pi)
+    d=coefficients.HalfYear_Amplitude*np.sin(coefficients.Day0_HalfYearCycle/DAY_YEAR*2*np.pi)
     
 def trend(data):
     return data.polyfit(dim='time',deg=1).polyfit_coefficients[0].values*1.e9
@@ -204,6 +217,9 @@ def coords_rename(data,**kwargs):
     return data
 
 def interp_time(data,other,**kwargs):
+
+    if not 'time' in data.coords: raise AssertionError('The time coordinates does not exist')
+
     return data.interp(time=other.time,**kwargs)
 
 def to_datetime(data,input_type):
@@ -235,7 +251,8 @@ def fill_time(data):
     # Complète les trous de données dans une série temporelle en respectant approximativement l'échantillonnage, 
     #  et en faisant une interpolation linéaire de la donnée là où il y a des trous.
     
-    assert ("time" in data.coords), "Data must have a coordinate with name 'time'"
+    if not 'time' in data.coords: raise AssertionError('The time coordinates does not exist')
+    
     dt=data.time.diff('time')
     # Recherche du pas d'echantillonnage temporel le plus régulier
     tau0=dt.median()

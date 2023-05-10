@@ -162,6 +162,10 @@ class GeoArray:
         return isosurface(self._obj,target,dim)
 
     def regridder(self,gr_out,*args,mask_in=None,**kwargs):
+
+        if not 'latitude' in gr_out.coords: raise AssertionError('The latitude coordinates does not exist')
+        if not 'longitude' in gr_out.coords: raise AssertionError('The longitude coordinates does not exist')
+
         ds=xr.Dataset({'data':self._obj})
         ds_out=xr.Dataset({
         "latitude":gr_out.latitude,
