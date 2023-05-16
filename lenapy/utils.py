@@ -118,11 +118,11 @@ def isosurface(data, target, dim):
 
     return iso.max(dim, skipna=True)
         
-    def function_climato(t,a,b,c,d,e,f):
+def function_climato(t,a,b,c,d,e,f):
         l=2.*np.pi/(DAY_YEAR*SECONDS_DAY*1.e9)
         return a*np.cos(l*t)+b*np.sin(l*t)+c*np.cos(2.*l*t)+d*np.sin(2.*l*t)+e+f*t
         
-    def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs=False):
+def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs=False):
     """
     Analyse du cycle annuel, bi-annuel et de la tendance
     Decompose les données en entrée en :
@@ -152,6 +152,7 @@ def isosurface(data, target, dim):
     
 
     fit=data.curvefit('time',function_climato).curvefit_coefficients
+    #TODO Only works if fit has no other dimensions
     a,b,c,d,e,f = fit.sel(param=['a','b','c','d','e','f'])
     time=data.time.astype('float')
 
@@ -169,7 +170,6 @@ def isosurface(data, target, dim):
         res+=d_signal
     if mean:
         res+=d_mean
-
     if return_coeffs:
         return res,xr.Dataset({'Year_amplitude':np.sqrt(a**2+b**2),
                        'Day0_YearCycle':np.mod(np.arctan2(b,a)/2./np.pi*DAY_YEAR,DAY_YEAR),

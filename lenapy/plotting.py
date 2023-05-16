@@ -11,6 +11,7 @@ def plot_timeseries_uncertainty(xgeo_data,
                                 shaded_area_color=None,
                                 shaded_area_alpha=0.2,
                                 ax=None,
+                                label=None,
                                 line_kwargs = dict(),
                                 area_kwargs = dict(),
                                 add_legend=True
@@ -50,8 +51,12 @@ def plot_timeseries_uncertainty(xgeo_data,
         pass
     else:
         raise ValueError("thick_line can only be 'mean', 'median' or None.")
+        
+    if label is None:
+        label=f"{variable} {thick_line}"
+    
     if thick_line is not None:
-        plot_line = main_metric.plot(ax=ax, color=thick_line_color, **line_kwargs, label=f"{variable} {thick_line}")
+        plot_line = main_metric.plot(ax=ax, color=thick_line_color, **line_kwargs, label=label)
     if shaded_area_color is None:
         shaded_area_color = plot_line[0].get_color()
     if 'std' in shaded_area:
@@ -61,15 +66,15 @@ def plot_timeseries_uncertainty(xgeo_data,
         if shaded_area == 'std':
             ax.fill_between(data.time.values, main_metric-data_std, main_metric+data_std,
                             color=shaded_area_color, alpha=shaded_area_alpha, 
-                            linewidth=0, **area_kwargs, label=variable +r' 1$\sigma$')
+                            linewidth=0, **area_kwargs, label='_nolegend_')
         if shaded_area == '2std':
             ax.fill_between(data.time.values, main_metric-2*data_std, main_metric+2*data_std,
                             color=shaded_area_color, alpha=shaded_area_alpha, 
-                            linewidth=0, **area_kwargs, label=variable +r' 2$\sigma$')
+                            linewidth=0, **area_kwargs, label='_no_legend_')
         if shaded_area == '3std':
             ax.fill_between(data.time.values, main_metric-3*data_std, main_metric+3*data_std,
                             color=shaded_area_color, alpha=shaded_area_alpha, 
-                            linewidth=0, **area_kwargs, label=variable +r' 3$\sigma$')
+                            linewidth=0, **area_kwargs, label='_no_legend_')
 
     elif shaded_area == 'quantiles':
         data_quantile = data.quantile([quantile_min, quantile_max],
@@ -79,7 +84,7 @@ def plot_timeseries_uncertainty(xgeo_data,
         ax.fill_between(data.time.values, data_quantile.isel(quantile=0), data_quantile.isel(quantile=1),
                         color=shaded_area_color, alpha=shaded_area_alpha,
                         linewidth=0, **area_kwargs,
-                        label=f'{variable} ci {int(100*quantile_min)}-{int(100*quantile_max)}'+r'%')
+                        label='_no_legend_')
     elif shaded_area is None:
         pass
     else:
