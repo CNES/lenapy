@@ -68,7 +68,7 @@ def filter(data,filter_name=lanczos,q=3,**kwargs):
     return v3+v0
 
     
-def isosurface(data, target, dim):
+def isosurface(data, target, dim, upper=False):
     """
     Linearly interpolate a coordinate isosurface where a field
     equals a target
@@ -81,6 +81,8 @@ def isosurface(data, target, dim):
         The target isosurface value
     dim : str
         The field dimension to interpolate
+    upper : bool
+        if True, returns the highest point of the isosurface, else the lowest
 
     Examples
     --------
@@ -115,8 +117,10 @@ def isosurface(data, target, dim):
         coords0 + (target - field0) * 
         (coords1 - coords0) / (field1 - field0)
     )
-
-    return iso.max(dim, skipna=True)
+    if upper:
+        return iso.min(dim, skipna=True)
+    else:
+        return iso.max(dim, skipna=True)
         
 def function_climato(t,a,b,c,d,e,f):
         l=2.*np.pi/(DAY_YEAR*SECONDS_DAY*1.e9)

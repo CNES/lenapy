@@ -44,14 +44,14 @@ class GeoSet:
         return xr.Dataset(res)
     
     
-    def isosurface(self, dim, **kwargs):
+    def isosurface(self, dim, upper=False, **kwargs):
         # Calcule l'isosurface selon la coordonnée 'dim' pour le champ défini par le dictionnaire **kwargs (ex : temp=10)
         # Retourne tous les champs interpolés sur cette isosurface (pour ceux ayant "dim" en coordonnée), ainsi que l'isosurface elle-même
         k=list(kwargs.keys())[0]
         if not(k in self._obj.data_vars):
             raise KeyError("%s not in %s"%(kwargs[0],list(data_vars)))
             
-        r=isosurface(self._obj[k],kwargs[k],dim)
+        r=isosurface(self._obj[k],kwargs[k],dim, upper=upper)
         res=xr.Dataset({"%s_iso"%(dim):r})
         for var in self._obj.data_vars:
             if dim in self._obj[var].coords:
@@ -158,8 +158,8 @@ class GeoArray:
             return data.weighted(weights).sum(argsum,**kwargs)
     
 
-    def isosurface(self, target, dim):   
-        return isosurface(self._obj,target,dim)
+    def isosurface(self, target, dim, upper=False):   
+        return isosurface(self._obj,target,dim,upper=upper)
 
     def regridder(self,gr_out,*args,mask_in=None,**kwargs):
 

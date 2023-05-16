@@ -18,7 +18,7 @@ def NoneType(var):
 class OceanSet(xg.GeoSet):
     def __init__(self, xarray_obj):
         super().__init__(xarray_obj)
-        fields=['temp','PT','CT','psal','SA','SR','P','rho','Cp','heat','slh','ohc','ssl','ieeh','gohc','eeh']
+        fields=['temp','PT','CT','psal','SA','SR','P','rho','sigma0','Cp','heat','slh','ohc','ssl','ieeh','gohc','eeh']
         for f in fields:
             if hasattr(xarray_obj,f):
                 setattr(self,f+"_",xarray_obj[f])
@@ -84,12 +84,20 @@ class OceanSet(xg.GeoSet):
         return self.P_
 
     @property
-    # Densité en fonction de la salinité absolue, la température conservtaive et la pression
+    # Densité en fonction de la salinité absolue, la température conservative et la pression
     def rho(self):
         if NoneType(self.rho_):
             self.rho_ = proprietes(gsw.rho(self.SA, self.CT, self.P),
                           'rho','Density','kg/m3') # [kg/m3]
         return self.rho_
+    
+    @property
+    # Anomalie de densité potentielle à 0dbar en fonction de la salinité absolue et la température conservative
+    def sigma0(self):
+        if NoneType(self.rho_):
+            self.sigma0_ = proprietes(gsw.sigma0(self.SA, self.CT),
+                          'sigma0','Potential Density Anomaly','kg/m3') # [kg/m3]
+        return self.sigma0_
     
     @property
     # Capacité calorifique en fonction de la salinité absolue, la température in-situ et la pression
