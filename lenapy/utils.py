@@ -154,11 +154,12 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
 
     if not 'time' in data.coords: raise AssertionError('The time coordinates does not exist')
     
-
-    fit=data.curvefit('time',function_climato).curvefit_coefficients
-    #TODO Only works if fit has no other dimensions
-    a,b,c,d,e,f = fit.sel(param=['a','b','c','d','e','f'])
-    time=data.time.astype('float')
+    # Eliminer les séries où il y a moins de 6 points (pas de climato possible)
+    data_valid=data.where(data.count(dim='time')>5,0)
+    
+    fit=data_valid.curvefit('time',function_climato).curvefit_coefficients
+    [a,b,c,d,e,f] = [fit.sel(param=u) for u in ['a','b','c','d','e','f']]
+    time=data_valid.time.astype('float')
 
     d_mean  = data.mean(['time'])
     d_cycle = function_climato(time,a,b,c,d,0,0)
@@ -192,6 +193,8 @@ def generate_climato(time, coefficients, mean=True, trend=True, cycle=False):
     b=coefficients.Year_amplitude*np.sin(coefficients.Day0_YearCycle/DAY_YEAR*2*np.pi)
     c=coefficients.HalfYear_Amplitude*np.cos(coefficients.Day0_HalfYearCycle/DAY_YEAR*2*np.pi)
     d=coefficients.HalfYear_Amplitude*np.sin(coefficients.Day0_HalfYearCycle/DAY_YEAR*2*np.pi)
+    
+    return function_climato(time,a,b,c,d,e,f)
     
 def trend(data):
     return data.polyfit(dim='time',deg=1).polyfit_coefficients[0].values*1.e9
