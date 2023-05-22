@@ -7,7 +7,7 @@ LENAPY is a set of unctions which are an extension of the xarray DataSet and Dat
 
 
 ## Installation
-clone the git repository in a dedicated environment, and simply type ``pip install .`` in the lenapy directory
+Clone the git repository in a dedicated environment, and simply type ``pip install .`` in the lenapy directory.
 To clone the repository, execute the following command :
  * From hal :
  ``git clone git@gitlab.cnes.fr:campus/lenapy.git``
