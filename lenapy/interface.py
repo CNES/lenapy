@@ -195,7 +195,30 @@ class EN_422:
                            'psal':data.salinity
                           })        
 
-        
+class ECCO:
+    def __init__(self,rep):
+        self.rep = os.path.join(rep,"%s","%s")
+
+    def nommage(self,year, month):
+        self.fictemp=self.rep%("THETA","THETA_%04d_%02d.nc"%(year,month))
+        self.ficpsal=self.rep%("SALT","SALT_%04d_%02d.nc"%(year,month))
+
+    def charge(self,year, month):
+        self.nommage(year,month)
+        data=xg.open_geodata(self.fictemp,nan=0).THETA
+        pt=xr.DataArray(data.values,
+                        dims=['time','depth','latitude','longitude'],
+                        coords={'longitude':data.longitude.values,'depth':-data.Z.values,'latitude':data.latitude.values,'time':data.time})   
+        data=xg.open_geodata(self.ficpsal,nan=0).SALT
+        psal=xr.DataArray(data.values,
+                        dims=['time','depth','latitude','longitude'],
+                        coords={'longitude':data.longitude.values,'depth':-data.Z.values,'latitude':data.latitude.values,'time':data.time})   
+
+        return xr.Dataset({'PT':pt,
+                           'psal':psal
+                          })        
+
+    
 class LYMAN:
     def __init__(self,rep):
         self.rep = os.path.join(rep,"ohc","%s")
