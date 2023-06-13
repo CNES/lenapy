@@ -199,24 +199,32 @@ class ECCO:
     def __init__(self,rep):
         self.rep = os.path.join(rep,"%s","%s")
 
-    def nommage(self,year, month):
+    def charge(self,year, month):
         self.fictemp=self.rep%("THETA","THETA_%04d_%02d.nc"%(year,month))
         self.ficpsal=self.rep%("SALT","SALT_%04d_%02d.nc"%(year,month))
 
-    def charge(self,year, month):
-        self.nommage(year,month)
-        data=xg.open_geodata(self.fictemp,nan=0).THETA
-        pt=xr.DataArray(data.values,
-                        dims=['time','depth','latitude','longitude'],
-                        coords={'longitude':data.longitude.values,'depth':-data.Z.values,'latitude':data.latitude.values,'time':data.time})   
-        data=xg.open_geodata(self.ficpsal,nan=0).SALT
-        psal=xr.DataArray(data.values,
-                        dims=['time','depth','latitude','longitude'],
-                        coords={'longitude':data.longitude.values,'depth':-data.Z.values,'latitude':data.latitude.values,'time':data.time})   
+        pt=xg.open_geodata(self.fictemp,nan=0).THETA.set_index(i='longitude',j='latitude',k='Z').\
+            rename(i='longitude',j='latitude',k='depth').drop('timestep')
+        psal=xg.open_geodata(self.ficpsal,nan=0).SALT.set_index(i='longitude',j='latitude',k='Z').\
+            rename(i='longitude',j='latitude',k='depth').drop('timestep')
 
-        return xr.Dataset({'PT':pt,
-                           'psal':psal
+        return xr.Dataset({'PT':pt.assign_coords(depth=-pt.depth),
+                           'psal':psal.assign_coords(depth=-psal.depth)
                           })        
+
+    def charge_mf(self,motif):
+        self.fictemp=self.rep%("THETA","THETA_%s.nc"%(motif))
+        self.ficpsal=self.rep%("SALT","SALT_%s.nc"%(motif))
+
+        pt=xg.open_mfgeodata(self.fictemp,nan=0).THETA.set_index(i='longitude',j='latitude',k='Z').\
+            rename(i='longitude',j='latitude',k='depth').drop('timestep')
+        psal=xg.open_mfgeodata(self.ficpsal,nan=0).SALT.set_index(i='longitude',j='latitude',k='Z').\
+            rename(i='longitude',j='latitude',k='depth').drop('timestep')
+
+        return xr.Dataset({'PT':pt.assign_coords(depth=-pt.depth),
+                           'psal':psal.assign_coords(depth=-psal.depth)
+                          })        
+
 
     
 class LYMAN:

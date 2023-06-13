@@ -25,7 +25,9 @@ def lanczos(coupure,ordre):
     y=y/np.sum(y)
     return xr.DataArray(y, dims=('x',), coords={'x':x})
 
-
+def moving_average(npoints):
+    return np.ones(npoints)/npoints
+                   
 def filter(data,filter_name=lanczos,q=3,**kwargs):
     """
     Filtre les données en appliquant sur data le filtre filter_name, avec les paramètres définis dans **kwargs
@@ -180,7 +182,7 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
                        'Day0_YearCycle':np.mod(np.arctan2(b,a)/2./np.pi*DAY_YEAR,DAY_YEAR),
                        'HalfYear_Amplitude':np.sqrt(c**2+d**2),
                        'Day0_HalfYearCycle':np.mod(np.arctan2(d,c)/2./np.pi*DAY_YEAR,DAY_YEAR/2.),
-                       'MeanValue':e+a*0.,
+                       'MeanValue':d_mean,
                        'Trend':f*DAY_YEAR*SECONDS_DAY*1.e9+a*0.
                       })
     else:

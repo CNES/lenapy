@@ -18,12 +18,21 @@ def NoneType(var):
 class OceanSet(xg.GeoSet):
     def __init__(self, xarray_obj):
         super().__init__(xarray_obj)
-        fields=['temp','PT','CT','psal','SA','SR','P','rho','sigma0','Cp','heat','slh','ohc','ssl','ieeh','gohc','eeh']
+        fields=['temp','PT','CT','psal','SA','SR','P','rho','sigma0','Cp','heat','slh','ohc','ssl','ieeh','gohc','eeh',
+                'ocean_depth','mld_theta0','mld_sigma0','mld_sigma0var']
         for f in fields:
             if hasattr(xarray_obj,f):
                 setattr(self,f+"_",xarray_obj[f])
             else:
                 setattr(self,f+"_",None)
+                
+        if NoneType(self.temp) and NoneType(self.CT) and NoneType(self.PT):
+            raise ValueError('At least one temperature must be set (temp, CT or PT)')
+        if NoneType(self.SA) and NoneType(self.SR) and NoneType(self.psal):
+            raise ValueError('At least one salinity must be set (psal, SA or SR)')
+            
+        self.oml_theta0_threshold=0.2
+        self.oml_sigma0_threshold=0.03
 
     @property
     def temp(self):
@@ -50,7 +59,16 @@ class OceanSet(xg.GeoSet):
     @property
     # Salinité pratique
     def psal(self):
-        return self._obj.psal
+        if NoneType(self.psal_):
+            if NoneType(self.SA_) or not('latitude' in self._obj.coords and 'longitude' in self._obj.coords):
+                self.psal_=proprietes(gsw.SP_from_SR(self.SR),
+                          'psal','Practical salinity','g/kg') # [g/kg]
+                                
+            else:
+                self.psal_=proprietes(gsw.SP_from_SA(self.SA,self.P,self._obj.longitude, self._obj.latitude),
+                          'psal','Practical salinity','g/kg') # [g/kg]
+                                  
+        return self.psal_
     
     @property
     # Salinité relative, en fonction de la salinité pratique
@@ -94,7 +112,7 @@ class OceanSet(xg.GeoSet):
     @property
     # Anomalie de densité potentielle à 0dbar en fonction de la salinité absolue et la température conservative
     def sigma0(self):
-        if NoneType(self.rho_):
+        if NoneType(self.sigma0_):
             self.sigma0_ = proprietes(gsw.sigma0(self.SA, self.CT),
                           'sigma0','Potential Density Anomaly','kg/m3') # [kg/m3]
         return self.sigma0_
@@ -154,12 +172,12 @@ class OceanSet(xg.GeoSet):
     @property
     def gohc(self):
         return proprietes(self.ohc.xocean.mean(['latitude','longitude'],weights=['latitude']),
-                         'gohc','Global ocean heat content','J/m²')
+                         'gohc','Global ocean heat content wrt to ocean surface area','J/m²')
 
     @property
     def gohc_TOA(self):
         return proprietes(self.ohc.xocean.mean(['latitude','longitude'],weights=['latitude'],na_eq_zero=True),
-                         'gohc','Global ocean heat content','J/m²')
+                         'gohc','Global ocean heat content wrt to TOA area','J/m²')
     
     def ohc_above(self,target):
         res=self.heat.xocean.above(target)
@@ -168,8 +186,59 @@ class OceanSet(xg.GeoSet):
         
     def gohc_above(self,target,na_eq_zero=False):
         return proprietes(self.ohc_above(target).xocean.mean(['latitude','longitude'],weights=['latitude'],na_eq_zero=na_eq_zero),
-                         'gohc_above','Global ocean heat content','J/m²')
+                         'gohc_above','Global ocean heat content above target','J/m²')
 
+
+    @property
+    def ocean_depth(self):
+        if NoneType(self.ocean_depth_):
+            self.ocean_depth_=xr.where(self.temp.isel(time=0).isnull(),np.nan,self._obj.depth).max('depth')
+        return self.ocean_depth_
+        
+        
+    # Profondeur de l'Ocean Mixed Layer definie par une variation de temperature potentielle de 0.2°C par rapport à -10m
+    @property
+    def mld_theta0(self):
+
+        theta0=self.PT.interp(depth=10).drop("depth")
+        mld1=self.PT.xgeo.isosurface(theta0-self.oml_theta0_threshold,"depth",upper=True)
+        mld2=self.PT.xgeo.isosurface(theta0+self.oml_theta0_threshold,"depth",upper=True)
+        mld1=mld1.fillna(mld2)
+        mld2=mld2.fillna(mld1)
+        self.mld_theta0_ = xr.where(mld2<mld1,mld2,mld1).rename('OMLD_theta0').fillna(self.ocean_depth)
+        
+        return self.mld_theta0_
+
+    # Profondeur de l'Ocean Mixed Layer definie par une variation de temperature potentielle de 0.2°C par rapport à -10m
+    @property
+    def mld_theta0minus_only(self):
+
+        theta0=self.PT.interp(depth=10).drop("depth")
+        self.mld_theta0_ = self.PT.xgeo.isosurface(theta0-self.oml_theta0_threshold,"depth",upper=True).\
+            rename('OMLD_theta0minus_only').fillna(self.ocean_depth)
+        
+        return self.mld_theta0_
+    
+    # Profondeur de l'Ocean Mixed Layer definie par une augmentation de densité potentielle de 0.03kg/m3 par rapport à -10m
+    @property    
+    def mld_sigma0(self):
+
+        sigma0=self.sigma0.interp(depth=10).drop("depth")
+        self.mld_sigma0_=self.sigma0.xgeo.isosurface(sigma0+self.oml_sigma0_threshold,"depth",upper=True).\
+            rename('OMLD_sigma0').fillna(self.ocean_depth)
+        
+        return self.mld_sigma0_
+    
+    # Profondeur de l'Ocean Mixed Layer definie par une augmentation de densité potentielle correspondant à -0.2°C par rapport à -10m
+    @property
+    def mld_sigma0var(self):
+        ref = self._obj.interp(depth=10)
+        ref['PT']=ref['PT']-self.oml_theta0_threshold
+        self.mld_sigma0var_=self.sigma0.xgeo.isosurface(ref.xocean.sigma0.drop("depth"),"depth",upper=True).\
+            rename('OMLD_sigma0var').fillna(self.ocean_depth)
+        
+        return self.mld_sigma0var_
+ 
 
 @xr.register_dataarray_accessor("xocean")
 class OceanArray(xg.GeoArray):
@@ -190,7 +259,7 @@ class OceanArray(xg.GeoArray):
         return self.add_value_surface().fillna(0).integrate('depth').where(~self._obj.isel(depth=0).isnull())
     
     def cum_integ_depth(self):
-        res=self.add_value_surface()
+        res=self.add_value_surface()  
         ep=res.depth.diff('depth')
         vm=res.rolling(depth=2).mean().isel(depth=slice(1,None))
         return (vm*ep).fillna(0).cumsum('depth').where(~self._obj.isel(depth=0).isnull())

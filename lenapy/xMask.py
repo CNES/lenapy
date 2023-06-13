@@ -1,11 +1,12 @@
 import xarray as xr
 import xesmf as xe
+import numpy as np
 
 class xmask():
-    __slots__=('_datamask','_mask','_grout','_val','value','inverse')
+    __slots__=('_datamask','_grout','_val','value','inverse','layer')
     def __init__(self,msk_in):
         if type(msk_in)==type(xr.DataArray()):
-            self._mask = msk_in
+            self._datamask = xr.Dataset({'mask':msk_in})
         elif type(msk_in)==type(xr.Dataset()):
             self._datamask = msk_in
         elif type(msk_in)==type('path'):
@@ -13,32 +14,29 @@ class xmask():
         else:
             raise TypeError('mask should be a file, a dataSet or a dataArray')
                
+        self.layer='mask'
         self.value=None
         self._val=None
         self.inverse=False
         
     def set(self,mask=None,value=None,inverse=False):
         if type(mask)!=type(None):
-            self._mask = self._datamask[mask]
+            self.layer=mask
         if type(value)!=type(None):
-            self.value=value
+            self.value=np.ravel(value)
         if type(inverse)!=type(None):
             self.inverse=inverse
+        self._val=None
+            
 
     @property
     def val(self):
         if type(self._val)==type(None):
             if type(self.value)==type(None):
-                res = ~self._mask.isnull() ^ self.inverse
+                self._val = ~self._datamask[self.layer].isnull() ^ self.inverse
             else:
-                res = xr.concat(([self._mask==u for u in self.value]),dim='_select').any(dim='_select') ^ self.inverse
+                self._val = xr.concat(([self._datamask[self.layer]==u for u in self.value]),dim='_select').any(dim='_select') ^ self.inverse
 
-            if hasattr(self,'_grout'):
-                m=xr.Dataset({'mask':res})
-                reg=xe.Regridder(m,self._grout,method='conservative_normed')
-                self._val = reg(res)
-            else:
-                self._val = res
         return self._val
         
     def regrid(self,gr_out):
@@ -46,4 +44,7 @@ class xmask():
             "latitude":gr_out.latitude,
             "longitude":gr_out.longitude
             })
+        reg=xe.Regridder(self._datamask,self._grout,method='nearest_s2d')
+        self._datamask = reg(self._datamask)
+        
         self._val=None
