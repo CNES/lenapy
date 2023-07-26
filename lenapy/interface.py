@@ -241,7 +241,7 @@ class LYMAN:
         ohc=xr.open_mfdataset(self.fic,data_vars="different")
         ep=ohc.mean_depth_bnds.diff(dim='vertices')
         r=(ohc.ocean_heat_content_anomaly/ep*1.e9).rename(mean_depth='depth')      
-        return xr.Dataset({'ohc':r.squeeze()})
+        return xr.Dataset({'heat':r.squeeze()})
     
 class LEGOS:
     def __init__(self,rep,nom,version,**kwargs):
