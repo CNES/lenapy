@@ -71,14 +71,15 @@ class SIO:
         
         
 class ISAS:
-    def __init__(self,rep,dataset):
+    def __init__(self,rep,release,product='ARGO'):
         self.rep = os.path.join(rep,"%04d","%s")
-        self.dataset = dataset
+        self.release = release
+        self.product=product
 
     def nommage(self,year, month):
-        a='ISAS%02d_ARGO_%04d%02d15_fld_%s.nc'
-        self.fictemp=self.rep%(year,a%(self.dataset,year,month,'TEMP'))
-        self.ficsal =self.rep%(year,a%(self.dataset,year,month,'PSAL'))
+        a='ISAS%02d_%s_%04d%02d15_fld_%s.nc'
+        self.fictemp=self.rep%(year,a%(self.release,self.product,year,month,'TEMP'))
+        self.ficsal =self.rep%(year,a%(self.release,self.product,year,month,'PSAL'))
 
     def charge(self,year, month):
         self.nommage(year,month)
@@ -240,7 +241,7 @@ class LYMAN:
         ohc=xr.open_mfdataset(self.fic,data_vars="different")
         ep=ohc.mean_depth_bnds.diff(dim='vertices')
         r=(ohc.ocean_heat_content_anomaly/ep*1.e9).rename(mean_depth='depth')      
-        self.ohc=r.squeeze()
+        return xr.Dataset({'ohc':r.squeeze()})
     
 class LEGOS:
     def __init__(self,rep,nom,version,**kwargs):
