@@ -26,11 +26,12 @@ class OceanSet(xg.GeoSet):
             else:
                 setattr(self,f+"_",None)
                 
-        if NoneType(self.temp) and NoneType(self.CT) and NoneType(self.PT):
-            raise ValueError('At least one temperature must be set (temp, CT or PT)')
-        if NoneType(self.SA) and NoneType(self.SR) and NoneType(self.psal):
-            raise ValueError('At least one salinity must be set (psal, SA or SR)')
-            
+        if NoneType(self.heat_):
+            if NoneType(self.temp_) and NoneType(self.CT_) and NoneType(self.PT_):
+                raise ValueError('At least one temperature must be set (temp, CT or PT)')
+            if NoneType(self.SA_) and NoneType(self.SR_) and NoneType(self.psal_):
+                raise ValueError('At least one salinity must be set (psal, SA or SR)')
+
         self.oml_theta0_threshold=0.2
         self.oml_sigma0_threshold=0.03
 
