@@ -3,9 +3,10 @@
 This module allows to load temperature and salinity data from different products and format the data with unified definition for variables and coordinates, compatible with the use of xOcean :
 standardized coordinates names : latitude, longitude, depth, time
 standardized variables names : temp or PT or CT for temperature, psal, SA, SR for salinity
-Whan loading a product, all the files present in the product directory are parsed. To gain computing time, a first filter on the years to load can be applied, as well as a text filter.
+When loading a product, all the files present in the product directory are parsed. To gain computing time, a first filter on the years to load can be applied, as well as a text filter.
 A second date filter can be apply afterwards with the .sel(time=slice('begin_date','end_date') method.
 All keyword arguments associated with xr.open_mfdataset can be passed.
+Dask is implicitely used when using these interface methods.
 It is strongly recommanded to chunk the dataset along depth dimension (chunks=dict(depth=10))
 
 Parameters

@@ -155,17 +155,18 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
     """
 
     if not 'time' in data.coords: raise AssertionError('The time coordinates does not exist')
+
+    d_mean  = data.mean(['time'])
     
     # Eliminer les séries où il y a moins de 6 points (pas de climato possible)
-    data_valid=data.where(data.count(dim='time')>5,0)
+    data_valid=(data-d_mean).where(data.count(dim='time')>5,0)
     
     fit=data_valid.curvefit('time',function_climato).curvefit_coefficients
     [a,b,c,d,e,f] = [fit.sel(param=u) for u in ['a','b','c','d','e','f']]
     time=data_valid.time.astype('float')
 
-    d_mean  = data.mean(['time'])
     d_cycle = function_climato(time,a,b,c,d,0,0)
-    d_trend = function_climato(time,0,0,0,0,e,f) - d_mean
+    d_trend = function_climato(time,0,0,0,0,e,f)
     d_signal= data - d_cycle - d_trend - d_mean
 
     res=0
@@ -183,7 +184,7 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
                        'HalfYear_Amplitude':np.sqrt(c**2+d**2),
                        'Day0_HalfYearCycle':np.mod(np.arctan2(d,c)/2./np.pi*DAY_YEAR,DAY_YEAR/2.),
                        'MeanValue':d_mean,
-                       'Trend':f*DAY_YEAR*SECONDS_DAY*1.e9+a*0.
+                       'Trend':f*DAY_YEAR*SECONDS_DAY*1.e9
                       })
     else:
         return res
@@ -200,30 +201,6 @@ def generate_climato(time, coefficients, mean=True, trend=True, cycle=False):
     
 def trend(data):
     return data.polyfit(dim='time',deg=1).polyfit_coefficients[0].values*1.e9
-
-def coords_rename(data,**kwargs):
-    
-    data=data.rename(**kwargs)
-        
-    for l in ['lon','LON','Longitude','LONGITUDE']:
-        if l in data.variables:
-            data=data.rename({l:'longitude'})
-
-    for l in ['lat','LAT','Latitude','LATITUDE']:
-        if l in data.variables:
-            data=data.rename({l:'latitude'})
-
-    for l in ['date','dates','TIME','Time']:
-        if l in data.variables:
-            data=data.rename({l:'time'})
-            
-    if 'longitude' in data.variables and not('longitude' in data.coords):
-        lon=data['longitude']
-        del data['longitude']
-        lat=data['latitude']
-        del data['latitude']    
-        data=data.assign_coords(longitude=lon,latitude=lat)        
-    return data
 
 def interp_time(data,other,**kwargs):
 
@@ -247,7 +224,6 @@ def to_datetime(data,input_type):
     else:
         raise ValueError(f'Format {input_type} not yet considered, please convert manually to datatime')
       
-    
     return data
 
 def diff_3pts(data,dim):
