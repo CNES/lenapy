@@ -1,0 +1,774 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.10.0" />
+<title>lenapy.utils API documentation</title>
+<meta name="description" content="" />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>lenapy.utils</code></h1>
+</header>
+<section id="section-intro">
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">import xarray as xr
+import numpy as np
+import pandas as pd
+from .constants import *
+
+def lanczos(coupure,ordre):
+    &#34;&#34;&#34; 
+    Filtrage de Lanczos
+    Implémente un filtre dont la réponse fréquentielle est une porte de largeur spécifiée par &#34;coupure&#34;, 
+    convoluée à une autre porte dont la largeur est plus étroite d&#39;un facteur &#34;ordre&#34;. Temporellement,
+    le filtre est tronqué à +/- ordre * coupure / 2
+    Plus &#34;ordre&#34; est grand, plus on se rapproche d&#39;un filtre parfait (sinus cardinal)
+    Parameters
+    ----------
+    coupure : integer
+    
+    ordre : integer
+        ordre du filtre
+    &#34;&#34;&#34;
+    
+    c=coupure/2.
+    x = np.arange(-ordre*c,ordre*c+1,1)
+    y = np.sinc(x/c)*np.sinc(x/c/ordre)/c
+    y[np.abs(x)&gt;ordre*c]=0.
+    y=y/np.sum(y)
+    return xr.DataArray(y, dims=(&#39;x&#39;,), coords={&#39;x&#39;:x})
+
+def moving_average(npoints):
+    return np.ones(npoints)/npoints
+                   
+def filter(data,filter_name=lanczos,q=3,**kwargs):
+    &#34;&#34;&#34;
+    Filtre les données en appliquant sur data le filtre filter_name, avec les paramètres définis dans **kwargs
+    Effectue un miroir des données au début et à la fin pour éviter les effets de bords. Ce miroir est réalisé
+    après avoir retiré un un polynome d&#39;ordre q fittant au mieux les données.
+
+    Parameters
+    ----------
+    data : xarray DataArray
+        Données à filtrer
+    filter_name : func (default=Lanczos)
+        nom de la fonction de filtrage
+    q : integer (default=3)
+        ordre du polynome pour l&#39;effet miroir (gestion des bords)
+    **kwargs :
+        paramètres de la fonction de filtrage demandée
+    &#34;&#34;&#34;
+
+    if not &#39;time&#39; in data.coords: raise AssertionError(&#39;The time coordinates does not exist&#39;)
+
+    # Noyau de convolution
+    data_noyau=filter_name(**kwargs)
+    k=len(data_noyau)
+
+    noyau=xr.DataArray(data_noyau,dims=[&#39;time_win&#39;],coords={&#39;time_win&#39;:np.arange(k)})
+
+    # Fit avec un polynome d&#39;ordre q
+    pf=data.polyfit(&#39;time&#39;,q)
+    v0=xr.polyval(data.time,pf).polyfit_coefficients
+    # Retrait de ce polynome aux données brutes
+    v1=data-v0
+    v1[&#39;time&#39;]=v1[&#39;time&#39;].astype(&#39;float&#39;)
+    # Complète les données par effet miroir au début et à la fin
+    v2=v1.pad({&#39;time&#39;:(k,k)},mode=&#39;reflect&#39;,reflect_type=&#39;even&#39;)
+    v2[&#39;time&#39;]=v1[&#39;time&#39;].pad({&#39;time&#39;:(k,k)},mode=&#39;reflect&#39;,reflect_type=&#39;odd&#39;)
+    # Convolution par le noyau
+    v3=(v2.rolling(time=k,center=True).construct(time=&#39;time_win&#39;)*noyau).sum(&#39;time_win&#39;).isel(time=slice(k,-k))
+    v3[&#39;time&#39;]=data[&#39;time&#39;]
+    # Ajout du polynome aux données filtrées
+    return v3+v0
+
+    
+def isosurface(data, target, dim, upper=False):
+    &#34;&#34;&#34;
+    Linearly interpolate a coordinate isosurface where a field
+    equals a target
+
+    Parameters
+    ----------
+    field : xarray DataArray
+        The field in which to interpolate the target isosurface
+    target : float
+        The target isosurface value
+    dim : str
+        The field dimension to interpolate
+    upper : bool
+        if True, returns the highest point of the isosurface, else the lowest
+
+    Examples
+    --------
+    Calculate the depth of an isotherm with a value of 5.5:
+
+    &gt;&gt;&gt; temp = xr.DataArray(
+    ...     range(10,0,-1),
+    ...     coords={&#34;depth&#34;: range(10)}
+    ... )
+    &gt;&gt;&gt; isosurface(temp, 5.5, dim=&#34;depth&#34;)
+    &lt;xarray.DataArray ()&gt;
+    array(4.5)
+    &#34;&#34;&#34;
+    slice0 = {dim: slice(None, -1)}
+    slice1 = {dim: slice(1, None)}
+
+    field0 = data.isel(slice0).drop(dim)
+    field1 = data.isel(slice1).drop(dim)
+
+    crossing_mask_decr = (field0 &gt; target) &amp; (field1 &lt;= target)
+    crossing_mask_incr = (field0 &lt; target) &amp; (field1 &gt;= target)
+    crossing_mask = xr.where(
+        crossing_mask_decr | crossing_mask_incr, 1, np.nan
+    )
+
+    coords0 = crossing_mask * data[dim].isel(slice0).drop(dim)
+    coords1 = crossing_mask * data[dim].isel(slice1).drop(dim)
+    field0 = crossing_mask * field0
+    field1 = crossing_mask * field1
+
+    iso = (
+        coords0 + (target - field0) * 
+        (coords1 - coords0) / (field1 - field0)
+    )
+    if upper:
+        return iso.min(dim, skipna=True)
+    else:
+        return iso.max(dim, skipna=True)
+        
+def function_climato(t,a,b,c,d,e,f):
+        l=2.*np.pi/(DAY_YEAR*SECONDS_DAY*1.e9)
+        return a*np.cos(l*t)+b*np.sin(l*t)+c*np.cos(2.*l*t)+d*np.sin(2.*l*t)+e+f*t
+        
+def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs=False):
+    &#34;&#34;&#34;
+    Analyse du cycle annuel, bi-annuel et de la tendance
+    Decompose les données en entrée en :
+     Un cycle annuel
+     Un cycle bi-annuel
+     Une tendance
+     Une moyenne
+     Un signal résiduel
+    Retourne la combinaison voulue de ces éléments en fonction des arguments choisis (signal, mean, trend, cycle)
+    Si return_coeffs=True, retourne les coefficients des cycles et tendances
+
+    Parameters
+    ----------
+    signal : Bool (default=True)
+        Renvoie le signal résiduel après retrait de la climato, de la tendance, et de la moyenne
+    mean : Bool (default=True)
+        renvoie la valeur moyenne des données d&#39;entrée
+    trend : Bool (default=True)
+        renvoie la tendance
+    cycle : Bool (default=False)
+        renvoie le cycle annuel et bi-annuel
+    return_coeffs : Bool (default=False)
+        retourne en plus les coefficients des cycles et de la tendance linéaire
+    &#34;&#34;&#34;
+
+    if not &#39;time&#39; in data.coords: raise AssertionError(&#39;The time coordinates does not exist&#39;)
+
+    d_mean  = data.mean([&#39;time&#39;])
+    
+    # Eliminer les séries où il y a moins de 6 points (pas de climato possible)
+    data_valid=(data-d_mean).where(data.count(dim=&#39;time&#39;)&gt;5,0)
+    
+    fit=data_valid.curvefit(&#39;time&#39;,function_climato).curvefit_coefficients
+    [a,b,c,d,e,f] = [fit.sel(param=u) for u in [&#39;a&#39;,&#39;b&#39;,&#39;c&#39;,&#39;d&#39;,&#39;e&#39;,&#39;f&#39;]]
+    time=data_valid.time.astype(&#39;float&#39;)
+
+    d_cycle = function_climato(time,a,b,c,d,0,0)
+    d_trend = function_climato(time,0,0,0,0,e,f)
+    d_signal= data - d_cycle - d_trend - d_mean
+
+    res=0
+    if cycle:
+        res+=d_cycle
+    if trend:
+        res+=d_trend
+    if signal:
+        res+=d_signal
+    if mean:
+        res+=d_mean
+    if return_coeffs:
+        return res,xr.Dataset({&#39;Year_amplitude&#39;:np.sqrt(a**2+b**2),
+                       &#39;Day0_YearCycle&#39;:np.mod(np.arctan2(b,a)/2./np.pi*DAY_YEAR,DAY_YEAR),
+                       &#39;HalfYear_Amplitude&#39;:np.sqrt(c**2+d**2),
+                       &#39;Day0_HalfYearCycle&#39;:np.mod(np.arctan2(d,c)/2./np.pi*DAY_YEAR,DAY_YEAR/2.),
+                       &#39;MeanValue&#39;:d_mean,
+                       &#39;Trend&#39;:f*DAY_YEAR*SECONDS_DAY*1.e9
+                      })
+    else:
+        return res
+    
+def generate_climato(time, coefficients, mean=True, trend=True, cycle=False):
+    e=coefficients.MeanValue
+    f=coefficients.Trend/(DAY_YEAR*SECONDS_DAY*1.e9)
+    a=coefficients.Year_amplitude*np.cos(coefficients.Day0_YearCycle/DAY_YEAR*2*np.pi)
+    b=coefficients.Year_amplitude*np.sin(coefficients.Day0_YearCycle/DAY_YEAR*2*np.pi)
+    c=coefficients.HalfYear_Amplitude*np.cos(coefficients.Day0_HalfYearCycle/DAY_YEAR*2*np.pi)
+    d=coefficients.HalfYear_Amplitude*np.sin(coefficients.Day0_HalfYearCycle/DAY_YEAR*2*np.pi)
+    
+    return function_climato(time,a,b,c,d,e,f)
+    
+def trend(data):
+    return data.polyfit(dim=&#39;time&#39;,deg=1).polyfit_coefficients[0].values*1.e9
+
+def interp_time(data,other,**kwargs):
+
+    if not &#39;time&#39; in data.coords: raise AssertionError(&#39;The time coordinates does not exist&#39;)
+
+    return data.interp(time=other.time,**kwargs)
+
+def to_datetime(data,input_type):
+    if not &#39;time&#39; in data.coords: raise AssertionError(&#39;The time coordinates does not exist&#39;)
+    if data[&#39;time&#39;].dtype==&#39;&lt;M8[ns]&#39;:
+        return data
+
+    
+    if input_type==&#39;frac_year&#39;:
+        data[&#39;time&#39;]=[ 
+            pd.to_datetime(f&#39;{int(np.floor(i))}&#39;)+pd.to_timedelta(float((i-np.floor(i))*DAY_YEAR),unit=&#39;D&#39;) 
+            for i in data.time]
+    elif input_type==&#39;360_day&#39;:
+        data.time.attrs[&#39;calendar&#39;]=&#39;360_day&#39;
+        data = xr.decode_cf(data).convert_calendar(&#34;standard&#34;,align_on=&#34;year&#34;)
+    else:
+        raise ValueError(f&#39;Format {input_type} not yet considered, please convert manually to datatime&#39;)
+      
+    return data
+
+def diff_3pts(data,dim):
+    y=data.where(~data.isnull()).rolling({dim:3},center=True,min_periods=3).construct(&#39;win&#39;)
+    x=data[dim].where(~data.isnull()).rolling({dim:3},center=True,min_periods=3).construct(&#39;win&#39;).astype(&#39;float&#39;)
+
+    return ((x*y).mean(&#39;win&#39;)-x.mean(&#39;win&#39;)*y.mean(&#39;win&#39;))/((x**2).mean(&#39;win&#39;)-(x.mean(&#39;win&#39;))**2)
+
+def fill_time(data):
+    # Complète les trous de données dans une série temporelle en respectant approximativement l&#39;échantillonnage, 
+    #  et en faisant une interpolation linéaire de la donnée là où il y a des trous.
+    
+    if not &#39;time&#39; in data.coords: raise AssertionError(&#39;The time coordinates does not exist&#39;)
+    
+    dt=data.time.diff(&#39;time&#39;)
+    # Recherche du pas d&#39;echantillonnage temporel le plus régulier
+    tau0=dt.median()
+    tau1=(dt[np.where(np.abs((dt-tau0)/tau0)&lt;0.2)]).mean()
+    
+    # Parours des index temporels, et ajoute des index là où il y a des trous
+    nt=data.time[0].values
+    for k in range(len(data.time)-1):
+        for i in np.arange(1,np.round(dt[k]/tau1)):
+            nt=np.append(nt,data.time[k].values+i*tau1)
+        nt=np.append(nt,data.time[k+1].values)
+    
+    # Génération du nouvel index temporel
+    newtime=(xr.DataArray(nt,dims=&#39;time&#39;,coords={&#39;time&#39;:nt}))
+    
+    # Retourne la donnée interpolée
+    return data.interp(time=newtime)</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="lenapy.utils.climato"><code class="name flex">
+<span>def <span class="ident">climato</span></span>(<span>data, signal=True, mean=True, trend=True, cycle=False, return_coeffs=False)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Analyse du cycle annuel, bi-annuel et de la tendance
+Decompose les données en entrée en :
+Un cycle annuel
+Un cycle bi-annuel
+Une tendance
+Une moyenne
+Un signal résiduel
+Retourne la combinaison voulue de ces éléments en fonction des arguments choisis (signal, mean, trend, cycle)
+Si return_coeffs=True, retourne les coefficients des cycles et tendances</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>signal</code></strong> :&ensp;<code>Bool (default=True)</code></dt>
+<dd>Renvoie le signal résiduel après retrait de la climato, de la tendance, et de la moyenne</dd>
+<dt><strong><code>mean</code></strong> :&ensp;<code>Bool (default=True)</code></dt>
+<dd>renvoie la valeur moyenne des données d'entrée</dd>
+<dt><strong><code>trend</code></strong> :&ensp;<code>Bool (default=True)</code></dt>
+<dd>renvoie la tendance</dd>
+<dt><strong><code>cycle</code></strong> :&ensp;<code>Bool (default=False)</code></dt>
+<dd>renvoie le cycle annuel et bi-annuel</dd>
+<dt><strong><code>return_coeffs</code></strong> :&ensp;<code>Bool (default=False)</code></dt>
+<dd>retourne en plus les coefficients des cycles et de la tendance linéaire</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs=False):
+    &#34;&#34;&#34;
+    Analyse du cycle annuel, bi-annuel et de la tendance
+    Decompose les données en entrée en :
+     Un cycle annuel
+     Un cycle bi-annuel
+     Une tendance
+     Une moyenne
+     Un signal résiduel
+    Retourne la combinaison voulue de ces éléments en fonction des arguments choisis (signal, mean, trend, cycle)
+    Si return_coeffs=True, retourne les coefficients des cycles et tendances
+
+    Parameters
+    ----------
+    signal : Bool (default=True)
+        Renvoie le signal résiduel après retrait de la climato, de la tendance, et de la moyenne
+    mean : Bool (default=True)
+        renvoie la valeur moyenne des données d&#39;entrée
+    trend : Bool (default=True)
+        renvoie la tendance
+    cycle : Bool (default=False)
+        renvoie le cycle annuel et bi-annuel
+    return_coeffs : Bool (default=False)
+        retourne en plus les coefficients des cycles et de la tendance linéaire
+    &#34;&#34;&#34;
+
+    if not &#39;time&#39; in data.coords: raise AssertionError(&#39;The time coordinates does not exist&#39;)
+
+    d_mean  = data.mean([&#39;time&#39;])
+    
+    # Eliminer les séries où il y a moins de 6 points (pas de climato possible)
+    data_valid=(data-d_mean).where(data.count(dim=&#39;time&#39;)&gt;5,0)
+    
+    fit=data_valid.curvefit(&#39;time&#39;,function_climato).curvefit_coefficients
+    [a,b,c,d,e,f] = [fit.sel(param=u) for u in [&#39;a&#39;,&#39;b&#39;,&#39;c&#39;,&#39;d&#39;,&#39;e&#39;,&#39;f&#39;]]
+    time=data_valid.time.astype(&#39;float&#39;)
+
+    d_cycle = function_climato(time,a,b,c,d,0,0)
+    d_trend = function_climato(time,0,0,0,0,e,f)
+    d_signal= data - d_cycle - d_trend - d_mean
+
+    res=0
+    if cycle:
+        res+=d_cycle
+    if trend:
+        res+=d_trend
+    if signal:
+        res+=d_signal
+    if mean:
+        res+=d_mean
+    if return_coeffs:
+        return res,xr.Dataset({&#39;Year_amplitude&#39;:np.sqrt(a**2+b**2),
+                       &#39;Day0_YearCycle&#39;:np.mod(np.arctan2(b,a)/2./np.pi*DAY_YEAR,DAY_YEAR),
+                       &#39;HalfYear_Amplitude&#39;:np.sqrt(c**2+d**2),
+                       &#39;Day0_HalfYearCycle&#39;:np.mod(np.arctan2(d,c)/2./np.pi*DAY_YEAR,DAY_YEAR/2.),
+                       &#39;MeanValue&#39;:d_mean,
+                       &#39;Trend&#39;:f*DAY_YEAR*SECONDS_DAY*1.e9
+                      })
+    else:
+        return res</code></pre>
+</details>
+</dd>
+<dt id="lenapy.utils.diff_3pts"><code class="name flex">
+<span>def <span class="ident">diff_3pts</span></span>(<span>data, dim)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def diff_3pts(data,dim):
+    y=data.where(~data.isnull()).rolling({dim:3},center=True,min_periods=3).construct(&#39;win&#39;)
+    x=data[dim].where(~data.isnull()).rolling({dim:3},center=True,min_periods=3).construct(&#39;win&#39;).astype(&#39;float&#39;)
+
+    return ((x*y).mean(&#39;win&#39;)-x.mean(&#39;win&#39;)*y.mean(&#39;win&#39;))/((x**2).mean(&#39;win&#39;)-(x.mean(&#39;win&#39;))**2)</code></pre>
+</details>
+</dd>
+<dt id="lenapy.utils.fill_time"><code class="name flex">
+<span>def <span class="ident">fill_time</span></span>(<span>data)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def fill_time(data):
+    # Complète les trous de données dans une série temporelle en respectant approximativement l&#39;échantillonnage, 
+    #  et en faisant une interpolation linéaire de la donnée là où il y a des trous.
+    
+    if not &#39;time&#39; in data.coords: raise AssertionError(&#39;The time coordinates does not exist&#39;)
+    
+    dt=data.time.diff(&#39;time&#39;)
+    # Recherche du pas d&#39;echantillonnage temporel le plus régulier
+    tau0=dt.median()
+    tau1=(dt[np.where(np.abs((dt-tau0)/tau0)&lt;0.2)]).mean()
+    
+    # Parours des index temporels, et ajoute des index là où il y a des trous
+    nt=data.time[0].values
+    for k in range(len(data.time)-1):
+        for i in np.arange(1,np.round(dt[k]/tau1)):
+            nt=np.append(nt,data.time[k].values+i*tau1)
+        nt=np.append(nt,data.time[k+1].values)
+    
+    # Génération du nouvel index temporel
+    newtime=(xr.DataArray(nt,dims=&#39;time&#39;,coords={&#39;time&#39;:nt}))
+    
+    # Retourne la donnée interpolée
+    return data.interp(time=newtime)</code></pre>
+</details>
+</dd>
+<dt id="lenapy.utils.filter"><code class="name flex">
+<span>def <span class="ident">filter</span></span>(<span>data, filter_name=&lt;function lanczos&gt;, q=3, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Filtre les données en appliquant sur data le filtre filter_name, avec les paramètres définis dans **kwargs
+Effectue un miroir des données au début et à la fin pour éviter les effets de bords. Ce miroir est réalisé
+après avoir retiré un un polynome d'ordre q fittant au mieux les données.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>data</code></strong> :&ensp;<code>xarray DataArray</code></dt>
+<dd>Données à filtrer</dd>
+<dt><strong><code>filter_name</code></strong> :&ensp;<code>func (default=Lanczos)</code></dt>
+<dd>nom de la fonction de filtrage</dd>
+<dt><strong><code>q</code></strong> :&ensp;<code>integer (default=3)</code></dt>
+<dd>ordre du polynome pour l'effet miroir (gestion des bords)</dd>
+</dl>
+<p>**kwargs :
+paramètres de la fonction de filtrage demandée</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def filter(data,filter_name=lanczos,q=3,**kwargs):
+    &#34;&#34;&#34;
+    Filtre les données en appliquant sur data le filtre filter_name, avec les paramètres définis dans **kwargs
+    Effectue un miroir des données au début et à la fin pour éviter les effets de bords. Ce miroir est réalisé
+    après avoir retiré un un polynome d&#39;ordre q fittant au mieux les données.
+
+    Parameters
+    ----------
+    data : xarray DataArray
+        Données à filtrer
+    filter_name : func (default=Lanczos)
+        nom de la fonction de filtrage
+    q : integer (default=3)
+        ordre du polynome pour l&#39;effet miroir (gestion des bords)
+    **kwargs :
+        paramètres de la fonction de filtrage demandée
+    &#34;&#34;&#34;
+
+    if not &#39;time&#39; in data.coords: raise AssertionError(&#39;The time coordinates does not exist&#39;)
+
+    # Noyau de convolution
+    data_noyau=filter_name(**kwargs)
+    k=len(data_noyau)
+
+    noyau=xr.DataArray(data_noyau,dims=[&#39;time_win&#39;],coords={&#39;time_win&#39;:np.arange(k)})
+
+    # Fit avec un polynome d&#39;ordre q
+    pf=data.polyfit(&#39;time&#39;,q)
+    v0=xr.polyval(data.time,pf).polyfit_coefficients
+    # Retrait de ce polynome aux données brutes
+    v1=data-v0
+    v1[&#39;time&#39;]=v1[&#39;time&#39;].astype(&#39;float&#39;)
+    # Complète les données par effet miroir au début et à la fin
+    v2=v1.pad({&#39;time&#39;:(k,k)},mode=&#39;reflect&#39;,reflect_type=&#39;even&#39;)
+    v2[&#39;time&#39;]=v1[&#39;time&#39;].pad({&#39;time&#39;:(k,k)},mode=&#39;reflect&#39;,reflect_type=&#39;odd&#39;)
+    # Convolution par le noyau
+    v3=(v2.rolling(time=k,center=True).construct(time=&#39;time_win&#39;)*noyau).sum(&#39;time_win&#39;).isel(time=slice(k,-k))
+    v3[&#39;time&#39;]=data[&#39;time&#39;]
+    # Ajout du polynome aux données filtrées
+    return v3+v0</code></pre>
+</details>
+</dd>
+<dt id="lenapy.utils.function_climato"><code class="name flex">
+<span>def <span class="ident">function_climato</span></span>(<span>t, a, b, c, d, e, f)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def function_climato(t,a,b,c,d,e,f):
+        l=2.*np.pi/(DAY_YEAR*SECONDS_DAY*1.e9)
+        return a*np.cos(l*t)+b*np.sin(l*t)+c*np.cos(2.*l*t)+d*np.sin(2.*l*t)+e+f*t</code></pre>
+</details>
+</dd>
+<dt id="lenapy.utils.generate_climato"><code class="name flex">
+<span>def <span class="ident">generate_climato</span></span>(<span>time, coefficients, mean=True, trend=True, cycle=False)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def generate_climato(time, coefficients, mean=True, trend=True, cycle=False):
+    e=coefficients.MeanValue
+    f=coefficients.Trend/(DAY_YEAR*SECONDS_DAY*1.e9)
+    a=coefficients.Year_amplitude*np.cos(coefficients.Day0_YearCycle/DAY_YEAR*2*np.pi)
+    b=coefficients.Year_amplitude*np.sin(coefficients.Day0_YearCycle/DAY_YEAR*2*np.pi)
+    c=coefficients.HalfYear_Amplitude*np.cos(coefficients.Day0_HalfYearCycle/DAY_YEAR*2*np.pi)
+    d=coefficients.HalfYear_Amplitude*np.sin(coefficients.Day0_HalfYearCycle/DAY_YEAR*2*np.pi)
+    
+    return function_climato(time,a,b,c,d,e,f)</code></pre>
+</details>
+</dd>
+<dt id="lenapy.utils.interp_time"><code class="name flex">
+<span>def <span class="ident">interp_time</span></span>(<span>data, other, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def interp_time(data,other,**kwargs):
+
+    if not &#39;time&#39; in data.coords: raise AssertionError(&#39;The time coordinates does not exist&#39;)
+
+    return data.interp(time=other.time,**kwargs)</code></pre>
+</details>
+</dd>
+<dt id="lenapy.utils.isosurface"><code class="name flex">
+<span>def <span class="ident">isosurface</span></span>(<span>data, target, dim, upper=False)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Linearly interpolate a coordinate isosurface where a field
+equals a target</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>field</code></strong> :&ensp;<code>xarray DataArray</code></dt>
+<dd>The field in which to interpolate the target isosurface</dd>
+<dt><strong><code>target</code></strong> :&ensp;<code>float</code></dt>
+<dd>The target isosurface value</dd>
+<dt><strong><code>dim</code></strong> :&ensp;<code>str</code></dt>
+<dd>The field dimension to interpolate</dd>
+<dt><strong><code>upper</code></strong> :&ensp;<code>bool</code></dt>
+<dd>if True, returns the highest point of the isosurface, else the lowest</dd>
+</dl>
+<h2 id="examples">Examples</h2>
+<p>Calculate the depth of an isotherm with a value of 5.5:</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; temp = xr.DataArray(
+...     range(10,0,-1),
+...     coords={&quot;depth&quot;: range(10)}
+... )
+&gt;&gt;&gt; isosurface(temp, 5.5, dim=&quot;depth&quot;)
+&lt;xarray.DataArray ()&gt;
+array(4.5)
+</code></pre></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def isosurface(data, target, dim, upper=False):
+    &#34;&#34;&#34;
+    Linearly interpolate a coordinate isosurface where a field
+    equals a target
+
+    Parameters
+    ----------
+    field : xarray DataArray
+        The field in which to interpolate the target isosurface
+    target : float
+        The target isosurface value
+    dim : str
+        The field dimension to interpolate
+    upper : bool
+        if True, returns the highest point of the isosurface, else the lowest
+
+    Examples
+    --------
+    Calculate the depth of an isotherm with a value of 5.5:
+
+    &gt;&gt;&gt; temp = xr.DataArray(
+    ...     range(10,0,-1),
+    ...     coords={&#34;depth&#34;: range(10)}
+    ... )
+    &gt;&gt;&gt; isosurface(temp, 5.5, dim=&#34;depth&#34;)
+    &lt;xarray.DataArray ()&gt;
+    array(4.5)
+    &#34;&#34;&#34;
+    slice0 = {dim: slice(None, -1)}
+    slice1 = {dim: slice(1, None)}
+
+    field0 = data.isel(slice0).drop(dim)
+    field1 = data.isel(slice1).drop(dim)
+
+    crossing_mask_decr = (field0 &gt; target) &amp; (field1 &lt;= target)
+    crossing_mask_incr = (field0 &lt; target) &amp; (field1 &gt;= target)
+    crossing_mask = xr.where(
+        crossing_mask_decr | crossing_mask_incr, 1, np.nan
+    )
+
+    coords0 = crossing_mask * data[dim].isel(slice0).drop(dim)
+    coords1 = crossing_mask * data[dim].isel(slice1).drop(dim)
+    field0 = crossing_mask * field0
+    field1 = crossing_mask * field1
+
+    iso = (
+        coords0 + (target - field0) * 
+        (coords1 - coords0) / (field1 - field0)
+    )
+    if upper:
+        return iso.min(dim, skipna=True)
+    else:
+        return iso.max(dim, skipna=True)</code></pre>
+</details>
+</dd>
+<dt id="lenapy.utils.lanczos"><code class="name flex">
+<span>def <span class="ident">lanczos</span></span>(<span>coupure, ordre)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Filtrage de Lanczos
+Implémente un filtre dont la réponse fréquentielle est une porte de largeur spécifiée par "coupure",
+convoluée à une autre porte dont la largeur est plus étroite d'un facteur "ordre". Temporellement,
+le filtre est tronqué à +/- ordre * coupure / 2
+Plus "ordre" est grand, plus on se rapproche d'un filtre parfait (sinus cardinal)
+Parameters</p>
+<hr>
+<dl>
+<dt><strong><code>coupure</code></strong> :&ensp;<code>integer</code></dt>
+<dd>&nbsp;</dd>
+<dt><strong><code>ordre</code></strong> :&ensp;<code>integer</code></dt>
+<dd>ordre du filtre</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def lanczos(coupure,ordre):
+    &#34;&#34;&#34; 
+    Filtrage de Lanczos
+    Implémente un filtre dont la réponse fréquentielle est une porte de largeur spécifiée par &#34;coupure&#34;, 
+    convoluée à une autre porte dont la largeur est plus étroite d&#39;un facteur &#34;ordre&#34;. Temporellement,
+    le filtre est tronqué à +/- ordre * coupure / 2
+    Plus &#34;ordre&#34; est grand, plus on se rapproche d&#39;un filtre parfait (sinus cardinal)
+    Parameters
+    ----------
+    coupure : integer
+    
+    ordre : integer
+        ordre du filtre
+    &#34;&#34;&#34;
+    
+    c=coupure/2.
+    x = np.arange(-ordre*c,ordre*c+1,1)
+    y = np.sinc(x/c)*np.sinc(x/c/ordre)/c
+    y[np.abs(x)&gt;ordre*c]=0.
+    y=y/np.sum(y)
+    return xr.DataArray(y, dims=(&#39;x&#39;,), coords={&#39;x&#39;:x})</code></pre>
+</details>
+</dd>
+<dt id="lenapy.utils.moving_average"><code class="name flex">
+<span>def <span class="ident">moving_average</span></span>(<span>npoints)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def moving_average(npoints):
+    return np.ones(npoints)/npoints</code></pre>
+</details>
+</dd>
+<dt id="lenapy.utils.to_datetime"><code class="name flex">
+<span>def <span class="ident">to_datetime</span></span>(<span>data, input_type)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def to_datetime(data,input_type):
+    if not &#39;time&#39; in data.coords: raise AssertionError(&#39;The time coordinates does not exist&#39;)
+    if data[&#39;time&#39;].dtype==&#39;&lt;M8[ns]&#39;:
+        return data
+
+    
+    if input_type==&#39;frac_year&#39;:
+        data[&#39;time&#39;]=[ 
+            pd.to_datetime(f&#39;{int(np.floor(i))}&#39;)+pd.to_timedelta(float((i-np.floor(i))*DAY_YEAR),unit=&#39;D&#39;) 
+            for i in data.time]
+    elif input_type==&#39;360_day&#39;:
+        data.time.attrs[&#39;calendar&#39;]=&#39;360_day&#39;
+        data = xr.decode_cf(data).convert_calendar(&#34;standard&#34;,align_on=&#34;year&#34;)
+    else:
+        raise ValueError(f&#39;Format {input_type} not yet considered, please convert manually to datatime&#39;)
+      
+    return data</code></pre>
+</details>
+</dd>
+<dt id="lenapy.utils.trend"><code class="name flex">
+<span>def <span class="ident">trend</span></span>(<span>data)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def trend(data):
+    return data.polyfit(dim=&#39;time&#39;,deg=1).polyfit_coefficients[0].values*1.e9</code></pre>
+</details>
+</dd>
+</dl>
+</section>
+<section>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="lenapy" href="index.html">lenapy</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="two-column">
+<li><code><a title="lenapy.utils.climato" href="#lenapy.utils.climato">climato</a></code></li>
+<li><code><a title="lenapy.utils.diff_3pts" href="#lenapy.utils.diff_3pts">diff_3pts</a></code></li>
+<li><code><a title="lenapy.utils.fill_time" href="#lenapy.utils.fill_time">fill_time</a></code></li>
+<li><code><a title="lenapy.utils.filter" href="#lenapy.utils.filter">filter</a></code></li>
+<li><code><a title="lenapy.utils.function_climato" href="#lenapy.utils.function_climato">function_climato</a></code></li>
+<li><code><a title="lenapy.utils.generate_climato" href="#lenapy.utils.generate_climato">generate_climato</a></code></li>
+<li><code><a title="lenapy.utils.interp_time" href="#lenapy.utils.interp_time">interp_time</a></code></li>
+<li><code><a title="lenapy.utils.isosurface" href="#lenapy.utils.isosurface">isosurface</a></code></li>
+<li><code><a title="lenapy.utils.lanczos" href="#lenapy.utils.lanczos">lanczos</a></code></li>
+<li><code><a title="lenapy.utils.moving_average" href="#lenapy.utils.moving_average">moving_average</a></code></li>
+<li><code><a title="lenapy.utils.to_datetime" href="#lenapy.utils.to_datetime">to_datetime</a></code></li>
+<li><code><a title="lenapy.utils.trend" href="#lenapy.utils.trend">trend</a></code></li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,1669 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.10.0" />
+<title>lenapy.produits API documentation</title>
+<meta name="description" content="This module allows to load temperature and salinity data from different products and format the data with unified definition for variables and …" />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>lenapy.produits</code></h1>
+</header>
+<section id="section-intro">
+<p>This module allows to load temperature and salinity data from different products and format the data with unified definition for variables and coordinates, compatible with the use of xOcean :
+standardized coordinates names : latitude, longitude, depth, time
+standardized variables names : temp or PT or CT for temperature, psal, SA, SR for salinity
+When loading a product, all the files present in the product directory are parsed. To gain computing time, a first filter on the years to load can be applied, as well as a text filter.
+A second date filter can be apply afterwards with the .sel(time=slice('begin_date','end_date') method.
+All keyword arguments associated with xr.open_mfdataset can be passed.
+Dask is implicitely used when using these interface methods.
+It is strongly recommanded to chunk the dataset along depth dimension (chunks=dict(depth=10))</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>rep</code></strong> :&ensp;<code>string</code></dt>
+<dd>path of the product's directory</dd>
+<dt><strong><code>ymin</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>lowest bound of the time intervalle to be loaded (year)</dd>
+<dt><strong><code>ymax</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>highest bound of the time intervalle to be loaded (year)</dd>
+<dt><strong><code>filter</code></strong> :&ensp;<code>string, optionnal</code></dt>
+<dd>string pattern to filter datafiles names</dd>
+<dt><strong><code>**kwargs</code></strong> :&ensp;<code> optional</code></dt>
+<dd>The keyword arguments form of open_mfdataset</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>product</code></strong> :&ensp;<code>Dataset</code></dt>
+<dd>New dataset containing temperature and salinity data from the product</dd>
+</dl>
+<h2 id="examples">Examples</h2>
+<pre><code class="language-python-repl">&gt;&gt;&gt; data=ISAS('/home/usr/lenapy/data/ISAS20',ymin=2005,ymax=2007,filter='ARGO',chunks={'depth':10})
+&gt;&gt;&gt; data.sel(time=slice('2005-06','2007-06')).xocean.gohc.plot()
+</code></pre>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python"># -*- coding: utf-8 -*-
+&#34;&#34;&#34;
+This module allows to load temperature and salinity data from different products and format the data with unified definition for variables and coordinates, compatible with the use of xOcean :
+standardized coordinates names : latitude, longitude, depth, time
+standardized variables names : temp or PT or CT for temperature, psal, SA, SR for salinity
+When loading a product, all the files present in the product directory are parsed. To gain computing time, a first filter on the years to load can be applied, as well as a text filter.
+A second date filter can be apply afterwards with the .sel(time=slice(&#39;begin_date&#39;,&#39;end_date&#39;) method.
+All keyword arguments associated with xr.open_mfdataset can be passed.
+Dask is implicitely used when using these interface methods.
+It is strongly recommanded to chunk the dataset along depth dimension (chunks=dict(depth=10))
+
+Parameters
+----------
+rep : string
+    path of the product&#39;s directory
+ymin : int, optional
+    lowest bound of the time intervalle to be loaded (year)
+ymax : int, optional
+    highest bound of the time intervalle to be loaded (year)
+filter : string, optionnal
+    string pattern to filter datafiles names
+**kwargs :  optional
+    The keyword arguments form of open_mfdataset
+
+Returns
+-------
+product : Dataset
+    New dataset containing temperature and salinity data from the product
+    
+Examples
+--------
+&gt;&gt;&gt; data=ISAS(&#39;/home/usr/lenapy/data/ISAS20&#39;,ymin=2005,ymax=2007,filter=&#39;ARGO&#39;,chunks={&#39;depth&#39;:10})
+&gt;&gt;&gt; data.sel(time=slice(&#39;2005-06&#39;,&#39;2007-06&#39;)).xocean.gohc.plot()
+&#34;&#34;&#34;
+
+import os.path
+from glob import glob
+import numpy as np
+import xarray as xr
+import gsw
+
+def rename_data(data,**kwargs):
+    &#34;&#34;&#34;
+    Standardization of coordinates names of a product
+    Looks for different possible names for latitude, longitude, and time, and turn them into a standardized name :
+    &#39;lon&#39;,&#39;LON&#39;,&#39;Longitude&#39;,&#39;LONGITUDE&#39; become &#39;longitude&#39;
+    &#39;lat&#39;,&#39;LAT&#39;,&#39;Latitude&#39;,&#39;LATITUDE&#39; become &#39;latitude&#39;
+    &#39;date&#39;,&#39;dates&#39;,&#39;TIME&#39;,&#39;Time&#39; become &#39;time&#39;
+    Custom names changes can also be performed with **kwargs parameter
+
+    Parameters
+    ----------
+    **kwargs :  {old_name: new_name, ...}, optional
+        dictionnary specifying old names to be changed into new names
+
+    Returns
+    -------
+    renamed : Dataset
+        New dataset containing modified names
+
+    Examples
+    --------
+    &gt;&gt;&gt;ds=xr.open_mfdataset(&#39;product.nc&#39;,preprocess=rename_data)
+    &#34;&#34;&#34;
+    data=data.rename(**kwargs)
+        
+    for l in [&#39;lon&#39;,&#39;LON&#39;,&#39;Longitude&#39;,&#39;LONGITUDE&#39;]:
+        if l in data.variables:
+            data=data.rename({l:&#39;longitude&#39;})
+
+    for l in [&#39;lat&#39;,&#39;LAT&#39;,&#39;Latitude&#39;,&#39;LATITUDE&#39;]:
+        if l in data.variables:
+            data=data.rename({l:&#39;latitude&#39;})
+
+    for l in [&#39;date&#39;,&#39;dates&#39;,&#39;TIME&#39;,&#39;Time&#39;]:
+        if l in data.variables:
+            data=data.rename({l:&#39;time&#39;})
+            
+    for l in [&#39;Depth&#39;,&#39;depth_std&#39;,&#39;LEVEL&#39;,&#39;level&#39;,&#39;Time&#39;]:
+        if l in data.variables:
+            data=data.rename({l:&#39;depth&#39;})
+            
+    if &#39;longitude&#39; in data.variables and not(&#39;longitude&#39; in data.coords):
+        lon=data[&#39;longitude&#39;]
+        del data[&#39;longitude&#39;]
+        lat=data[&#39;latitude&#39;]
+        del data[&#39;latitude&#39;]    
+        data=data.assign_coords(longitude=lon,latitude=lat)        
+    return data
+
+def filtre_liste(files,year,ymin,ymax,pattern):
+    &#34;&#34;&#34;
+    Returns a filtered list of files fitting year range and pattern
+
+    Parameters
+    ----------
+    files : Array of strings
+        Array with filenames to be filtered
+        
+    year : function
+        Function to be applied on each filename, returning the data year
+        
+    ymin : integer
+        Lowest bound of the time range
+
+    ymax : integer
+        Highest bound of the time range
+        
+    pattern : string
+        Pattern that must fit the filenames
+        
+    Return
+    ------
+    filtered : Array
+        Extract of th input array fitting year and pattern conditions
+        
+    Example
+    -------
+    &gt;&gt;&gt; def year(f):
+    &gt;&gt;&gt;   return f.split(&#39;_&#39;)[1] 
+    &gt;&gt;&gt; fics=filtre_liste(glob(os.path.join(rep,&#39;**&#39;,&#39;*.nc&#39;)),year,2005,2006,&#39;ARGO&#39;)
+
+    &#34;&#34;&#34;
+    r=[]
+    for u in files:
+        d=int(year(os.path.basename(os.path.splitext(u)[0])))
+        if d&gt;=ymin and d&lt;=ymax and pattern in u:
+            r.append(u)
+    return r
+
+
+#--------------------- ISAS --------------------
+def ISAS(rep,ymin=0,ymax=9999,filtre=&#39;&#39;,**kwargs):
+    &#34;&#34;&#34;
+    Load data from ISAS product
+    Product&#39;s directory must have the following format:
+    -base directory (ex: ISAS20_ARGO)
+       |-year (ex: 2020)
+           |-release_type_timestamp_xxx_data.nc (ex: ISAS20_ARGO_20200915_fld_TEMP.nc)
+      
+    Parameters
+    ----------
+    rep : string
+        path of the product&#39;s directory
+    ymin : int, optional
+        lowest bound of the time intervalle to be loaded (year)
+    ymax : int, optional
+        highest bound of the time intervalle to be loaded (year)
+    filter : string, optionnal
+        string pattern to filter datafiles names
+    **kwargs :  optional
+        The keyword arguments form of open_mfdataset
+
+    Returns
+    -------
+    product : Dataset
+        New dataset containing in-situ temperature and practical salinity data from the product
+
+    Examples
+    --------
+    &gt;&gt;&gt; data=ISAS(&#39;/home/usr/lenapy/data/ISAS20&#39;,ymin=2005,ymax=2007,filter=&#39;ARGO&#39;,chunks={&#39;depth&#39;:10})
+    &gt;&gt;&gt; data.sel(time=slice(&#39;2005-06&#39;,&#39;2007-06&#39;)).xocean.gohc.plot()
+
+    &#34;&#34;&#34;
+
+    def year(f):
+        return f.split(&#39;_&#39;)[2][0:4]
+
+    fics=filtre_liste(glob(os.path.join(rep,&#39;**&#39;,&#39;*.nc&#39;)),year,ymin,ymax,filtre)
+    
+    data=xr.open_mfdataset(fics,**kwargs)
+    
+    return xr.Dataset({
+        &#39;temp&#39;:data.TEMP,
+        &#39;psal&#39;:data.PSAL
+    })
+
+#--------------------- NCEI --------------------
+def NCEI(rep,ymin=0,ymax=9999,filtre=&#39;&#39;,**kwargs):
+    &#34;&#34;&#34;
+    Load data from NCEI product
+    Temperature and salinity are reconstructed from anomaly and trimestrial climatology
+    
+    Product&#39;s directory must have the following format:
+    -base directory (ex: NCEI)
+       |-salinity
+           |-sanom_timestamp.nc (ex: sanom_C1C107-09.nc)
+       |-temperature
+           |-tanom_timestamp.nc (ex: tanom_C1C107-09.nc)
+    
+    Parameters
+    ----------
+    rep : string
+        path of the product&#39;s directory
+    ymin : int, optional
+        lowest bound of the time intervalle to be loaded (year)
+    ymax : int, optional
+        highest bound of the time intervalle to be loaded (year)
+    filter : string, optionnal
+        string pattern to filter datafiles names
+    **kwargs :  optional
+        The keyword arguments form of open_mfdataset
+
+    Returns
+    -------
+    product : Dataset
+        New dataset containing in-situ temperature and practical salinity data from the product
+
+    Examples
+    --------
+    &gt;&gt;&gt; data=NCEI(&#39;/home/usr/lenapy/data/NCEI&#39;,ymin=2005,ymax=2007,chunks={&#39;depth&#39;:10})
+    &gt;&gt;&gt; data.sel(time=slice(&#39;2005-06&#39;,&#39;2007-06&#39;)).xocean.gohc.plot()
+
+    &#34;&#34;&#34;
+    def year(f):
+        a=f.split(&#39;_&#39;)[1][0]
+        b=f.split(&#39;_&#39;)[1][1]
+        return &#34;%04d&#34;%(1900+10*int(&#39;0x%s&#39;%a,16)+int(b))
+    
+    #Salinite
+    fics_sal=filtre_liste(glob(os.path.join(rep,&#39;**&#39;,&#39;sanom*.nc&#39;)),year,ymin,ymax,filtre)
+    sal=xr.open_mfdataset(fics_sal,preprocess=rename_data,decode_times=False,**kwargs).xgeo.to_datetime(&#34;360_day&#34;).s_an
+    fics_climsal=glob(os.path.join(rep,&#39;climato&#39;,&#39;*s1[3-6]_01.nc&#39;))
+    climsal=xr.open_mfdataset(fics_climsal,preprocess=rename_data,decode_times=False,**kwargs).xgeo.to_datetime(&#34;360_day&#34;).s_an
+    
+    #Temperature
+    fics_temp=filtre_liste(glob(os.path.join(rep,&#39;**&#39;,&#39;tanom*.nc&#39;)),year,ymin,ymax,filtre)
+    temp=xr.open_mfdataset(fics_temp,preprocess=rename_data,decode_times=False,**kwargs).xgeo.to_datetime(&#34;360_day&#34;).t_an
+    fics_climtemp=glob(os.path.join(rep,&#39;climato&#39;,&#39;*t1[3-6]_01.nc&#39;))
+    climtemp=xr.open_mfdataset(fics_climtemp,preprocess=rename_data,decode_times=False,**kwargs).xgeo.to_datetime(&#34;360_day&#34;).t_an
+    
+    return xr.Dataset({\
+                       &#39;temp&#39;:(temp.groupby(&#39;time.month&#39;)+climtemp.groupby(&#39;time.month&#39;).mean(&#39;time&#39;)).drop(&#39;month&#39;),
+                       &#39;psal&#39;:(sal.groupby(&#39;time.month&#39;)+climsal.groupby(&#39;time.month&#39;).mean(&#39;time&#39;)).drop(&#39;month&#39;)
+                      })
+
+#--------------------- SIO ---------------------
+def SIO(rep,chunks=None,ymin=0,ymax=9999,filtre=&#39;&#39;,**kwargs):
+    &#34;&#34;&#34;
+    Load data from SIO product.
+    Temperature and salinity are reconstructed from anomaly and annual climatology, and depth coordinate is derived from pressure.
+    
+    Product&#39;s directory must have the following format:
+    -base directory (ex: SIO)
+       |-climato
+           |-RG_ArgoClim_climato_release.nc (ex: RG_ArgoClim_climato_2004_2018.nc)
+       |-monthly
+           |-RG_ArgoClim_timestamp_release.nc (ex: RG_ArgoClim_202210_2019.nc)
+    
+    Parameters
+    ----------
+    rep : string
+        path of the product&#39;s directory
+    ymin : int, optional
+        lowest bound of the time intervalle to be loaded (year)
+    ymax : int, optional
+        highest bound of the time intervalle to be loaded (year)
+    filter : string, optionnal
+        string pattern to filter datafiles names
+    **kwargs :  optional
+        The keyword arguments form of open_mfdataset
+
+    Returns
+    -------
+    product : Dataset
+        New dataset containing in-situ temperature and practical salinity data from the product
+
+    Examples
+    --------
+    &gt;&gt;&gt; data=SIO(&#39;/home/usr/lenapy/data/SIO&#39;,ymin=2005,ymax=2007,filter=&#39;ARGO&#39;,chunks={&#39;depth&#39;:10})
+    &gt;&gt;&gt; data.sel(time=slice(&#39;2005-06&#39;,&#39;2007-06&#39;)).xocean.gohc.plot()
+
+    &#34;&#34;&#34;    
+    def year(f):
+        return f.split(&#39;_&#39;)[-2][0:4]
+
+    fics_anom=filtre_liste(glob(os.path.join(rep,&#39;**&#39;,&#39;RG_ArgoClim_20*.nc&#39;)),year,ymin,ymax,filtre)
+    fics_clim=glob(os.path.join(rep,&#39;**&#39;,&#39;RG_ArgoClim_cl*.nc&#39;))
+    
+    anom=xr.open_mfdataset(fics_anom,preprocess=rename_data,decode_times=False,chunks=chunks,**kwargs).xgeo.to_datetime(&#34;360_day&#34;)
+    clim=xr.open_mfdataset(fics_clim,preprocess=rename_data,**kwargs)
+
+    temp = anom.ARGO_TEMPERATURE_ANOMALY + clim.ARGO_TEMPERATURE_MEAN
+    psal = anom.ARGO_SALINITY_ANOMALY + clim.ARGO_SALINITY_MEAN
+
+    depth=-gsw.z_from_p(anom.PRESSURE,0)
+    pressure=gsw.p_from_z(-depth,anom.latitude)
+    pressure=xr.where(pressure&lt;anom.PRESSURE,pressure,anom.PRESSURE)
+
+    return xr.Dataset({&#39;temp&#39;:temp.interp(PRESSURE=pressure).assign_coords(PRESSURE=depth).rename(PRESSURE=&#39;depth&#39;).chunk(chunks=chunks),
+                       &#39;psal&#39;:psal.interp(PRESSURE=pressure).assign_coords(PRESSURE=depth).rename(PRESSURE=&#39;depth&#39;).chunk(chunks=chunks)
+                      })
+
+#--------------------- IPRC ---------------------
+def IPRC(rep,chunks=None,ymin=0,ymax=9999,filtre=&#39;&#39;,**kwargs):
+    &#34;&#34;&#34;
+    Load data from IPRC product.
+    
+    Product&#39;s directory must have the following format:
+    -base directory (ex: IPRC)
+       |-monthly
+           |-ArgoData_year_month.nc (ex: ArgoData_2020_01.nc)
+    
+    Parameters
+    ----------
+    rep : string
+        path of the product&#39;s directory
+    ymin : int, optional
+        lowest bound of the time intervalle to be loaded (year)
+    ymax : int, optional
+        highest bound of the time intervalle to be loaded (year)
+    filter : string, optionnal
+        string pattern to filter datafiles names
+    **kwargs :  optional
+        The keyword arguments form of open_mfdataset
+
+    Returns
+    -------
+    product : Dataset
+        New dataset containing in-situ temperature and practical salinity data from the product
+
+    Examples
+    --------
+    &gt;&gt;&gt; data=IPRC(&#39;/home/usr/lenapy/data/IPRC&#39;,ymin=2005,ymax=2007,chunks={&#39;depth&#39;:10})
+    &gt;&gt;&gt; data.sel(time=slice(&#39;2005-06&#39;,&#39;2007-06&#39;)).xocean.gohc.plot()
+
+    &#34;&#34;&#34;     
+    def preproc(ds):
+        date=os.path.basename(os.path.splitext(ds.encoding[&#34;source&#34;])[0]).split(&#39;_&#39;)
+        return rename_data(ds).assign_coords(time=np.datetime64(&#39;%s-%s-15&#39;%(date[1],date[2]))).expand_dims(dim=&#39;time&#39;)
+        
+
+    def year(f):
+        return f.split(&#39;_&#39;)[1]
+    
+    fics=filtre_liste(glob(os.path.join(rep,&#39;**&#39;,&#39;ArgoData*.nc&#39;)),year,ymin,ymax,filtre)
+    
+    data=xr.open_mfdataset(fics,preprocess=preproc,chunks=chunks,**kwargs)
+
+    return xr.Dataset({&#39;temp&#39;:data.TEMP.chunk(chunks=chunks),
+                       &#39;psal&#39;:data.SALT.chunk(chunks=chunks)
+                          })        
+        
+#--------------------- ISHII ---------------------
+def ISHII(rep,ymin=0,ymax=9999,filtre=&#39;&#39;,**kwargs):
+    &#34;&#34;&#34;
+    Load data from ISHII product.
+    
+    Product&#39;s directory must have the following format:
+    -base directory (ex: ISHII)
+       |-monthly
+           |-xxx.year_month.nc (ex: sal.2022_08.nc)
+    
+    Parameters
+    ----------
+    rep : string
+        path of the product&#39;s directory
+    ymin : int, optional
+        lowest bound of the time intervalle to be loaded (year)
+    ymax : int, optional
+        highest bound of the time intervalle to be loaded (year)
+    filter : string, optionnal
+        string pattern to filter datafiles names
+    **kwargs :  optional
+        The keyword arguments form of open_mfdataset
+
+    Returns
+    -------
+    product : Dataset
+        New dataset containing in-situ temperature and practical salinity data from the product
+
+    Examples
+    --------
+    &gt;&gt;&gt; data=ISHII(&#39;/home/usr/lenapy/data/ISHII&#39;,ymin=2005,ymax=2007,chunks={&#39;depth&#39;:10})
+    &gt;&gt;&gt; data.sel(time=slice(&#39;2005-06&#39;,&#39;2007-06&#39;)).xocean.gohc.plot()
+
+    &#34;&#34;&#34;      
+    def preproc(ds):
+        return rename_data(ds.drop([&#39;VAR_10_4_201_P0_L160_GLL0&#39;,&#39;VAR_10_4_202_P0_L160_GLL0&#39;]))
+    
+    def year(f):
+        return f.split(&#39;_&#39;)[0].split(&#39;.&#39;)[1]
+
+    fics=filtre_liste(glob(os.path.join(rep,&#39;**&#39;,&#39;*.*.nc&#39;)),year,ymin,ymax,filtre)
+
+    data=xr.open_mfdataset(fics,preprocess=preproc,**kwargs)
+
+    return xr.Dataset({&#39;temp&#39;:data.temperature,
+                        &#39;psal&#39;:data.salinity
+                          })        
+
+#--------------------- IAP ---------------------
+def IAP(rep,chunks=None,ymin=0,ymax=9999,filtre=&#39;&#39;,**kwargs):
+    &#34;&#34;&#34;
+    Load data from IAP product.
+    
+    Product&#39;s directory must have the following format:
+    -base directory (ex: IAP)
+       |-sal
+           |-CZ16_depth_range_data_year_yyyy_month_mm.year_month.nc (ex: CZ16_1_2000m_salinity_year_2020_month_01.nc)
+       |-temp
+           |-CZ16_depth_range_data_year_yyyy_month_mm.year_month.nc (ex: CZ16_1_2000m_temperature_year_2020_month_01.nc)
+    
+    Parameters
+    ----------
+    rep : string
+        path of the product&#39;s directory
+    ymin : int, optional
+        lowest bound of the time intervalle to be loaded (year)
+    ymax : int, optional
+        highest bound of the time intervalle to be loaded (year)
+    filter : string, optionnal
+        string pattern to filter datafiles names
+    **kwargs :  optional
+        The keyword arguments form of open_mfdataset
+
+    Returns
+    -------
+    product : Dataset
+        New dataset containing in-situ temperature and absolute salinity data from the product
+
+    Examples
+    --------
+    &gt;&gt;&gt; data=IAP(&#39;/home/usr/lenapy/data/IAP&#39;,ymin=2005,ymax=2007,chunks={&#39;depth&#39;:10})
+    &gt;&gt;&gt; data.sel(time=slice(&#39;2005-06&#39;,&#39;2007-06&#39;)).xocean.gohc.plot()
+
+    &#34;&#34;&#34;     
+    def preproc(ds):
+        date=os.path.basename(os.path.splitext(ds.encoding[&#34;source&#34;])[0]).split(&#39;_&#39;)
+        return rename_data(ds).assign_coords(time=np.datetime64(&#39;%s-%s-15&#39;%(date[-3],date[-1]))).expand_dims(dim=&#39;time&#39;)
+
+    def year(f):
+        return f.split(&#39;_&#39;)[-3]
+    
+    fics=filtre_liste(glob(os.path.join(rep,&#39;**&#39;,&#39;CZ16*.nc&#39;)),year,ymin,ymax,filtre)
+    
+    data=xr.open_mfdataset(fics,preprocess=preproc,chunks=chunks,**kwargs)
+
+    return xr.Dataset({&#39;temp&#39;:data.temp.chunk(chunks=chunks),
+                        &#39;SA&#39;:data.salinity.chunk(chunks=chunks)
+                          })        
+
+#--------------------- EN_422 --------------------
+def EN_422(rep,corr,chunks=None,ymin=0,ymax=9999,filtre=&#39;&#39;,**kwargs):
+    &#34;&#34;&#34;
+    Load data from EN product.
+    
+    Product&#39;s directory must have the following format:
+    -base directory (ex: EN)
+       |-4.2.2.corr (ex : 4.2.2.g10)
+           |-EN.4.2.2.xxx.corr.timestamp.nc (ex: EN.4.2.2.f.analysis.g10.202108.nc)
+    
+    Parameters
+    ----------
+    rep : string
+        path of the product&#39;s directory
+    corr : {&#34;g10&#34;,&#34;l09&#34;,&#34;c13&#34;,&#34;c14&#34;}
+        correction applyed
+    ymin : int, optional
+        lowest bound of the time intervalle to be loaded (year)
+    ymax : int, optional
+        highest bound of the time intervalle to be loaded (year)
+    filter : string, optionnal
+        string pattern to filter datafiles names
+    **kwargs :  optional
+        The keyword arguments form of open_mfdataset
+
+    Returns
+    -------
+    product : Dataset
+        New dataset containing potential temperature and practical salinity data from the product
+
+    Examples
+    --------
+    &gt;&gt;&gt; data=EN_422(&#39;/home/usr/lenapy/data/EN_422&#39;,&#39;c13&#39;,ymin=2005,ymax=2007,chunks={&#39;depth&#39;:10})
+    &gt;&gt;&gt; data.sel(time=slice(&#39;2005-06&#39;,&#39;2007-06&#39;)).xocean.gohc.plot()
+
+    &#34;&#34;&#34;  
+    def year(f):
+        return f.split(&#39;.&#39;)[-1][0:4]
+   
+    if not(corr in [&#39;g10&#39;,&#39;l09&#39;,&#39;c13&#39;,&#39;c14&#39;]):
+        sys.exit(-1)
+
+    fics=filtre_liste(glob(os.path.join(rep,&#34;4.2.2.%s&#34;%corr,&#39;EN.4.2.2*.nc&#39;)),year,ymin,ymax,filtre)
+       
+    data=xr.open_mfdataset(fics,preprocess=rename_data,chunks=chunks,**kwargs)
+
+    return xr.Dataset({&#39;PT&#39;:data.temperature - 273.15,
+                       &#39;psal&#39;:data.salinity
+                       })        
+
+#--------------------- JAMSTEC --------------------
+def JAMSTEC(rep,chunks=None,ymin=0,ymax=9999,filtre=&#39;&#39;,**kwargs):
+    &#34;&#34;&#34;
+    Load data from JAMSTEC product.
+    Depth coordinate is derived from pressure.
+    
+    Product&#39;s directory must have the following format:
+    -base directory (ex: JAMSTEC)
+       |-monthly
+           |-TS_timestamp_xxx.nc (ex: TS_202105_GLB.nc)
+    
+    Parameters
+    ----------
+    rep : string
+        path of the product&#39;s directory
+    ymin : int, optional
+        lowest bound of the time intervalle to be loaded (year)
+    ymax : int, optional
+        highest bound of the time intervalle to be loaded (year)
+    filter : string, optionnal
+        string pattern to filter datafiles names
+    **kwargs :  optional
+        The keyword arguments form of open_mfdataset
+
+    Returns
+    -------
+    product : Dataset
+        New dataset containing in-situ temperature and practical salinity data from the product
+
+    Examples
+    --------
+    &gt;&gt;&gt; data=JAMSTEC(&#39;/home/usr/lenapy/data/JAMSTEC&#39;,ymin=2005,ymax=2007,chunks={&#39;depth&#39;:10})
+    &gt;&gt;&gt; data.sel(time=slice(&#39;2005-06&#39;,&#39;2007-06&#39;)).xocean.gohc.plot()
+
+    &#34;&#34;&#34;       
+    def preproc(ds):
+        date=os.path.basename(os.path.splitext(ds.encoding[&#34;source&#34;])[0]).split(&#39;_&#39;)[1]
+        ds=rename_data(ds).assign_coords(time=np.datetime64(&#39;%s-%s-15&#39;%(date[0:4],date[4:6]))).expand_dims(dim=&#39;time&#39;)
+        ds[&#39;longitude&#39;]=np.mod(ds.longitude,360)
+        return ds
+
+    def year(f):
+        return f.split(&#39;_&#39;)[1][0:4]
+    
+    fics=filtre_liste(glob(os.path.join(rep,&#39;**&#39;,&#39;*GLB.nc&#39;)),year,ymin,ymax,filtre)
+    
+    data=xr.open_mfdataset(fics,preprocess=preproc,chunks=chunks,**kwargs)
+
+    depth=-gsw.z_from_p(data.PRES,0)
+    pressure=gsw.p_from_z(-depth,data.latitude)
+    pressure=xr.where(pressure&lt;data.PRES,pressure,data.PRES)
+
+    return xr.Dataset({&#39;temp&#39;:data.TOI.interp(PRES=pressure).assign_coords(PRES=depth).rename(PRES=&#39;depth&#39;).chunk(chunks=chunks),
+                       &#39;psal&#39;:data.SOI.interp(PRES=pressure).assign_coords(PRES=depth).rename(PRES=&#39;depth&#39;).chunk(chunks=chunks)
+                      })
+
+#--------------------- ECCO --------------------
+def ECCO(rep,chunks=None,ymin=0,ymax=9999,filtre=&#39;&#39;,**kwargs):
+    &#34;&#34;&#34;
+    Load data from ECCO product.
+    
+    Product&#39;s directory must have the following format:
+    -base directory (ex: ECCO)
+       |-SALT
+           |-SALT_year_month.nc (ex: SALT_2016_12.nc)
+       |-THETA
+           |-THETA_year_month.nc (ex: THETA_2016_12.nc)
+        
+    Parameters
+    ----------
+    rep : string
+        path of the product&#39;s directory
+    corr : {&#34;g10&#34;,&#34;l09&#34;,&#34;c13&#34;,&#34;c14&#34;}
+        correction applyed
+    ymin : int, optional
+        lowest bound of the time intervalle to be loaded (year)
+    ymax : int, optional
+        highest bound of the time intervalle to be loaded (year)
+    filter : string, optionnal
+        string pattern to filter datafiles names
+    **kwargs :  optional
+        The keyword arguments form of open_mfdataset
+
+    Returns
+    -------
+    product : Dataset
+        New dataset containing potential temperature and practical salinity data from the product
+
+    Examples
+    --------
+    &gt;&gt;&gt; data=ECCO(&#39;/home/usr/lenapy/data/ECCO&#39;,ymin=2005,ymax=2007,chunks={&#39;depth&#39;:10})
+    &gt;&gt;&gt; data.sel(time=slice(&#39;2005-06&#39;,&#39;2007-06&#39;)).xocean.gohc.plot()
+
+    &#34;&#34;&#34;      
+    def preproc(ds):
+        ds=ds.set_index(i=&#39;longitude&#39;,j=&#39;latitude&#39;,k=&#39;Z&#39;).\
+            rename(i=&#39;longitude&#39;,j=&#39;latitude&#39;,k=&#39;depth&#39;).drop(&#39;timestep&#39;)
+        return ds.assign_coords(depth=-ds.depth)
+    
+    def year(f):
+        return f.split(&#39;_&#39;)[1]
+  
+    fics=filtre_liste(glob(os.path.join(rep,&#39;**&#39;,&#39;*.nc&#39;)),year,ymin,ymax,filtre)
+    
+    data=xr.open_mfdataset(fics,preprocess=preproc,chunks=chunks,**kwargs).chunk(chunks=chunks)
+    data=data.where(data!=0.)
+                   
+    return xr.Dataset({&#39;PT&#39;:data.THETA,
+                        &#39;psal&#39;:data.SALT
+                          })        
+
+# Ajouter LYMAN</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="lenapy.produits.ECCO"><code class="name flex">
+<span>def <span class="ident">ECCO</span></span>(<span>rep, chunks=None, ymin=0, ymax=9999, filtre='', **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Load data from ECCO product.</p>
+<p>Product's directory must have the following format:
+-base directory (ex: ECCO)
+|-SALT
+|-SALT_year_month.nc (ex: SALT_2016_12.nc)
+|-THETA
+|-THETA_year_month.nc (ex: THETA_2016_12.nc)</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>rep</code></strong> :&ensp;<code>string</code></dt>
+<dd>path of the product's directory</dd>
+<dt><strong><code>corr</code></strong> :&ensp;<code>{"g10","l09","c13","c14"}</code></dt>
+<dd>correction applyed</dd>
+<dt><strong><code>ymin</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>lowest bound of the time intervalle to be loaded (year)</dd>
+<dt><strong><code>ymax</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>highest bound of the time intervalle to be loaded (year)</dd>
+<dt><strong><code>filter</code></strong> :&ensp;<code>string, optionnal</code></dt>
+<dd>string pattern to filter datafiles names</dd>
+<dt><strong><code>**kwargs</code></strong> :&ensp;<code> optional</code></dt>
+<dd>The keyword arguments form of open_mfdataset</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>product</code></strong> :&ensp;<code>Dataset</code></dt>
+<dd>New dataset containing potential temperature and practical salinity data from the product</dd>
+</dl>
+<h2 id="examples">Examples</h2>
+<pre><code class="language-python-repl">&gt;&gt;&gt; data=ECCO('/home/usr/lenapy/data/ECCO',ymin=2005,ymax=2007,chunks={'depth':10})
+&gt;&gt;&gt; data.sel(time=slice('2005-06','2007-06')).xocean.gohc.plot()
+</code></pre></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def ECCO(rep,chunks=None,ymin=0,ymax=9999,filtre=&#39;&#39;,**kwargs):
+    &#34;&#34;&#34;
+    Load data from ECCO product.
+    
+    Product&#39;s directory must have the following format:
+    -base directory (ex: ECCO)
+       |-SALT
+           |-SALT_year_month.nc (ex: SALT_2016_12.nc)
+       |-THETA
+           |-THETA_year_month.nc (ex: THETA_2016_12.nc)
+        
+    Parameters
+    ----------
+    rep : string
+        path of the product&#39;s directory
+    corr : {&#34;g10&#34;,&#34;l09&#34;,&#34;c13&#34;,&#34;c14&#34;}
+        correction applyed
+    ymin : int, optional
+        lowest bound of the time intervalle to be loaded (year)
+    ymax : int, optional
+        highest bound of the time intervalle to be loaded (year)
+    filter : string, optionnal
+        string pattern to filter datafiles names
+    **kwargs :  optional
+        The keyword arguments form of open_mfdataset
+
+    Returns
+    -------
+    product : Dataset
+        New dataset containing potential temperature and practical salinity data from the product
+
+    Examples
+    --------
+    &gt;&gt;&gt; data=ECCO(&#39;/home/usr/lenapy/data/ECCO&#39;,ymin=2005,ymax=2007,chunks={&#39;depth&#39;:10})
+    &gt;&gt;&gt; data.sel(time=slice(&#39;2005-06&#39;,&#39;2007-06&#39;)).xocean.gohc.plot()
+
+    &#34;&#34;&#34;      
+    def preproc(ds):
+        ds=ds.set_index(i=&#39;longitude&#39;,j=&#39;latitude&#39;,k=&#39;Z&#39;).\
+            rename(i=&#39;longitude&#39;,j=&#39;latitude&#39;,k=&#39;depth&#39;).drop(&#39;timestep&#39;)
+        return ds.assign_coords(depth=-ds.depth)
+    
+    def year(f):
+        return f.split(&#39;_&#39;)[1]
+  
+    fics=filtre_liste(glob(os.path.join(rep,&#39;**&#39;,&#39;*.nc&#39;)),year,ymin,ymax,filtre)
+    
+    data=xr.open_mfdataset(fics,preprocess=preproc,chunks=chunks,**kwargs).chunk(chunks=chunks)
+    data=data.where(data!=0.)
+                   
+    return xr.Dataset({&#39;PT&#39;:data.THETA,
+                        &#39;psal&#39;:data.SALT
+                          })        </code></pre>
+</details>
+</dd>
+<dt id="lenapy.produits.EN_422"><code class="name flex">
+<span>def <span class="ident">EN_422</span></span>(<span>rep, corr, chunks=None, ymin=0, ymax=9999, filtre='', **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Load data from EN product.</p>
+<p>Product's directory must have the following format:
+-base directory (ex: EN)
+|-4.2.2.corr (ex : 4.2.2.g10)
+|-EN.4.2.2.xxx.corr.timestamp.nc (ex: EN.4.2.2.f.analysis.g10.202108.nc)</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>rep</code></strong> :&ensp;<code>string</code></dt>
+<dd>path of the product's directory</dd>
+<dt><strong><code>corr</code></strong> :&ensp;<code>{"g10","l09","c13","c14"}</code></dt>
+<dd>correction applyed</dd>
+<dt><strong><code>ymin</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>lowest bound of the time intervalle to be loaded (year)</dd>
+<dt><strong><code>ymax</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>highest bound of the time intervalle to be loaded (year)</dd>
+<dt><strong><code>filter</code></strong> :&ensp;<code>string, optionnal</code></dt>
+<dd>string pattern to filter datafiles names</dd>
+<dt><strong><code>**kwargs</code></strong> :&ensp;<code> optional</code></dt>
+<dd>The keyword arguments form of open_mfdataset</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>product</code></strong> :&ensp;<code>Dataset</code></dt>
+<dd>New dataset containing potential temperature and practical salinity data from the product</dd>
+</dl>
+<h2 id="examples">Examples</h2>
+<pre><code class="language-python-repl">&gt;&gt;&gt; data=EN_422('/home/usr/lenapy/data/EN_422','c13',ymin=2005,ymax=2007,chunks={'depth':10})
+&gt;&gt;&gt; data.sel(time=slice('2005-06','2007-06')).xocean.gohc.plot()
+</code></pre></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def EN_422(rep,corr,chunks=None,ymin=0,ymax=9999,filtre=&#39;&#39;,**kwargs):
+    &#34;&#34;&#34;
+    Load data from EN product.
+    
+    Product&#39;s directory must have the following format:
+    -base directory (ex: EN)
+       |-4.2.2.corr (ex : 4.2.2.g10)
+           |-EN.4.2.2.xxx.corr.timestamp.nc (ex: EN.4.2.2.f.analysis.g10.202108.nc)
+    
+    Parameters
+    ----------
+    rep : string
+        path of the product&#39;s directory
+    corr : {&#34;g10&#34;,&#34;l09&#34;,&#34;c13&#34;,&#34;c14&#34;}
+        correction applyed
+    ymin : int, optional
+        lowest bound of the time intervalle to be loaded (year)
+    ymax : int, optional
+        highest bound of the time intervalle to be loaded (year)
+    filter : string, optionnal
+        string pattern to filter datafiles names
+    **kwargs :  optional
+        The keyword arguments form of open_mfdataset
+
+    Returns
+    -------
+    product : Dataset
+        New dataset containing potential temperature and practical salinity data from the product
+
+    Examples
+    --------
+    &gt;&gt;&gt; data=EN_422(&#39;/home/usr/lenapy/data/EN_422&#39;,&#39;c13&#39;,ymin=2005,ymax=2007,chunks={&#39;depth&#39;:10})
+    &gt;&gt;&gt; data.sel(time=slice(&#39;2005-06&#39;,&#39;2007-06&#39;)).xocean.gohc.plot()
+
+    &#34;&#34;&#34;  
+    def year(f):
+        return f.split(&#39;.&#39;)[-1][0:4]
+   
+    if not(corr in [&#39;g10&#39;,&#39;l09&#39;,&#39;c13&#39;,&#39;c14&#39;]):
+        sys.exit(-1)
+
+    fics=filtre_liste(glob(os.path.join(rep,&#34;4.2.2.%s&#34;%corr,&#39;EN.4.2.2*.nc&#39;)),year,ymin,ymax,filtre)
+       
+    data=xr.open_mfdataset(fics,preprocess=rename_data,chunks=chunks,**kwargs)
+
+    return xr.Dataset({&#39;PT&#39;:data.temperature - 273.15,
+                       &#39;psal&#39;:data.salinity
+                       })        </code></pre>
+</details>
+</dd>
+<dt id="lenapy.produits.IAP"><code class="name flex">
+<span>def <span class="ident">IAP</span></span>(<span>rep, chunks=None, ymin=0, ymax=9999, filtre='', **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Load data from IAP product.</p>
+<p>Product's directory must have the following format:
+-base directory (ex: IAP)
+|-sal
+|-CZ16_depth_range_data_year_yyyy_month_mm.year_month.nc (ex: CZ16_1_2000m_salinity_year_2020_month_01.nc)
+|-temp
+|-CZ16_depth_range_data_year_yyyy_month_mm.year_month.nc (ex: CZ16_1_2000m_temperature_year_2020_month_01.nc)</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>rep</code></strong> :&ensp;<code>string</code></dt>
+<dd>path of the product's directory</dd>
+<dt><strong><code>ymin</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>lowest bound of the time intervalle to be loaded (year)</dd>
+<dt><strong><code>ymax</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>highest bound of the time intervalle to be loaded (year)</dd>
+<dt><strong><code>filter</code></strong> :&ensp;<code>string, optionnal</code></dt>
+<dd>string pattern to filter datafiles names</dd>
+<dt><strong><code>**kwargs</code></strong> :&ensp;<code> optional</code></dt>
+<dd>The keyword arguments form of open_mfdataset</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>product</code></strong> :&ensp;<code>Dataset</code></dt>
+<dd>New dataset containing in-situ temperature and absolute salinity data from the product</dd>
+</dl>
+<h2 id="examples">Examples</h2>
+<pre><code class="language-python-repl">&gt;&gt;&gt; data=IAP('/home/usr/lenapy/data/IAP',ymin=2005,ymax=2007,chunks={'depth':10})
+&gt;&gt;&gt; data.sel(time=slice('2005-06','2007-06')).xocean.gohc.plot()
+</code></pre></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def IAP(rep,chunks=None,ymin=0,ymax=9999,filtre=&#39;&#39;,**kwargs):
+    &#34;&#34;&#34;
+    Load data from IAP product.
+    
+    Product&#39;s directory must have the following format:
+    -base directory (ex: IAP)
+       |-sal
+           |-CZ16_depth_range_data_year_yyyy_month_mm.year_month.nc (ex: CZ16_1_2000m_salinity_year_2020_month_01.nc)
+       |-temp
+           |-CZ16_depth_range_data_year_yyyy_month_mm.year_month.nc (ex: CZ16_1_2000m_temperature_year_2020_month_01.nc)
+    
+    Parameters
+    ----------
+    rep : string
+        path of the product&#39;s directory
+    ymin : int, optional
+        lowest bound of the time intervalle to be loaded (year)
+    ymax : int, optional
+        highest bound of the time intervalle to be loaded (year)
+    filter : string, optionnal
+        string pattern to filter datafiles names
+    **kwargs :  optional
+        The keyword arguments form of open_mfdataset
+
+    Returns
+    -------
+    product : Dataset
+        New dataset containing in-situ temperature and absolute salinity data from the product
+
+    Examples
+    --------
+    &gt;&gt;&gt; data=IAP(&#39;/home/usr/lenapy/data/IAP&#39;,ymin=2005,ymax=2007,chunks={&#39;depth&#39;:10})
+    &gt;&gt;&gt; data.sel(time=slice(&#39;2005-06&#39;,&#39;2007-06&#39;)).xocean.gohc.plot()
+
+    &#34;&#34;&#34;     
+    def preproc(ds):
+        date=os.path.basename(os.path.splitext(ds.encoding[&#34;source&#34;])[0]).split(&#39;_&#39;)
+        return rename_data(ds).assign_coords(time=np.datetime64(&#39;%s-%s-15&#39;%(date[-3],date[-1]))).expand_dims(dim=&#39;time&#39;)
+
+    def year(f):
+        return f.split(&#39;_&#39;)[-3]
+    
+    fics=filtre_liste(glob(os.path.join(rep,&#39;**&#39;,&#39;CZ16*.nc&#39;)),year,ymin,ymax,filtre)
+    
+    data=xr.open_mfdataset(fics,preprocess=preproc,chunks=chunks,**kwargs)
+
+    return xr.Dataset({&#39;temp&#39;:data.temp.chunk(chunks=chunks),
+                        &#39;SA&#39;:data.salinity.chunk(chunks=chunks)
+                          })        </code></pre>
+</details>
+</dd>
+<dt id="lenapy.produits.IPRC"><code class="name flex">
+<span>def <span class="ident">IPRC</span></span>(<span>rep, chunks=None, ymin=0, ymax=9999, filtre='', **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Load data from IPRC product.</p>
+<p>Product's directory must have the following format:
+-base directory (ex: IPRC)
+|-monthly
+|-ArgoData_year_month.nc (ex: ArgoData_2020_01.nc)</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>rep</code></strong> :&ensp;<code>string</code></dt>
+<dd>path of the product's directory</dd>
+<dt><strong><code>ymin</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>lowest bound of the time intervalle to be loaded (year)</dd>
+<dt><strong><code>ymax</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>highest bound of the time intervalle to be loaded (year)</dd>
+<dt><strong><code>filter</code></strong> :&ensp;<code>string, optionnal</code></dt>
+<dd>string pattern to filter datafiles names</dd>
+<dt><strong><code>**kwargs</code></strong> :&ensp;<code> optional</code></dt>
+<dd>The keyword arguments form of open_mfdataset</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>product</code></strong> :&ensp;<code>Dataset</code></dt>
+<dd>New dataset containing in-situ temperature and practical salinity data from the product</dd>
+</dl>
+<h2 id="examples">Examples</h2>
+<pre><code class="language-python-repl">&gt;&gt;&gt; data=IPRC('/home/usr/lenapy/data/IPRC',ymin=2005,ymax=2007,chunks={'depth':10})
+&gt;&gt;&gt; data.sel(time=slice('2005-06','2007-06')).xocean.gohc.plot()
+</code></pre></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def IPRC(rep,chunks=None,ymin=0,ymax=9999,filtre=&#39;&#39;,**kwargs):
+    &#34;&#34;&#34;
+    Load data from IPRC product.
+    
+    Product&#39;s directory must have the following format:
+    -base directory (ex: IPRC)
+       |-monthly
+           |-ArgoData_year_month.nc (ex: ArgoData_2020_01.nc)
+    
+    Parameters
+    ----------
+    rep : string
+        path of the product&#39;s directory
+    ymin : int, optional
+        lowest bound of the time intervalle to be loaded (year)
+    ymax : int, optional
+        highest bound of the time intervalle to be loaded (year)
+    filter : string, optionnal
+        string pattern to filter datafiles names
+    **kwargs :  optional
+        The keyword arguments form of open_mfdataset
+
+    Returns
+    -------
+    product : Dataset
+        New dataset containing in-situ temperature and practical salinity data from the product
+
+    Examples
+    --------
+    &gt;&gt;&gt; data=IPRC(&#39;/home/usr/lenapy/data/IPRC&#39;,ymin=2005,ymax=2007,chunks={&#39;depth&#39;:10})
+    &gt;&gt;&gt; data.sel(time=slice(&#39;2005-06&#39;,&#39;2007-06&#39;)).xocean.gohc.plot()
+
+    &#34;&#34;&#34;     
+    def preproc(ds):
+        date=os.path.basename(os.path.splitext(ds.encoding[&#34;source&#34;])[0]).split(&#39;_&#39;)
+        return rename_data(ds).assign_coords(time=np.datetime64(&#39;%s-%s-15&#39;%(date[1],date[2]))).expand_dims(dim=&#39;time&#39;)
+        
+
+    def year(f):
+        return f.split(&#39;_&#39;)[1]
+    
+    fics=filtre_liste(glob(os.path.join(rep,&#39;**&#39;,&#39;ArgoData*.nc&#39;)),year,ymin,ymax,filtre)
+    
+    data=xr.open_mfdataset(fics,preprocess=preproc,chunks=chunks,**kwargs)
+
+    return xr.Dataset({&#39;temp&#39;:data.TEMP.chunk(chunks=chunks),
+                       &#39;psal&#39;:data.SALT.chunk(chunks=chunks)
+                          })        </code></pre>
+</details>
+</dd>
+<dt id="lenapy.produits.ISAS"><code class="name flex">
+<span>def <span class="ident">ISAS</span></span>(<span>rep, ymin=0, ymax=9999, filtre='', **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Load data from ISAS product
+Product's directory must have the following format:
+-base directory (ex: ISAS20_ARGO)
+|-year (ex: 2020)
+|-release_type_timestamp_xxx_data.nc (ex: ISAS20_ARGO_20200915_fld_TEMP.nc)</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>rep</code></strong> :&ensp;<code>string</code></dt>
+<dd>path of the product's directory</dd>
+<dt><strong><code>ymin</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>lowest bound of the time intervalle to be loaded (year)</dd>
+<dt><strong><code>ymax</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>highest bound of the time intervalle to be loaded (year)</dd>
+<dt><strong><code>filter</code></strong> :&ensp;<code>string, optionnal</code></dt>
+<dd>string pattern to filter datafiles names</dd>
+<dt><strong><code>**kwargs</code></strong> :&ensp;<code> optional</code></dt>
+<dd>The keyword arguments form of open_mfdataset</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>product</code></strong> :&ensp;<code>Dataset</code></dt>
+<dd>New dataset containing in-situ temperature and practical salinity data from the product</dd>
+</dl>
+<h2 id="examples">Examples</h2>
+<pre><code class="language-python-repl">&gt;&gt;&gt; data=ISAS('/home/usr/lenapy/data/ISAS20',ymin=2005,ymax=2007,filter='ARGO',chunks={'depth':10})
+&gt;&gt;&gt; data.sel(time=slice('2005-06','2007-06')).xocean.gohc.plot()
+</code></pre></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def ISAS(rep,ymin=0,ymax=9999,filtre=&#39;&#39;,**kwargs):
+    &#34;&#34;&#34;
+    Load data from ISAS product
+    Product&#39;s directory must have the following format:
+    -base directory (ex: ISAS20_ARGO)
+       |-year (ex: 2020)
+           |-release_type_timestamp_xxx_data.nc (ex: ISAS20_ARGO_20200915_fld_TEMP.nc)
+      
+    Parameters
+    ----------
+    rep : string
+        path of the product&#39;s directory
+    ymin : int, optional
+        lowest bound of the time intervalle to be loaded (year)
+    ymax : int, optional
+        highest bound of the time intervalle to be loaded (year)
+    filter : string, optionnal
+        string pattern to filter datafiles names
+    **kwargs :  optional
+        The keyword arguments form of open_mfdataset
+
+    Returns
+    -------
+    product : Dataset
+        New dataset containing in-situ temperature and practical salinity data from the product
+
+    Examples
+    --------
+    &gt;&gt;&gt; data=ISAS(&#39;/home/usr/lenapy/data/ISAS20&#39;,ymin=2005,ymax=2007,filter=&#39;ARGO&#39;,chunks={&#39;depth&#39;:10})
+    &gt;&gt;&gt; data.sel(time=slice(&#39;2005-06&#39;,&#39;2007-06&#39;)).xocean.gohc.plot()
+
+    &#34;&#34;&#34;
+
+    def year(f):
+        return f.split(&#39;_&#39;)[2][0:4]
+
+    fics=filtre_liste(glob(os.path.join(rep,&#39;**&#39;,&#39;*.nc&#39;)),year,ymin,ymax,filtre)
+    
+    data=xr.open_mfdataset(fics,**kwargs)
+    
+    return xr.Dataset({
+        &#39;temp&#39;:data.TEMP,
+        &#39;psal&#39;:data.PSAL
+    })</code></pre>
+</details>
+</dd>
+<dt id="lenapy.produits.ISHII"><code class="name flex">
+<span>def <span class="ident">ISHII</span></span>(<span>rep, ymin=0, ymax=9999, filtre='', **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Load data from ISHII product.</p>
+<p>Product's directory must have the following format:
+-base directory (ex: ISHII)
+|-monthly
+|-xxx.year_month.nc (ex: sal.2022_08.nc)</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>rep</code></strong> :&ensp;<code>string</code></dt>
+<dd>path of the product's directory</dd>
+<dt><strong><code>ymin</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>lowest bound of the time intervalle to be loaded (year)</dd>
+<dt><strong><code>ymax</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>highest bound of the time intervalle to be loaded (year)</dd>
+<dt><strong><code>filter</code></strong> :&ensp;<code>string, optionnal</code></dt>
+<dd>string pattern to filter datafiles names</dd>
+<dt><strong><code>**kwargs</code></strong> :&ensp;<code> optional</code></dt>
+<dd>The keyword arguments form of open_mfdataset</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>product</code></strong> :&ensp;<code>Dataset</code></dt>
+<dd>New dataset containing in-situ temperature and practical salinity data from the product</dd>
+</dl>
+<h2 id="examples">Examples</h2>
+<pre><code class="language-python-repl">&gt;&gt;&gt; data=ISHII('/home/usr/lenapy/data/ISHII',ymin=2005,ymax=2007,chunks={'depth':10})
+&gt;&gt;&gt; data.sel(time=slice('2005-06','2007-06')).xocean.gohc.plot()
+</code></pre></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def ISHII(rep,ymin=0,ymax=9999,filtre=&#39;&#39;,**kwargs):
+    &#34;&#34;&#34;
+    Load data from ISHII product.
+    
+    Product&#39;s directory must have the following format:
+    -base directory (ex: ISHII)
+       |-monthly
+           |-xxx.year_month.nc (ex: sal.2022_08.nc)
+    
+    Parameters
+    ----------
+    rep : string
+        path of the product&#39;s directory
+    ymin : int, optional
+        lowest bound of the time intervalle to be loaded (year)
+    ymax : int, optional
+        highest bound of the time intervalle to be loaded (year)
+    filter : string, optionnal
+        string pattern to filter datafiles names
+    **kwargs :  optional
+        The keyword arguments form of open_mfdataset
+
+    Returns
+    -------
+    product : Dataset
+        New dataset containing in-situ temperature and practical salinity data from the product
+
+    Examples
+    --------
+    &gt;&gt;&gt; data=ISHII(&#39;/home/usr/lenapy/data/ISHII&#39;,ymin=2005,ymax=2007,chunks={&#39;depth&#39;:10})
+    &gt;&gt;&gt; data.sel(time=slice(&#39;2005-06&#39;,&#39;2007-06&#39;)).xocean.gohc.plot()
+
+    &#34;&#34;&#34;      
+    def preproc(ds):
+        return rename_data(ds.drop([&#39;VAR_10_4_201_P0_L160_GLL0&#39;,&#39;VAR_10_4_202_P0_L160_GLL0&#39;]))
+    
+    def year(f):
+        return f.split(&#39;_&#39;)[0].split(&#39;.&#39;)[1]
+
+    fics=filtre_liste(glob(os.path.join(rep,&#39;**&#39;,&#39;*.*.nc&#39;)),year,ymin,ymax,filtre)
+
+    data=xr.open_mfdataset(fics,preprocess=preproc,**kwargs)
+
+    return xr.Dataset({&#39;temp&#39;:data.temperature,
+                        &#39;psal&#39;:data.salinity
+                          })        </code></pre>
+</details>
+</dd>
+<dt id="lenapy.produits.JAMSTEC"><code class="name flex">
+<span>def <span class="ident">JAMSTEC</span></span>(<span>rep, chunks=None, ymin=0, ymax=9999, filtre='', **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Load data from JAMSTEC product.
+Depth coordinate is derived from pressure.</p>
+<p>Product's directory must have the following format:
+-base directory (ex: JAMSTEC)
+|-monthly
+|-TS_timestamp_xxx.nc (ex: TS_202105_GLB.nc)</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>rep</code></strong> :&ensp;<code>string</code></dt>
+<dd>path of the product's directory</dd>
+<dt><strong><code>ymin</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>lowest bound of the time intervalle to be loaded (year)</dd>
+<dt><strong><code>ymax</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>highest bound of the time intervalle to be loaded (year)</dd>
+<dt><strong><code>filter</code></strong> :&ensp;<code>string, optionnal</code></dt>
+<dd>string pattern to filter datafiles names</dd>
+<dt><strong><code>**kwargs</code></strong> :&ensp;<code> optional</code></dt>
+<dd>The keyword arguments form of open_mfdataset</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>product</code></strong> :&ensp;<code>Dataset</code></dt>
+<dd>New dataset containing in-situ temperature and practical salinity data from the product</dd>
+</dl>
+<h2 id="examples">Examples</h2>
+<pre><code class="language-python-repl">&gt;&gt;&gt; data=JAMSTEC('/home/usr/lenapy/data/JAMSTEC',ymin=2005,ymax=2007,chunks={'depth':10})
+&gt;&gt;&gt; data.sel(time=slice('2005-06','2007-06')).xocean.gohc.plot()
+</code></pre></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def JAMSTEC(rep,chunks=None,ymin=0,ymax=9999,filtre=&#39;&#39;,**kwargs):
+    &#34;&#34;&#34;
+    Load data from JAMSTEC product.
+    Depth coordinate is derived from pressure.
+    
+    Product&#39;s directory must have the following format:
+    -base directory (ex: JAMSTEC)
+       |-monthly
+           |-TS_timestamp_xxx.nc (ex: TS_202105_GLB.nc)
+    
+    Parameters
+    ----------
+    rep : string
+        path of the product&#39;s directory
+    ymin : int, optional
+        lowest bound of the time intervalle to be loaded (year)
+    ymax : int, optional
+        highest bound of the time intervalle to be loaded (year)
+    filter : string, optionnal
+        string pattern to filter datafiles names
+    **kwargs :  optional
+        The keyword arguments form of open_mfdataset
+
+    Returns
+    -------
+    product : Dataset
+        New dataset containing in-situ temperature and practical salinity data from the product
+
+    Examples
+    --------
+    &gt;&gt;&gt; data=JAMSTEC(&#39;/home/usr/lenapy/data/JAMSTEC&#39;,ymin=2005,ymax=2007,chunks={&#39;depth&#39;:10})
+    &gt;&gt;&gt; data.sel(time=slice(&#39;2005-06&#39;,&#39;2007-06&#39;)).xocean.gohc.plot()
+
+    &#34;&#34;&#34;       
+    def preproc(ds):
+        date=os.path.basename(os.path.splitext(ds.encoding[&#34;source&#34;])[0]).split(&#39;_&#39;)[1]
+        ds=rename_data(ds).assign_coords(time=np.datetime64(&#39;%s-%s-15&#39;%(date[0:4],date[4:6]))).expand_dims(dim=&#39;time&#39;)
+        ds[&#39;longitude&#39;]=np.mod(ds.longitude,360)
+        return ds
+
+    def year(f):
+        return f.split(&#39;_&#39;)[1][0:4]
+    
+    fics=filtre_liste(glob(os.path.join(rep,&#39;**&#39;,&#39;*GLB.nc&#39;)),year,ymin,ymax,filtre)
+    
+    data=xr.open_mfdataset(fics,preprocess=preproc,chunks=chunks,**kwargs)
+
+    depth=-gsw.z_from_p(data.PRES,0)
+    pressure=gsw.p_from_z(-depth,data.latitude)
+    pressure=xr.where(pressure&lt;data.PRES,pressure,data.PRES)
+
+    return xr.Dataset({&#39;temp&#39;:data.TOI.interp(PRES=pressure).assign_coords(PRES=depth).rename(PRES=&#39;depth&#39;).chunk(chunks=chunks),
+                       &#39;psal&#39;:data.SOI.interp(PRES=pressure).assign_coords(PRES=depth).rename(PRES=&#39;depth&#39;).chunk(chunks=chunks)
+                      })</code></pre>
+</details>
+</dd>
+<dt id="lenapy.produits.NCEI"><code class="name flex">
+<span>def <span class="ident">NCEI</span></span>(<span>rep, ymin=0, ymax=9999, filtre='', **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Load data from NCEI product
+Temperature and salinity are reconstructed from anomaly and trimestrial climatology</p>
+<p>Product's directory must have the following format:
+-base directory (ex: NCEI)
+|-salinity
+|-sanom_timestamp.nc (ex: sanom_C1C107-09.nc)
+|-temperature
+|-tanom_timestamp.nc (ex: tanom_C1C107-09.nc)</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>rep</code></strong> :&ensp;<code>string</code></dt>
+<dd>path of the product's directory</dd>
+<dt><strong><code>ymin</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>lowest bound of the time intervalle to be loaded (year)</dd>
+<dt><strong><code>ymax</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>highest bound of the time intervalle to be loaded (year)</dd>
+<dt><strong><code>filter</code></strong> :&ensp;<code>string, optionnal</code></dt>
+<dd>string pattern to filter datafiles names</dd>
+<dt><strong><code>**kwargs</code></strong> :&ensp;<code> optional</code></dt>
+<dd>The keyword arguments form of open_mfdataset</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>product</code></strong> :&ensp;<code>Dataset</code></dt>
+<dd>New dataset containing in-situ temperature and practical salinity data from the product</dd>
+</dl>
+<h2 id="examples">Examples</h2>
+<pre><code class="language-python-repl">&gt;&gt;&gt; data=NCEI('/home/usr/lenapy/data/NCEI',ymin=2005,ymax=2007,chunks={'depth':10})
+&gt;&gt;&gt; data.sel(time=slice('2005-06','2007-06')).xocean.gohc.plot()
+</code></pre></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def NCEI(rep,ymin=0,ymax=9999,filtre=&#39;&#39;,**kwargs):
+    &#34;&#34;&#34;
+    Load data from NCEI product
+    Temperature and salinity are reconstructed from anomaly and trimestrial climatology
+    
+    Product&#39;s directory must have the following format:
+    -base directory (ex: NCEI)
+       |-salinity
+           |-sanom_timestamp.nc (ex: sanom_C1C107-09.nc)
+       |-temperature
+           |-tanom_timestamp.nc (ex: tanom_C1C107-09.nc)
+    
+    Parameters
+    ----------
+    rep : string
+        path of the product&#39;s directory
+    ymin : int, optional
+        lowest bound of the time intervalle to be loaded (year)
+    ymax : int, optional
+        highest bound of the time intervalle to be loaded (year)
+    filter : string, optionnal
+        string pattern to filter datafiles names
+    **kwargs :  optional
+        The keyword arguments form of open_mfdataset
+
+    Returns
+    -------
+    product : Dataset
+        New dataset containing in-situ temperature and practical salinity data from the product
+
+    Examples
+    --------
+    &gt;&gt;&gt; data=NCEI(&#39;/home/usr/lenapy/data/NCEI&#39;,ymin=2005,ymax=2007,chunks={&#39;depth&#39;:10})
+    &gt;&gt;&gt; data.sel(time=slice(&#39;2005-06&#39;,&#39;2007-06&#39;)).xocean.gohc.plot()
+
+    &#34;&#34;&#34;
+    def year(f):
+        a=f.split(&#39;_&#39;)[1][0]
+        b=f.split(&#39;_&#39;)[1][1]
+        return &#34;%04d&#34;%(1900+10*int(&#39;0x%s&#39;%a,16)+int(b))
+    
+    #Salinite
+    fics_sal=filtre_liste(glob(os.path.join(rep,&#39;**&#39;,&#39;sanom*.nc&#39;)),year,ymin,ymax,filtre)
+    sal=xr.open_mfdataset(fics_sal,preprocess=rename_data,decode_times=False,**kwargs).xgeo.to_datetime(&#34;360_day&#34;).s_an
+    fics_climsal=glob(os.path.join(rep,&#39;climato&#39;,&#39;*s1[3-6]_01.nc&#39;))
+    climsal=xr.open_mfdataset(fics_climsal,preprocess=rename_data,decode_times=False,**kwargs).xgeo.to_datetime(&#34;360_day&#34;).s_an
+    
+    #Temperature
+    fics_temp=filtre_liste(glob(os.path.join(rep,&#39;**&#39;,&#39;tanom*.nc&#39;)),year,ymin,ymax,filtre)
+    temp=xr.open_mfdataset(fics_temp,preprocess=rename_data,decode_times=False,**kwargs).xgeo.to_datetime(&#34;360_day&#34;).t_an
+    fics_climtemp=glob(os.path.join(rep,&#39;climato&#39;,&#39;*t1[3-6]_01.nc&#39;))
+    climtemp=xr.open_mfdataset(fics_climtemp,preprocess=rename_data,decode_times=False,**kwargs).xgeo.to_datetime(&#34;360_day&#34;).t_an
+    
+    return xr.Dataset({\
+                       &#39;temp&#39;:(temp.groupby(&#39;time.month&#39;)+climtemp.groupby(&#39;time.month&#39;).mean(&#39;time&#39;)).drop(&#39;month&#39;),
+                       &#39;psal&#39;:(sal.groupby(&#39;time.month&#39;)+climsal.groupby(&#39;time.month&#39;).mean(&#39;time&#39;)).drop(&#39;month&#39;)
+                      })</code></pre>
+</details>
+</dd>
+<dt id="lenapy.produits.SIO"><code class="name flex">
+<span>def <span class="ident">SIO</span></span>(<span>rep, chunks=None, ymin=0, ymax=9999, filtre='', **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Load data from SIO product.
+Temperature and salinity are reconstructed from anomaly and annual climatology, and depth coordinate is derived from pressure.</p>
+<p>Product's directory must have the following format:
+-base directory (ex: SIO)
+|-climato
+|-RG_ArgoClim_climato_release.nc (ex: RG_ArgoClim_climato_2004_2018.nc)
+|-monthly
+|-RG_ArgoClim_timestamp_release.nc (ex: RG_ArgoClim_202210_2019.nc)</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>rep</code></strong> :&ensp;<code>string</code></dt>
+<dd>path of the product's directory</dd>
+<dt><strong><code>ymin</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>lowest bound of the time intervalle to be loaded (year)</dd>
+<dt><strong><code>ymax</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>highest bound of the time intervalle to be loaded (year)</dd>
+<dt><strong><code>filter</code></strong> :&ensp;<code>string, optionnal</code></dt>
+<dd>string pattern to filter datafiles names</dd>
+<dt><strong><code>**kwargs</code></strong> :&ensp;<code> optional</code></dt>
+<dd>The keyword arguments form of open_mfdataset</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>product</code></strong> :&ensp;<code>Dataset</code></dt>
+<dd>New dataset containing in-situ temperature and practical salinity data from the product</dd>
+</dl>
+<h2 id="examples">Examples</h2>
+<pre><code class="language-python-repl">&gt;&gt;&gt; data=SIO('/home/usr/lenapy/data/SIO',ymin=2005,ymax=2007,filter='ARGO',chunks={'depth':10})
+&gt;&gt;&gt; data.sel(time=slice('2005-06','2007-06')).xocean.gohc.plot()
+</code></pre></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def SIO(rep,chunks=None,ymin=0,ymax=9999,filtre=&#39;&#39;,**kwargs):
+    &#34;&#34;&#34;
+    Load data from SIO product.
+    Temperature and salinity are reconstructed from anomaly and annual climatology, and depth coordinate is derived from pressure.
+    
+    Product&#39;s directory must have the following format:
+    -base directory (ex: SIO)
+       |-climato
+           |-RG_ArgoClim_climato_release.nc (ex: RG_ArgoClim_climato_2004_2018.nc)
+       |-monthly
+           |-RG_ArgoClim_timestamp_release.nc (ex: RG_ArgoClim_202210_2019.nc)
+    
+    Parameters
+    ----------
+    rep : string
+        path of the product&#39;s directory
+    ymin : int, optional
+        lowest bound of the time intervalle to be loaded (year)
+    ymax : int, optional
+        highest bound of the time intervalle to be loaded (year)
+    filter : string, optionnal
+        string pattern to filter datafiles names
+    **kwargs :  optional
+        The keyword arguments form of open_mfdataset
+
+    Returns
+    -------
+    product : Dataset
+        New dataset containing in-situ temperature and practical salinity data from the product
+
+    Examples
+    --------
+    &gt;&gt;&gt; data=SIO(&#39;/home/usr/lenapy/data/SIO&#39;,ymin=2005,ymax=2007,filter=&#39;ARGO&#39;,chunks={&#39;depth&#39;:10})
+    &gt;&gt;&gt; data.sel(time=slice(&#39;2005-06&#39;,&#39;2007-06&#39;)).xocean.gohc.plot()
+
+    &#34;&#34;&#34;    
+    def year(f):
+        return f.split(&#39;_&#39;)[-2][0:4]
+
+    fics_anom=filtre_liste(glob(os.path.join(rep,&#39;**&#39;,&#39;RG_ArgoClim_20*.nc&#39;)),year,ymin,ymax,filtre)
+    fics_clim=glob(os.path.join(rep,&#39;**&#39;,&#39;RG_ArgoClim_cl*.nc&#39;))
+    
+    anom=xr.open_mfdataset(fics_anom,preprocess=rename_data,decode_times=False,chunks=chunks,**kwargs).xgeo.to_datetime(&#34;360_day&#34;)
+    clim=xr.open_mfdataset(fics_clim,preprocess=rename_data,**kwargs)
+
+    temp = anom.ARGO_TEMPERATURE_ANOMALY + clim.ARGO_TEMPERATURE_MEAN
+    psal = anom.ARGO_SALINITY_ANOMALY + clim.ARGO_SALINITY_MEAN
+
+    depth=-gsw.z_from_p(anom.PRESSURE,0)
+    pressure=gsw.p_from_z(-depth,anom.latitude)
+    pressure=xr.where(pressure&lt;anom.PRESSURE,pressure,anom.PRESSURE)
+
+    return xr.Dataset({&#39;temp&#39;:temp.interp(PRESSURE=pressure).assign_coords(PRESSURE=depth).rename(PRESSURE=&#39;depth&#39;).chunk(chunks=chunks),
+                       &#39;psal&#39;:psal.interp(PRESSURE=pressure).assign_coords(PRESSURE=depth).rename(PRESSURE=&#39;depth&#39;).chunk(chunks=chunks)
+                      })</code></pre>
+</details>
+</dd>
+<dt id="lenapy.produits.filtre_liste"><code class="name flex">
+<span>def <span class="ident">filtre_liste</span></span>(<span>files, year, ymin, ymax, pattern)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns a filtered list of files fitting year range and pattern</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>files</code></strong> :&ensp;<code>Array</code> of <code>strings</code></dt>
+<dd>Array with filenames to be filtered</dd>
+<dt><strong><code>year</code></strong> :&ensp;<code>function</code></dt>
+<dd>Function to be applied on each filename, returning the data year</dd>
+<dt><strong><code>ymin</code></strong> :&ensp;<code>integer</code></dt>
+<dd>Lowest bound of the time range</dd>
+<dt><strong><code>ymax</code></strong> :&ensp;<code>integer</code></dt>
+<dd>Highest bound of the time range</dd>
+<dt><strong><code>pattern</code></strong> :&ensp;<code>string</code></dt>
+<dd>Pattern that must fit the filenames</dd>
+</dl>
+<h2 id="return">Return</h2>
+<p>filtered : Array
+Extract of th input array fitting year and pattern conditions</p>
+<h2 id="example">Example</h2>
+<pre><code class="language-python-repl">&gt;&gt;&gt; def year(f):
+&gt;&gt;&gt;   return f.split('_')[1] 
+&gt;&gt;&gt; fics=filtre_liste(glob(os.path.join(rep,'**','*.nc')),year,2005,2006,'ARGO')
+</code></pre></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def filtre_liste(files,year,ymin,ymax,pattern):
+    &#34;&#34;&#34;
+    Returns a filtered list of files fitting year range and pattern
+
+    Parameters
+    ----------
+    files : Array of strings
+        Array with filenames to be filtered
+        
+    year : function
+        Function to be applied on each filename, returning the data year
+        
+    ymin : integer
+        Lowest bound of the time range
+
+    ymax : integer
+        Highest bound of the time range
+        
+    pattern : string
+        Pattern that must fit the filenames
+        
+    Return
+    ------
+    filtered : Array
+        Extract of th input array fitting year and pattern conditions
+        
+    Example
+    -------
+    &gt;&gt;&gt; def year(f):
+    &gt;&gt;&gt;   return f.split(&#39;_&#39;)[1] 
+    &gt;&gt;&gt; fics=filtre_liste(glob(os.path.join(rep,&#39;**&#39;,&#39;*.nc&#39;)),year,2005,2006,&#39;ARGO&#39;)
+
+    &#34;&#34;&#34;
+    r=[]
+    for u in files:
+        d=int(year(os.path.basename(os.path.splitext(u)[0])))
+        if d&gt;=ymin and d&lt;=ymax and pattern in u:
+            r.append(u)
+    return r</code></pre>
+</details>
+</dd>
+<dt id="lenapy.produits.rename_data"><code class="name flex">
+<span>def <span class="ident">rename_data</span></span>(<span>data, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Standardization of coordinates names of a product
+Looks for different possible names for latitude, longitude, and time, and turn them into a standardized name :
+'lon','LON','Longitude','LONGITUDE' become 'longitude'
+'lat','LAT','Latitude','LATITUDE' become 'latitude'
+'date','dates','TIME','Time' become 'time'
+Custom names changes can also be performed with **kwargs parameter</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>**kwargs</code></strong> :&ensp;<code>{old_name: new_name, ...}</code>, optional</dt>
+<dd>dictionnary specifying old names to be changed into new names</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>renamed</code></strong> :&ensp;<code>Dataset</code></dt>
+<dd>New dataset containing modified names</dd>
+</dl>
+<h2 id="examples">Examples</h2>
+<blockquote>
+<blockquote>
+<blockquote>
+<p>ds=xr.open_mfdataset('product.nc',preprocess=rename_data)</p>
+</blockquote>
+</blockquote>
+</blockquote></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def rename_data(data,**kwargs):
+    &#34;&#34;&#34;
+    Standardization of coordinates names of a product
+    Looks for different possible names for latitude, longitude, and time, and turn them into a standardized name :
+    &#39;lon&#39;,&#39;LON&#39;,&#39;Longitude&#39;,&#39;LONGITUDE&#39; become &#39;longitude&#39;
+    &#39;lat&#39;,&#39;LAT&#39;,&#39;Latitude&#39;,&#39;LATITUDE&#39; become &#39;latitude&#39;
+    &#39;date&#39;,&#39;dates&#39;,&#39;TIME&#39;,&#39;Time&#39; become &#39;time&#39;
+    Custom names changes can also be performed with **kwargs parameter
+
+    Parameters
+    ----------
+    **kwargs :  {old_name: new_name, ...}, optional
+        dictionnary specifying old names to be changed into new names
+
+    Returns
+    -------
+    renamed : Dataset
+        New dataset containing modified names
+
+    Examples
+    --------
+    &gt;&gt;&gt;ds=xr.open_mfdataset(&#39;product.nc&#39;,preprocess=rename_data)
+    &#34;&#34;&#34;
+    data=data.rename(**kwargs)
+        
+    for l in [&#39;lon&#39;,&#39;LON&#39;,&#39;Longitude&#39;,&#39;LONGITUDE&#39;]:
+        if l in data.variables:
+            data=data.rename({l:&#39;longitude&#39;})
+
+    for l in [&#39;lat&#39;,&#39;LAT&#39;,&#39;Latitude&#39;,&#39;LATITUDE&#39;]:
+        if l in data.variables:
+            data=data.rename({l:&#39;latitude&#39;})
+
+    for l in [&#39;date&#39;,&#39;dates&#39;,&#39;TIME&#39;,&#39;Time&#39;]:
+        if l in data.variables:
+            data=data.rename({l:&#39;time&#39;})
+            
+    for l in [&#39;Depth&#39;,&#39;depth_std&#39;,&#39;LEVEL&#39;,&#39;level&#39;,&#39;Time&#39;]:
+        if l in data.variables:
+            data=data.rename({l:&#39;depth&#39;})
+            
+    if &#39;longitude&#39; in data.variables and not(&#39;longitude&#39; in data.coords):
+        lon=data[&#39;longitude&#39;]
+        del data[&#39;longitude&#39;]
+        lat=data[&#39;latitude&#39;]
+        del data[&#39;latitude&#39;]    
+        data=data.assign_coords(longitude=lon,latitude=lat)        
+    return data</code></pre>
+</details>
+</dd>
+</dl>
+</section>
+<section>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul>
+<li><a href="#parameters">Parameters</a></li>
+<li><a href="#returns">Returns</a></li>
+<li><a href="#examples">Examples</a></li>
+</ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="lenapy" href="index.html">lenapy</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="two-column">
+<li><code><a title="lenapy.produits.ECCO" href="#lenapy.produits.ECCO">ECCO</a></code></li>
+<li><code><a title="lenapy.produits.EN_422" href="#lenapy.produits.EN_422">EN_422</a></code></li>
+<li><code><a title="lenapy.produits.IAP" href="#lenapy.produits.IAP">IAP</a></code></li>
+<li><code><a title="lenapy.produits.IPRC" href="#lenapy.produits.IPRC">IPRC</a></code></li>
+<li><code><a title="lenapy.produits.ISAS" href="#lenapy.produits.ISAS">ISAS</a></code></li>
+<li><code><a title="lenapy.produits.ISHII" href="#lenapy.produits.ISHII">ISHII</a></code></li>
+<li><code><a title="lenapy.produits.JAMSTEC" href="#lenapy.produits.JAMSTEC">JAMSTEC</a></code></li>
+<li><code><a title="lenapy.produits.NCEI" href="#lenapy.produits.NCEI">NCEI</a></code></li>
+<li><code><a title="lenapy.produits.SIO" href="#lenapy.produits.SIO">SIO</a></code></li>
+<li><code><a title="lenapy.produits.filtre_liste" href="#lenapy.produits.filtre_liste">filtre_liste</a></code></li>
+<li><code><a title="lenapy.produits.rename_data" href="#lenapy.produits.rename_data">rename_data</a></code></li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,1795 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.10.0" />
+<title>lenapy.xOcean API documentation</title>
+<meta name="description" content="" />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>lenapy.xOcean</code></h1>
+</header>
+<section id="section-intro">
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python"># -*- coding: utf-8 -*-
+
+import gsw
+import numpy as np
+import xarray as xr
+
+from . import xGeo as xg
+from .utils import *
+
+def proprietes(da,nom,label,unite):
+    out = da.rename(nom)
+    out.attrs[&#39;long_name&#39;] = label
+    out.attrs[&#39;units&#39;] = unite
+    return out
+
+def NoneType(var):
+    return type(var)==type(None)
+
+@xr.register_dataset_accessor(&#34;xocean&#34;)
+class OceanSet(xg.GeoSet):
+    &#34;&#34;&#34;
+    This class extends any dataset to a xOcean object, that allows to access to any TEOS10 variable simply by calling the name of the variable through the xOcean interface.
+    The initial dataset must contains the fields necessary to compute the output variable (ex : temperature and salinity to compute heat, heat to compute ohc,...)
+
+    Availabe fields
+    ---------------
+    Temperatures : one of the three types of temperature must be present in the original dataset to perform derived computation.
+        temp  : in-situ temperature        
+        PT    : potential temperature     
+        CT    : conservative temperature 
+
+    Salinities :  one of the three types of salinities must be present in the original dataset to perform derived computation.
+        psal  : practical salinity  
+        SR    : relative salinity    
+        SA    : absolute salinity. If there is no location information (lat,lon), absolute salinity is returned equal to relative salinity
+
+    Physical properties :
+        P     : pressure. If location information is present, pressure is adjusted with regard to latitude, otherwise latitude is equal to 0
+        Cp    : heat capacity
+        rho   : density
+        sigma0: potential density anomaly at 0 dbar
+
+    Heat content :
+        heat  : specific heat content (J/m3)
+        ohc   : local ocean heat content (J/m²), it is heat integrated over the whole ocean depth
+        gohc  : global ocean heat content (J/m²), it is ohc averaged over latitude-longitude, excluding continents
+        gohc_TOA: idem gohc, including continents (where ohc=0)
+        ohc_above: idem ohc, where heat is integrated above a given depth
+        gohc_above: idem gohc, averaging ohc_above instead of ohc
+
+    Sea level :
+        slh   : steric sea layer height anomaly (-), equal to (1. - rho/rhoref)
+        ssl   : steric sea surface level anomaly (m), it is slh integrated over the whole ocean depth
+        ieeh  : integrated expansion efficiency oh heat (m/(J/m²)), it is (ssl/ohc)
+
+    Layer depth :
+        ocean_depth  : maximum depth with non Nan values for temperature
+        mld_theta0   : ocean mixed layer depth, defined by a temperature drop from 0.2°C wrt to -10m depth 
+        mld_sigma0   : ocean mixed layer depth, defined by a potential density increase of 0.03kg/m3 wrt to -10m depth
+        mld_sigma0var: ocean mixed layer depth, defined by a potential density equal to the potential density at -10m depth with a temperature dropped by 0.2°C
+
+    Examples
+    --------
+    &gt;&gt;&gt;data=IAP(&#39;/home/usr/lenapy/data/IAP&#39;)
+    &gt;&gt;&gt;print(data)
+    &lt;xarray.Dataset&gt;
+    Dimensions:    (latitude: 180, longitude: 360, time: 156, depth: 41)
+    Coordinates:
+      * latitude   (latitude) float32 -89.5 -88.5 -87.5 -86.5 ... 87.5 88.5 89.5
+      * longitude  (longitude) float32 1.0 2.0 3.0 4.0 ... 357.0 358.0 359.0 360.0
+      * time       (time) datetime64[ns] 2005-01-15 2005-02-15 ... 2017-12-15
+      * depth      (depth) float32 1.0 5.0 10.0 20.0 ... 1.7e+03 1.8e+03 2e+03
+    Data variables:
+        temp       (time, latitude, longitude, depth) float32 dask.array&lt;chunksize=(1, 180, 360, 10), meta=np.ndarray&gt;
+        SA         (time, latitude, longitude, depth) float32 dask.array&lt;chunksize=(1, 180, 360, 10), meta=np.ndarray&gt;
+    &gt;&gt;&gt;mld=data.xocean.mld_sigma0
+    &gt;&gt;&gt;print(data.xocean.ohc_above(mld))
+    &lt;xarray.DataArray &#39;ohc_above&#39; (time: 156, latitude: 180, longitude: 360)&gt;
+    dask.array&lt;where, shape=(156, 180, 360), dtype=float64, chunksize=(1, 180, 360), chunktype=numpy.ndarray&gt;
+    Coordinates:
+        depth      (time, latitude, longitude) float64 dask.array&lt;chunksize=(1, 180, 360), meta=np.ndarray&gt;
+      * time       (time) datetime64[ns] 2005-01-15 2005-02-15 ... 2017-12-15
+      * latitude   (latitude) float32 -89.5 -88.5 -87.5 -86.5 ... 87.5 88.5 89.5
+      * longitude  (longitude) float32 1.0 2.0 3.0 4.0 ... 357.0 358.0 359.0 360.0
+    Attributes:
+        long_name:  Ocean heat content
+        units:      J/m²
+    &gt;&gt;&gt;print(data.xocean.gohc)
+    &lt;xarray.DataArray &#39;gohc&#39; (time: 156)&gt;
+    dask.array&lt;truediv, shape=(156,), dtype=float64, chunksize=(1,), chunktype=numpy.ndarray&gt;
+    Coordinates:
+      * time     (time) datetime64[ns] 2005-01-15 2005-02-15 ... 2017-12-15
+        depth    float32 1.0
+    Attributes:
+        long_name:  Global ocean heat content wrt to ocean surface area
+        units:      J/m²
+    &#34;&#34;&#34;    
+    def __init__(self, xarray_obj):
+        super().__init__(xarray_obj)
+        fields=[&#39;temp&#39;,&#39;PT&#39;,&#39;CT&#39;,&#39;psal&#39;,&#39;SA&#39;,&#39;SR&#39;,&#39;P&#39;,&#39;rho&#39;,&#39;sigma0&#39;,&#39;Cp&#39;,&#39;heat&#39;,&#39;slh&#39;,&#39;ohc&#39;,&#39;ssl&#39;,&#39;ieeh&#39;,&#39;gohc&#39;,&#39;eeh&#39;,
+                &#39;ocean_depth&#39;,&#39;mld_theta0&#39;,&#39;mld_sigma0&#39;,&#39;mld_sigma0var&#39;]
+        for f in fields:
+            if hasattr(xarray_obj,f):
+                setattr(self,f+&#34;_&#34;,xarray_obj[f])
+            else:
+                setattr(self,f+&#34;_&#34;,None)
+                
+        if NoneType(self.heat_):
+            if NoneType(self.temp_) and NoneType(self.CT_) and NoneType(self.PT_):
+                raise ValueError(&#39;At least one temperature must be set (temp, CT or PT)&#39;)
+            if NoneType(self.SA_) and NoneType(self.SR_) and NoneType(self.psal_):
+                raise ValueError(&#39;At least one salinity must be set (psal, SA or SR)&#39;)
+
+        self.oml_theta0_threshold=0.2
+        self.oml_sigma0_threshold=0.03
+
+    @property
+    def temp(self):
+        if NoneType(self.temp_):
+            self.temp_ = proprietes(gsw.t_from_CT(self.SA,self.CT,self.P),
+                          &#39;temp&#39;,&#39;In-situ temperature&#39;,&#39;dgeC&#39;)
+        return self.temp_
+
+    @property
+    def PT(self):
+        if NoneType(self.PT_):
+            self.PT_ = proprietes(gsw.pt0_from_t(self.SA,self.temp,self.P),
+                          &#39;pt&#39;,&#39;Potential temperature&#39;,&#39;degC&#39;)
+        return self.PT_
+
+    @property
+    # Temperature conservative en fonction de la salinité absolue, temperature in-situ, et pression
+    def CT(self):
+        if NoneType(self.CT_):
+            self.CT_ = proprietes(gsw.CT_from_pt(self.SA, self.PT),
+                          &#39;CT&#39;,&#39;Conservative temperature&#39;,&#39;degC&#39;)  # degC
+        return self.CT_
+    
+    @property
+    # Salinité pratique
+    def psal(self):
+        if NoneType(self.psal_):
+            if NoneType(self.SA_) or not(&#39;latitude&#39; in self._obj.coords and &#39;longitude&#39; in self._obj.coords):
+                self.psal_=proprietes(gsw.SP_from_SR(self.SR),
+                          &#39;psal&#39;,&#39;Practical salinity&#39;,&#39;g/kg&#39;) # [g/kg]
+                                
+            else:
+                self.psal_=proprietes(gsw.SP_from_SA(self.SA,self.P,self._obj.longitude, self._obj.latitude),
+                          &#39;psal&#39;,&#39;Practical salinity&#39;,&#39;g/kg&#39;) # [g/kg]
+                                  
+        return self.psal_
+    
+    @property
+    # Salinité relative, en fonction de la salinité pratique
+    def SR(self):
+        if NoneType(self.SR_):
+            self.SR_ = proprietes(gsw.SR_from_SP(self.psal),
+                          &#39;SR&#39;,&#39;Relative salinity&#39;,&#39;g/kg&#39;) # [g/kg]
+        return self.SR_
+    
+    # Salinité absolue, en fonction de la salinité relative, la pression, et la position
+    @property
+    def SA(self):
+        if NoneType(self.SA_):
+            if &#39;latitude&#39; in self._obj.coords and &#39;longitude&#39; in self._obj.coords:
+                self.SA_ = proprietes(gsw.SA_from_SP(self.psal,self.P,self._obj.longitude, self._obj.latitude),
+                          &#39;SA&#39;,&#39;Absolute salinity&#39;,&#39;g/kg&#39;) # [g/kg]
+            else:
+                self.SA_ = self.SR
+        return self.SA_
+    
+    @property
+    # Pression en fonction de la profondeur et de la latitude
+    def P(self):
+        if NoneType(self.P_):
+            if &#39;latitude&#39; in self._obj.coords:
+                self.P_ = proprietes(gsw.p_from_z(self._obj.depth*-1, self._obj.latitude),
+                                  &#39;p_db&#39;,&#39;Pressure&#39;,&#39;dbar&#39;)
+            else:
+                self.P_ = proprietes(gsw.p_from_z(self._obj.depth*-1, 0),
+                                  &#39;p_db&#39;,&#39;Pressure&#39;,&#39;dbar&#39;)
+        return self.P_
+
+    @property
+    # Densité en fonction de la salinité absolue, la température conservative et la pression
+    def rho(self):
+        if NoneType(self.rho_):
+            self.rho_ = proprietes(gsw.rho(self.SA, self.CT, self.P),
+                          &#39;rho&#39;,&#39;Density&#39;,&#39;kg/m3&#39;) # [kg/m3]
+        return self.rho_
+    
+    @property
+    # Anomalie de densité potentielle à 0dbar en fonction de la salinité absolue et la température conservative
+    def sigma0(self):
+        if NoneType(self.sigma0_):
+            self.sigma0_ = proprietes(gsw.sigma0(self.SA, self.CT),
+                          &#39;sigma0&#39;,&#39;Potential Density Anomaly&#39;,&#39;kg/m3&#39;) # [kg/m3]
+        return self.sigma0_
+    
+    @property
+    # Capacité calorifique en fonction de la salinité absolue, la température in-situ et la pression
+    def Cp(self):
+        if NoneType(self.Cp_):
+            self.Cp_ = proprietes(gsw.cp_t_exact(self.SA, self.temp, self.P),
+                          &#39;Cp&#39;,&#39;Specific heat capacity&#39;, &#39;J/kg/degC&#39;) # [j/kg/degC)]
+        return self.Cp_
+    
+    @property
+    # Contenu en chaleur des couches en fonction de la densité, la capacité calorifique, et la température conservative
+    def heat(self):
+        if NoneType(self.heat_):
+            self.heat_ = proprietes((self.rho * self.Cp * self.CT),
+                          &#39;Heat&#39;,&#39;Heat content&#39;,&#39;J/m3&#39;) # [J/m3]
+        return self.heat_
+    
+    @property
+    # Anomalie relative de densité par rapport à une référence (0,35)
+    def slh(self):
+        if NoneType(self.slh_):
+            if &#39;latitude&#39; in self._obj.coords:
+                rhoref = gsw.rho(gsw.SA_from_SP(35,self.P,self._obj.longitude, self._obj.latitude),
+                                 0, self.P)
+            else:
+                rhoref = gsw.rho(gsw.SR_from_SP(35), 0, self.P)
+        return  proprietes(((1. - self.rho/rhoref)),
+                           &#39;slh&#39;,&#39;Steric sea layer height anomaly&#39;,&#39;-&#39;) # [-]
+    
+    @property
+    # Contenu en chaleur de la colonne
+    def ohc(self):
+        if NoneType(self.ohc_):
+            self.ohc_ = proprietes(self.heat.xocean.integ_depth(),
+                          &#39;ohc&#39;,&#39;Ocean heat content&#39;,&#39;J/m²&#39;) # [J/m²]
+        return self.ohc_
+    
+    @property
+    # Ecart de hauteur d&#39;eau de la colonne par rapport à une référence (0,35)
+    def ssl(self):
+        if NoneType(self.ssl_):
+            self.ssl_ = proprietes(self.slh.xocean.integ_depth(),
+                          &#39;ssl&#39;,&#39;Steric sea surface level anomaly&#39;,&#39;m&#39;) # [m]
+        return self.ssl_
+    
+    @property
+    # IEEH de la colonne (grandeur surfacique)
+    def ieeh(self):
+        if NoneType(self.ieeh_):
+            self.ieeh_ = proprietes(self.ssl/self.ohc,
+                          &#39;IEEH&#39;,&#39;Integrated expansion efficiency oh heat&#39;,&#39;m/(J/m²)&#39;) # [m/(J/m²)]
+        return self.ieeh_
+
+    @property
+    def gohc(self):
+        return proprietes(self.ohc.xocean.mean([&#39;latitude&#39;,&#39;longitude&#39;],weights=[&#39;latitude&#39;]),
+                         &#39;gohc&#39;,&#39;Global ocean heat content wrt to ocean surface area&#39;,&#39;J/m²&#39;)
+
+    @property
+    def gohc_TOA(self):
+        return proprietes(self.ohc.xocean.mean([&#39;latitude&#39;,&#39;longitude&#39;],weights=[&#39;latitude&#39;],na_eq_zero=True),
+                         &#39;gohc&#39;,&#39;Global ocean heat content wrt to TOA area&#39;,&#39;J/m²&#39;)
+    
+    def ohc_above(self,target):
+        res=self.heat.xocean.above(target)
+        return proprietes(res.where(res!=0),
+            &#39;ohc_above&#39;,&#39;Ocean heat content&#39;,&#39;J/m²&#39;) # [J/m²]
+        
+    def gohc_above(self,target,na_eq_zero=False):
+        return proprietes(self.ohc_above(target).xocean.mean([&#39;latitude&#39;,&#39;longitude&#39;],weights=[&#39;latitude&#39;],na_eq_zero=na_eq_zero),
+                         &#39;gohc_above&#39;,&#39;Global ocean heat content above target&#39;,&#39;J/m²&#39;)
+
+
+    @property
+    def ocean_depth(self):
+        if NoneType(self.ocean_depth_):
+            self.ocean_depth_=xr.where(self.temp.isel(time=0).isnull(),np.nan,self._obj.depth).max(&#39;depth&#39;)
+        return self.ocean_depth_
+        
+        
+    # Profondeur de l&#39;Ocean Mixed Layer definie par une variation de temperature potentielle de 0.2°C par rapport à -10m
+    @property
+    def mld_theta0(self):
+
+        theta0=self.PT.interp(depth=10).drop(&#34;depth&#34;)
+        mld1=self.PT.xgeo.isosurface(theta0-self.oml_theta0_threshold,&#34;depth&#34;,upper=True)
+        mld2=self.PT.xgeo.isosurface(theta0+self.oml_theta0_threshold,&#34;depth&#34;,upper=True)
+        mld1=mld1.fillna(mld2)
+        mld2=mld2.fillna(mld1)
+        self.mld_theta0_ = xr.where(mld2&lt;mld1,mld2,mld1).rename(&#39;OMLD_theta0&#39;).fillna(self.ocean_depth)
+        
+        return self.mld_theta0_
+
+    # Profondeur de l&#39;Ocean Mixed Layer definie par une diminution de temperature potentielle de 0.2°C par rapport à -10m
+    @property
+    def mld_theta0minus_only(self):
+
+        theta0=self.PT.interp(depth=10).drop(&#34;depth&#34;)
+        self.mld_theta0_ = self.PT.xgeo.isosurface(theta0-self.oml_theta0_threshold,&#34;depth&#34;,upper=True).\
+            rename(&#39;OMLD_theta0minus_only&#39;).fillna(self.ocean_depth)
+        
+        return self.mld_theta0_
+    
+    # Profondeur de l&#39;Ocean Mixed Layer definie par une augmentation de densité potentielle de 0.03kg/m3 par rapport à -10m
+    @property    
+    def mld_sigma0(self):
+
+        sigma0=self.sigma0.interp(depth=10).drop(&#34;depth&#34;)
+        self.mld_sigma0_=self.sigma0.xgeo.isosurface(sigma0+self.oml_sigma0_threshold,&#34;depth&#34;,upper=True).\
+            rename(&#39;OMLD_sigma0&#39;).fillna(self.ocean_depth)
+        
+        return self.mld_sigma0_
+    
+    # Profondeur de l&#39;Ocean Mixed Layer definie par une augmentation de densité potentielle correspondant à -0.2°C par rapport à -10m
+    @property
+    def mld_sigma0var(self):
+        ref = self._obj.interp(depth=10)
+        ref[&#39;PT&#39;]=ref[&#39;PT&#39;]-self.oml_theta0_threshold
+        self.mld_sigma0var_=self.sigma0.xgeo.isosurface(ref.xocean.sigma0.drop(&#34;depth&#34;),&#34;depth&#34;,upper=True).\
+            rename(&#39;OMLD_sigma0var&#39;).fillna(self.ocean_depth)
+        
+        return self.mld_sigma0var_
+ 
+
+@xr.register_dataarray_accessor(&#34;xocean&#34;)
+class OceanArray(xg.GeoArray):
+    &#34;&#34;&#34;
+    This class extends any dataarray to a xOcean object, to perform specific operations on structured dataarray 
+    &#34;&#34;&#34;
+    def __init__(self, xarray_obj):
+        super().__init__(xarray_obj)
+
+    def add_value_surface(self,value=None):
+        &#34;&#34;&#34; 
+        Add a surface layer with a specified value, or the previous upper value
+        Parameter
+        ---------
+        value : float or array-like, optional
+            values to be added in the surface layer (depth=0). If None, the previous upper value is used to fill the new layer
+        
+        Returns
+        -------
+        added : DataArray
+            new dataarray with a extra layer at depth 0 filled with required values
+            
+        Example
+        -------
+        &gt;&gt;&gt;data=IAP(&#39;/home/usr/lenapy/data/IAP&#39;)
+        &gt;&gt;&gt;heat=data.xocean.heat.xocean.add_value_surface()            
+        &#34;&#34;&#34;
+        if self._obj.depth[0]!=0:
+            v0 = self._obj.isel(depth=0)
+            v0[&#39;depth&#39;]=v0[&#39;depth&#39;]*0.
+            if value!=None:
+                v0.values=v0.values*0.+value
+            return xr.concat([v0,self._obj],dim=&#39;depth&#39;)
+        else:
+            return self._obj
+                    
+    def integ_depth(self):
+        &#34;&#34;&#34; 
+        Returns the dataarray integrated over the whole depth. The surface value is supposed equal to the most shallow value.
+        In order to deal with NaN values in deep water during integration,, all NaN are firt converted to 0, then in the output 
+        array NaN values are applied where initial surface values were NaN.
+        
+        Example
+        -------
+        &gt;&gt;&gt;data=IAP(&#39;/home/usr/lenapy/data/IAP&#39;)
+        &gt;&gt;&gt;data.xocean.heat.xocean.integ_depth()    
+        &lt;xarray.DataArray &#39;Heat&#39; (time: 156, latitude: 180, longitude: 360)&gt;
+        dask.array&lt;where, shape=(156, 180, 360), dtype=float64, chunksize=(1, 180, 360), chunktype=numpy.ndarray&gt;
+        Coordinates:
+          * latitude   (latitude) float32 -89.5 -88.5 -87.5 -86.5 ... 87.5 88.5 89.5
+          * longitude  (longitude) float32 1.0 2.0 3.0 4.0 ... 357.0 358.0 359.0 360.0
+          * time       (time) datetime64[ns] 2005-01-15 2005-02-15 ... 2017-12-15
+            depth      float32 1.0
+
+        &#34;&#34;&#34;
+        return self.add_value_surface().fillna(0).integrate(&#39;depth&#39;).where(~self._obj.isel(depth=0).isnull())
+    
+    def cum_integ_depth(self):
+        &#34;&#34;&#34; 
+        Returns a cumulative integrated dataarray integrated over the whole depth. The surface value is supposed equal to the 
+        most shallow value. A first integration layer by layer is performed, by multupliying the layer&#39;s thickness by the mean
+        value of upper and lower bound, then a cumulative sum is computed.
+        
+        Example
+        -------
+        &gt;&gt;&gt;data=IAP(&#39;/home/usr/lenapy/data/IAP&#39;)
+        &gt;&gt;&gt;data.xocean.heat.xocean.cum_integ_depth()       
+        &lt;xarray.DataArray (time: 156, latitude: 180, longitude: 360, depth: 41)&gt;
+        dask.array&lt;where, shape=(156, 180, 360, 41), dtype=float64, chunksize=(1, 180, 360, 10), chunktype=numpy.ndarray&gt;
+        Coordinates:
+          * latitude   (latitude) float32 -89.5 -88.5 -87.5 -86.5 ... 87.5 88.5 89.5
+          * longitude  (longitude) float32 1.0 2.0 3.0 4.0 ... 357.0 358.0 359.0 360.0
+          * time       (time) datetime64[ns] 2005-01-15 2005-02-15 ... 2017-12-15
+          * depth      (depth) float64 1.0 5.0 10.0 20.0 ... 1.7e+03 1.8e+03 2e+03
+
+        &#34;&#34;&#34;
+        res=self.add_value_surface()  
+        ep=res.depth.diff(&#39;depth&#39;)
+        vm=res.rolling(depth=2).mean().isel(depth=slice(1,None))
+        return (vm*ep).fillna(0).cumsum(&#39;depth&#39;).where(~self._obj.isel(depth=0).isnull())
+    
+    def above(self,depth,**kwargs):
+        &#34;&#34;&#34; 
+        Returns the dataarray integrated above a given depth, by interpolating at this depth the cumulative integrale 
+        of the data array
+
+        Example
+        -------
+        &gt;&gt;&gt;data=IAP(&#39;/home/usr/lenapy/data/IAP&#39;)
+        &gt;&gt;&gt;mld=data.xocean.mld_sigma0
+        &gt;&gt;&gt;data.xocean.heat.xocean.above(mld)       
+        &lt;xarray.DataArray (time: 156, latitude: 180, longitude: 360)&gt;
+        dask.array&lt;where, shape=(156, 180, 360), dtype=float64, chunksize=(1, 180, 360), chunktype=numpy.ndarray&gt;
+        Coordinates:
+            depth      (time, latitude, longitude) float64 dask.array&lt;chunksize=(1, 180, 360), meta=np.ndarray&gt;
+          * time       (time) datetime64[ns] 2005-01-15 2005-02-15 ... 2017-12-15
+          * latitude   (latitude) float32 -89.5 -88.5 -87.5 -86.5 ... 87.5 88.5 89.5
+          * longitude  (longitude) float32 1.0 2.0 3.0 4.0 ... 357.0 358.0 359.0 360.0
+
+        &#34;&#34;&#34;
+        return self.cum_integ_depth().xocean.add_value_surface(0.).interp({&#39;depth&#39;:depth},**kwargs)
+    </code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="lenapy.xOcean.NoneType"><code class="name flex">
+<span>def <span class="ident">NoneType</span></span>(<span>var)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def NoneType(var):
+    return type(var)==type(None)</code></pre>
+</details>
+</dd>
+<dt id="lenapy.xOcean.proprietes"><code class="name flex">
+<span>def <span class="ident">proprietes</span></span>(<span>da, nom, label, unite)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def proprietes(da,nom,label,unite):
+    out = da.rename(nom)
+    out.attrs[&#39;long_name&#39;] = label
+    out.attrs[&#39;units&#39;] = unite
+    return out</code></pre>
+</details>
+</dd>
+</dl>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="lenapy.xOcean.OceanArray"><code class="flex name class">
+<span>class <span class="ident">OceanArray</span></span>
+<span>(</span><span>xarray_obj)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>This class extends any dataarray to a xOcean object, to perform specific operations on structured dataarray</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@xr.register_dataarray_accessor(&#34;xocean&#34;)
+class OceanArray(xg.GeoArray):
+    &#34;&#34;&#34;
+    This class extends any dataarray to a xOcean object, to perform specific operations on structured dataarray 
+    &#34;&#34;&#34;
+    def __init__(self, xarray_obj):
+        super().__init__(xarray_obj)
+
+    def add_value_surface(self,value=None):
+        &#34;&#34;&#34; 
+        Add a surface layer with a specified value, or the previous upper value
+        Parameter
+        ---------
+        value : float or array-like, optional
+            values to be added in the surface layer (depth=0). If None, the previous upper value is used to fill the new layer
+        
+        Returns
+        -------
+        added : DataArray
+            new dataarray with a extra layer at depth 0 filled with required values
+            
+        Example
+        -------
+        &gt;&gt;&gt;data=IAP(&#39;/home/usr/lenapy/data/IAP&#39;)
+        &gt;&gt;&gt;heat=data.xocean.heat.xocean.add_value_surface()            
+        &#34;&#34;&#34;
+        if self._obj.depth[0]!=0:
+            v0 = self._obj.isel(depth=0)
+            v0[&#39;depth&#39;]=v0[&#39;depth&#39;]*0.
+            if value!=None:
+                v0.values=v0.values*0.+value
+            return xr.concat([v0,self._obj],dim=&#39;depth&#39;)
+        else:
+            return self._obj
+                    
+    def integ_depth(self):
+        &#34;&#34;&#34; 
+        Returns the dataarray integrated over the whole depth. The surface value is supposed equal to the most shallow value.
+        In order to deal with NaN values in deep water during integration,, all NaN are firt converted to 0, then in the output 
+        array NaN values are applied where initial surface values were NaN.
+        
+        Example
+        -------
+        &gt;&gt;&gt;data=IAP(&#39;/home/usr/lenapy/data/IAP&#39;)
+        &gt;&gt;&gt;data.xocean.heat.xocean.integ_depth()    
+        &lt;xarray.DataArray &#39;Heat&#39; (time: 156, latitude: 180, longitude: 360)&gt;
+        dask.array&lt;where, shape=(156, 180, 360), dtype=float64, chunksize=(1, 180, 360), chunktype=numpy.ndarray&gt;
+        Coordinates:
+          * latitude   (latitude) float32 -89.5 -88.5 -87.5 -86.5 ... 87.5 88.5 89.5
+          * longitude  (longitude) float32 1.0 2.0 3.0 4.0 ... 357.0 358.0 359.0 360.0
+          * time       (time) datetime64[ns] 2005-01-15 2005-02-15 ... 2017-12-15
+            depth      float32 1.0
+
+        &#34;&#34;&#34;
+        return self.add_value_surface().fillna(0).integrate(&#39;depth&#39;).where(~self._obj.isel(depth=0).isnull())
+    
+    def cum_integ_depth(self):
+        &#34;&#34;&#34; 
+        Returns a cumulative integrated dataarray integrated over the whole depth. The surface value is supposed equal to the 
+        most shallow value. A first integration layer by layer is performed, by multupliying the layer&#39;s thickness by the mean
+        value of upper and lower bound, then a cumulative sum is computed.
+        
+        Example
+        -------
+        &gt;&gt;&gt;data=IAP(&#39;/home/usr/lenapy/data/IAP&#39;)
+        &gt;&gt;&gt;data.xocean.heat.xocean.cum_integ_depth()       
+        &lt;xarray.DataArray (time: 156, latitude: 180, longitude: 360, depth: 41)&gt;
+        dask.array&lt;where, shape=(156, 180, 360, 41), dtype=float64, chunksize=(1, 180, 360, 10), chunktype=numpy.ndarray&gt;
+        Coordinates:
+          * latitude   (latitude) float32 -89.5 -88.5 -87.5 -86.5 ... 87.5 88.5 89.5
+          * longitude  (longitude) float32 1.0 2.0 3.0 4.0 ... 357.0 358.0 359.0 360.0
+          * time       (time) datetime64[ns] 2005-01-15 2005-02-15 ... 2017-12-15
+          * depth      (depth) float64 1.0 5.0 10.0 20.0 ... 1.7e+03 1.8e+03 2e+03
+
+        &#34;&#34;&#34;
+        res=self.add_value_surface()  
+        ep=res.depth.diff(&#39;depth&#39;)
+        vm=res.rolling(depth=2).mean().isel(depth=slice(1,None))
+        return (vm*ep).fillna(0).cumsum(&#39;depth&#39;).where(~self._obj.isel(depth=0).isnull())
+    
+    def above(self,depth,**kwargs):
+        &#34;&#34;&#34; 
+        Returns the dataarray integrated above a given depth, by interpolating at this depth the cumulative integrale 
+        of the data array
+
+        Example
+        -------
+        &gt;&gt;&gt;data=IAP(&#39;/home/usr/lenapy/data/IAP&#39;)
+        &gt;&gt;&gt;mld=data.xocean.mld_sigma0
+        &gt;&gt;&gt;data.xocean.heat.xocean.above(mld)       
+        &lt;xarray.DataArray (time: 156, latitude: 180, longitude: 360)&gt;
+        dask.array&lt;where, shape=(156, 180, 360), dtype=float64, chunksize=(1, 180, 360), chunktype=numpy.ndarray&gt;
+        Coordinates:
+            depth      (time, latitude, longitude) float64 dask.array&lt;chunksize=(1, 180, 360), meta=np.ndarray&gt;
+          * time       (time) datetime64[ns] 2005-01-15 2005-02-15 ... 2017-12-15
+          * latitude   (latitude) float32 -89.5 -88.5 -87.5 -86.5 ... 87.5 88.5 89.5
+          * longitude  (longitude) float32 1.0 2.0 3.0 4.0 ... 357.0 358.0 359.0 360.0
+
+        &#34;&#34;&#34;
+        return self.cum_integ_depth().xocean.add_value_surface(0.).interp({&#39;depth&#39;:depth},**kwargs)</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="lenapy.xGeo.GeoArray" href="xGeo.html#lenapy.xGeo.GeoArray">GeoArray</a></li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="lenapy.xOcean.OceanArray.above"><code class="name flex">
+<span>def <span class="ident">above</span></span>(<span>self, depth, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns the dataarray integrated above a given depth, by interpolating at this depth the cumulative integrale
+of the data array</p>
+<h2 id="example">Example</h2>
+<blockquote>
+<blockquote>
+<blockquote>
+<p>data=IAP('/home/usr/lenapy/data/IAP')
+mld=data.xocean.mld_sigma0
+data.xocean.heat.xocean.above(mld)
+<br>
+<xarray.DataArray (time: 156, latitude: 180, longitude: 360)>
+dask.array<where, shape=(156, 180, 360), dtype=float64, chunksize=(1, 180, 360), chunktype=numpy.ndarray></p>
+</blockquote>
+</blockquote>
+</blockquote>
+<h2 id="coordinates">Coordinates</h2>
+<p>depth
+(time, latitude, longitude) float64 dask.array<chunksize=(1, 180, 360), meta=np.ndarray>
+* time
+(time) datetime64[ns] 2005-01-15 2005-02-15 &hellip; 2017-12-15
+* latitude
+(latitude) float32 -89.5 -88.5 -87.5 -86.5 &hellip; 87.5 88.5 89.5
+* longitude
+(longitude) float32 1.0 2.0 3.0 4.0 &hellip; 357.0 358.0 359.0 360.0</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def above(self,depth,**kwargs):
+    &#34;&#34;&#34; 
+    Returns the dataarray integrated above a given depth, by interpolating at this depth the cumulative integrale 
+    of the data array
+
+    Example
+    -------
+    &gt;&gt;&gt;data=IAP(&#39;/home/usr/lenapy/data/IAP&#39;)
+    &gt;&gt;&gt;mld=data.xocean.mld_sigma0
+    &gt;&gt;&gt;data.xocean.heat.xocean.above(mld)       
+    &lt;xarray.DataArray (time: 156, latitude: 180, longitude: 360)&gt;
+    dask.array&lt;where, shape=(156, 180, 360), dtype=float64, chunksize=(1, 180, 360), chunktype=numpy.ndarray&gt;
+    Coordinates:
+        depth      (time, latitude, longitude) float64 dask.array&lt;chunksize=(1, 180, 360), meta=np.ndarray&gt;
+      * time       (time) datetime64[ns] 2005-01-15 2005-02-15 ... 2017-12-15
+      * latitude   (latitude) float32 -89.5 -88.5 -87.5 -86.5 ... 87.5 88.5 89.5
+      * longitude  (longitude) float32 1.0 2.0 3.0 4.0 ... 357.0 358.0 359.0 360.0
+
+    &#34;&#34;&#34;
+    return self.cum_integ_depth().xocean.add_value_surface(0.).interp({&#39;depth&#39;:depth},**kwargs)</code></pre>
+</details>
+</dd>
+<dt id="lenapy.xOcean.OceanArray.add_value_surface"><code class="name flex">
+<span>def <span class="ident">add_value_surface</span></span>(<span>self, value=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Add a surface layer with a specified value, or the previous upper value
+Parameter</p>
+<hr>
+<p>value : float or array-like, optional
+values to be added in the surface layer (depth=0). If None, the previous upper value is used to fill the new layer</p>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>added</code></strong> :&ensp;<code>DataArray</code></dt>
+<dd>new dataarray with a extra layer at depth 0 filled with required values</dd>
+</dl>
+<h2 id="example">Example</h2>
+<blockquote>
+<blockquote>
+<blockquote>
+<p>data=IAP('/home/usr/lenapy/data/IAP')
+heat=data.xocean.heat.xocean.add_value_surface()</p>
+</blockquote>
+</blockquote>
+</blockquote></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def add_value_surface(self,value=None):
+    &#34;&#34;&#34; 
+    Add a surface layer with a specified value, or the previous upper value
+    Parameter
+    ---------
+    value : float or array-like, optional
+        values to be added in the surface layer (depth=0). If None, the previous upper value is used to fill the new layer
+    
+    Returns
+    -------
+    added : DataArray
+        new dataarray with a extra layer at depth 0 filled with required values
+        
+    Example
+    -------
+    &gt;&gt;&gt;data=IAP(&#39;/home/usr/lenapy/data/IAP&#39;)
+    &gt;&gt;&gt;heat=data.xocean.heat.xocean.add_value_surface()            
+    &#34;&#34;&#34;
+    if self._obj.depth[0]!=0:
+        v0 = self._obj.isel(depth=0)
+        v0[&#39;depth&#39;]=v0[&#39;depth&#39;]*0.
+        if value!=None:
+            v0.values=v0.values*0.+value
+        return xr.concat([v0,self._obj],dim=&#39;depth&#39;)
+    else:
+        return self._obj</code></pre>
+</details>
+</dd>
+<dt id="lenapy.xOcean.OceanArray.cum_integ_depth"><code class="name flex">
+<span>def <span class="ident">cum_integ_depth</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns a cumulative integrated dataarray integrated over the whole depth. The surface value is supposed equal to the
+most shallow value. A first integration layer by layer is performed, by multupliying the layer's thickness by the mean
+value of upper and lower bound, then a cumulative sum is computed.</p>
+<h2 id="example">Example</h2>
+<blockquote>
+<blockquote>
+<blockquote>
+<p>data=IAP('/home/usr/lenapy/data/IAP')
+data.xocean.heat.xocean.cum_integ_depth()
+<br>
+<xarray.DataArray (time: 156, latitude: 180, longitude: 360, depth: 41)>
+dask.array<where, shape=(156, 180, 360, 41), dtype=float64, chunksize=(1, 180, 360, 10), chunktype=numpy.ndarray></p>
+</blockquote>
+</blockquote>
+</blockquote>
+<h2 id="coordinates">Coordinates</h2>
+<ul>
+<li>latitude
+(latitude) float32 -89.5 -88.5 -87.5 -86.5 &hellip; 87.5 88.5 89.5</li>
+<li>longitude
+(longitude) float32 1.0 2.0 3.0 4.0 &hellip; 357.0 358.0 359.0 360.0</li>
+<li>time
+(time) datetime64[ns] 2005-01-15 2005-02-15 &hellip; 2017-12-15</li>
+<li>depth
+(depth) float64 1.0 5.0 10.0 20.0 &hellip; 1.7e+03 1.8e+03 2e+03</li>
+</ul></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def cum_integ_depth(self):
+    &#34;&#34;&#34; 
+    Returns a cumulative integrated dataarray integrated over the whole depth. The surface value is supposed equal to the 
+    most shallow value. A first integration layer by layer is performed, by multupliying the layer&#39;s thickness by the mean
+    value of upper and lower bound, then a cumulative sum is computed.
+    
+    Example
+    -------
+    &gt;&gt;&gt;data=IAP(&#39;/home/usr/lenapy/data/IAP&#39;)
+    &gt;&gt;&gt;data.xocean.heat.xocean.cum_integ_depth()       
+    &lt;xarray.DataArray (time: 156, latitude: 180, longitude: 360, depth: 41)&gt;
+    dask.array&lt;where, shape=(156, 180, 360, 41), dtype=float64, chunksize=(1, 180, 360, 10), chunktype=numpy.ndarray&gt;
+    Coordinates:
+      * latitude   (latitude) float32 -89.5 -88.5 -87.5 -86.5 ... 87.5 88.5 89.5
+      * longitude  (longitude) float32 1.0 2.0 3.0 4.0 ... 357.0 358.0 359.0 360.0
+      * time       (time) datetime64[ns] 2005-01-15 2005-02-15 ... 2017-12-15
+      * depth      (depth) float64 1.0 5.0 10.0 20.0 ... 1.7e+03 1.8e+03 2e+03
+
+    &#34;&#34;&#34;
+    res=self.add_value_surface()  
+    ep=res.depth.diff(&#39;depth&#39;)
+    vm=res.rolling(depth=2).mean().isel(depth=slice(1,None))
+    return (vm*ep).fillna(0).cumsum(&#39;depth&#39;).where(~self._obj.isel(depth=0).isnull())</code></pre>
+</details>
+</dd>
+<dt id="lenapy.xOcean.OceanArray.integ_depth"><code class="name flex">
+<span>def <span class="ident">integ_depth</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns the dataarray integrated over the whole depth. The surface value is supposed equal to the most shallow value.
+In order to deal with NaN values in deep water during integration,, all NaN are firt converted to 0, then in the output
+array NaN values are applied where initial surface values were NaN.</p>
+<h2 id="example">Example</h2>
+<blockquote>
+<blockquote>
+<blockquote>
+<p>data=IAP('/home/usr/lenapy/data/IAP')
+data.xocean.heat.xocean.integ_depth()
+<br>
+<xarray.DataArray 'Heat' (time: 156, latitude: 180, longitude: 360)>
+dask.array<where, shape=(156, 180, 360), dtype=float64, chunksize=(1, 180, 360), chunktype=numpy.ndarray></p>
+</blockquote>
+</blockquote>
+</blockquote>
+<h2 id="coordinates">Coordinates</h2>
+<ul>
+<li>latitude
+(latitude) float32 -89.5 -88.5 -87.5 -86.5 &hellip; 87.5 88.5 89.5</li>
+<li>longitude
+(longitude) float32 1.0 2.0 3.0 4.0 &hellip; 357.0 358.0 359.0 360.0</li>
+<li>time
+(time) datetime64[ns] 2005-01-15 2005-02-15 &hellip; 2017-12-15
+depth
+float32 1.0</li>
+</ul></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def integ_depth(self):
+    &#34;&#34;&#34; 
+    Returns the dataarray integrated over the whole depth. The surface value is supposed equal to the most shallow value.
+    In order to deal with NaN values in deep water during integration,, all NaN are firt converted to 0, then in the output 
+    array NaN values are applied where initial surface values were NaN.
+    
+    Example
+    -------
+    &gt;&gt;&gt;data=IAP(&#39;/home/usr/lenapy/data/IAP&#39;)
+    &gt;&gt;&gt;data.xocean.heat.xocean.integ_depth()    
+    &lt;xarray.DataArray &#39;Heat&#39; (time: 156, latitude: 180, longitude: 360)&gt;
+    dask.array&lt;where, shape=(156, 180, 360), dtype=float64, chunksize=(1, 180, 360), chunktype=numpy.ndarray&gt;
+    Coordinates:
+      * latitude   (latitude) float32 -89.5 -88.5 -87.5 -86.5 ... 87.5 88.5 89.5
+      * longitude  (longitude) float32 1.0 2.0 3.0 4.0 ... 357.0 358.0 359.0 360.0
+      * time       (time) datetime64[ns] 2005-01-15 2005-02-15 ... 2017-12-15
+        depth      float32 1.0
+
+    &#34;&#34;&#34;
+    return self.add_value_surface().fillna(0).integrate(&#39;depth&#39;).where(~self._obj.isel(depth=0).isnull())</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="lenapy.xGeo.GeoArray" href="xGeo.html#lenapy.xGeo.GeoArray">GeoArray</a></b></code>:
+<ul class="hlist">
+<li><code><a title="lenapy.xGeo.GeoArray.climato" href="xGeo.html#lenapy.xGeo.GeoArray.climato">climato</a></code></li>
+<li><code><a title="lenapy.xGeo.GeoArray.diff_3pts" href="xGeo.html#lenapy.xGeo.GeoArray.diff_3pts">diff_3pts</a></code></li>
+<li><code><a title="lenapy.xGeo.GeoArray.fill_time" href="xGeo.html#lenapy.xGeo.GeoArray.fill_time">fill_time</a></code></li>
+<li><code><a title="lenapy.xGeo.GeoArray.filter" href="xGeo.html#lenapy.xGeo.GeoArray.filter">filter</a></code></li>
+<li><code><a title="lenapy.xGeo.GeoArray.interp_time" href="xGeo.html#lenapy.xGeo.GeoArray.interp_time">interp_time</a></code></li>
+<li><code><a title="lenapy.xGeo.GeoArray.isosurface" href="xGeo.html#lenapy.xGeo.GeoArray.isosurface">isosurface</a></code></li>
+<li><code><a title="lenapy.xGeo.GeoArray.mean" href="xGeo.html#lenapy.xGeo.GeoArray.mean">mean</a></code></li>
+<li><code><a title="lenapy.xGeo.GeoArray.regrid" href="xGeo.html#lenapy.xGeo.GeoArray.regrid">regrid</a></code></li>
+<li><code><a title="lenapy.xGeo.GeoArray.regridder" href="xGeo.html#lenapy.xGeo.GeoArray.regridder">regridder</a></code></li>
+<li><code><a title="lenapy.xGeo.GeoArray.sum" href="xGeo.html#lenapy.xGeo.GeoArray.sum">sum</a></code></li>
+<li><code><a title="lenapy.xGeo.GeoArray.to_datetime" href="xGeo.html#lenapy.xGeo.GeoArray.to_datetime">to_datetime</a></code></li>
+<li><code><a title="lenapy.xGeo.GeoArray.trend" href="xGeo.html#lenapy.xGeo.GeoArray.trend">trend</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="lenapy.xOcean.OceanSet"><code class="flex name class">
+<span>class <span class="ident">OceanSet</span></span>
+<span>(</span><span>xarray_obj)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>This class extends any dataset to a xOcean object, that allows to access to any TEOS10 variable simply by calling the name of the variable through the xOcean interface.
+The initial dataset must contains the fields necessary to compute the output variable (ex : temperature and salinity to compute heat, heat to compute ohc,&hellip;)</p>
+<h2 id="availabe-fields">Availabe Fields</h2>
+<p>Temperatures : one of the three types of temperature must be present in the original dataset to perform derived computation.
+temp
+: in-situ temperature
+<br>
+PT
+: potential temperature
+<br>
+CT
+: conservative temperature </p>
+<p>Salinities :
+one of the three types of salinities must be present in the original dataset to perform derived computation.
+psal
+: practical salinity<br>
+SR
+: relative salinity
+<br>
+SA
+: absolute salinity. If there is no location information (lat,lon), absolute salinity is returned equal to relative salinity</p>
+<p>Physical properties :
+P
+: pressure. If location information is present, pressure is adjusted with regard to latitude, otherwise latitude is equal to 0
+Cp
+: heat capacity
+rho
+: density
+sigma0: potential density anomaly at 0 dbar</p>
+<p>Heat content :
+heat
+: specific heat content (J/m3)
+ohc
+: local ocean heat content (J/m²), it is heat integrated over the whole ocean depth
+gohc
+: global ocean heat content (J/m²), it is ohc averaged over latitude-longitude, excluding continents
+gohc_TOA: idem gohc, including continents (where ohc=0)
+ohc_above: idem ohc, where heat is integrated above a given depth
+gohc_above: idem gohc, averaging ohc_above instead of ohc</p>
+<p>Sea level :
+slh
+: steric sea layer height anomaly (-), equal to (1. - rho/rhoref)
+ssl
+: steric sea surface level anomaly (m), it is slh integrated over the whole ocean depth
+ieeh
+: integrated expansion efficiency oh heat (m/(J/m²)), it is (ssl/ohc)</p>
+<p>Layer depth :
+ocean_depth
+: maximum depth with non Nan values for temperature
+mld_theta0
+: ocean mixed layer depth, defined by a temperature drop from 0.2°C wrt to -10m depth
+mld_sigma0
+: ocean mixed layer depth, defined by a potential density increase of 0.03kg/m3 wrt to -10m depth
+mld_sigma0var: ocean mixed layer depth, defined by a potential density equal to the potential density at -10m depth with a temperature dropped by 0.2°C</p>
+<h2 id="examples">Examples</h2>
+<blockquote>
+<blockquote>
+<blockquote>
+<p>data=IAP('/home/usr/lenapy/data/IAP')
+print(data)
+<xarray.Dataset>
+Dimensions:
+(latitude: 180, longitude: 360, time: 156, depth: 41)</p>
+</blockquote>
+</blockquote>
+</blockquote>
+<h2 id="coordinates">Coordinates</h2>
+<ul>
+<li>latitude
+(latitude) float32 -89.5 -88.5 -87.5 -86.5 &hellip; 87.5 88.5 89.5</li>
+<li>longitude
+(longitude) float32 1.0 2.0 3.0 4.0 &hellip; 357.0 358.0 359.0 360.0</li>
+<li>time
+(time) datetime64[ns] 2005-01-15 2005-02-15 &hellip; 2017-12-15</li>
+<li>depth
+(depth) float32 1.0 5.0 10.0 20.0 &hellip; 1.7e+03 1.8e+03 2e+03
+Data variables:
+temp
+(time, latitude, longitude, depth) float32 dask.array<chunksize=(1, 180, 360, 10), meta=np.ndarray>
+SA
+(time, latitude, longitude, depth) float32 dask.array<chunksize=(1, 180, 360, 10), meta=np.ndarray><blockquote>
+<blockquote>
+<blockquote>
+<p>mld=data.xocean.mld_sigma0
+print(data.xocean.ohc_above(mld))
+<xarray.DataArray 'ohc_above' (time: 156, latitude: 180, longitude: 360)>
+dask.array<where, shape=(156, 180, 360), dtype=float64, chunksize=(1, 180, 360), chunktype=numpy.ndarray></p>
+</blockquote>
+</blockquote>
+</blockquote>
+</li>
+</ul>
+<h2 id="coordinates_1">Coordinates</h2>
+<p>depth
+(time, latitude, longitude) float64 dask.array<chunksize=(1, 180, 360), meta=np.ndarray>
+* time
+(time) datetime64[ns] 2005-01-15 2005-02-15 &hellip; 2017-12-15
+* latitude
+(latitude) float32 -89.5 -88.5 -87.5 -86.5 &hellip; 87.5 88.5 89.5
+* longitude
+(longitude) float32 1.0 2.0 3.0 4.0 &hellip; 357.0 358.0 359.0 360.0</p>
+<h2 id="attributes">Attributes</h2>
+<dl>
+<dt><strong><code>long_name</code></strong></dt>
+<dd>Ocean heat content</dd>
+<dt><strong><code>units</code></strong></dt>
+<dd>
+<p>J/m²</p>
+</dd>
+</dl>
+<blockquote>
+<blockquote>
+<blockquote>
+<p>print(data.xocean.gohc)
+<xarray.DataArray 'gohc' (time: 156)>
+dask.array<truediv, shape=(156,), dtype=float64, chunksize=(1,), chunktype=numpy.ndarray></p>
+</blockquote>
+</blockquote>
+</blockquote>
+<h2 id="coordinates_2">Coordinates</h2>
+<ul>
+<li>time
+(time) datetime64[ns] 2005-01-15 2005-02-15 &hellip; 2017-12-15
+depth
+float32 1.0</li>
+</ul>
+<h2 id="attributes_1">Attributes</h2>
+<dl>
+<dt><strong><code>long_name</code></strong></dt>
+<dd>Global ocean heat content wrt to ocean surface area</dd>
+<dt><strong><code>units</code></strong></dt>
+<dd>
+<p>J/m²</p>
+</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@xr.register_dataset_accessor(&#34;xocean&#34;)
+class OceanSet(xg.GeoSet):
+    &#34;&#34;&#34;
+    This class extends any dataset to a xOcean object, that allows to access to any TEOS10 variable simply by calling the name of the variable through the xOcean interface.
+    The initial dataset must contains the fields necessary to compute the output variable (ex : temperature and salinity to compute heat, heat to compute ohc,...)
+
+    Availabe fields
+    ---------------
+    Temperatures : one of the three types of temperature must be present in the original dataset to perform derived computation.
+        temp  : in-situ temperature        
+        PT    : potential temperature     
+        CT    : conservative temperature 
+
+    Salinities :  one of the three types of salinities must be present in the original dataset to perform derived computation.
+        psal  : practical salinity  
+        SR    : relative salinity    
+        SA    : absolute salinity. If there is no location information (lat,lon), absolute salinity is returned equal to relative salinity
+
+    Physical properties :
+        P     : pressure. If location information is present, pressure is adjusted with regard to latitude, otherwise latitude is equal to 0
+        Cp    : heat capacity
+        rho   : density
+        sigma0: potential density anomaly at 0 dbar
+
+    Heat content :
+        heat  : specific heat content (J/m3)
+        ohc   : local ocean heat content (J/m²), it is heat integrated over the whole ocean depth
+        gohc  : global ocean heat content (J/m²), it is ohc averaged over latitude-longitude, excluding continents
+        gohc_TOA: idem gohc, including continents (where ohc=0)
+        ohc_above: idem ohc, where heat is integrated above a given depth
+        gohc_above: idem gohc, averaging ohc_above instead of ohc
+
+    Sea level :
+        slh   : steric sea layer height anomaly (-), equal to (1. - rho/rhoref)
+        ssl   : steric sea surface level anomaly (m), it is slh integrated over the whole ocean depth
+        ieeh  : integrated expansion efficiency oh heat (m/(J/m²)), it is (ssl/ohc)
+
+    Layer depth :
+        ocean_depth  : maximum depth with non Nan values for temperature
+        mld_theta0   : ocean mixed layer depth, defined by a temperature drop from 0.2°C wrt to -10m depth 
+        mld_sigma0   : ocean mixed layer depth, defined by a potential density increase of 0.03kg/m3 wrt to -10m depth
+        mld_sigma0var: ocean mixed layer depth, defined by a potential density equal to the potential density at -10m depth with a temperature dropped by 0.2°C
+
+    Examples
+    --------
+    &gt;&gt;&gt;data=IAP(&#39;/home/usr/lenapy/data/IAP&#39;)
+    &gt;&gt;&gt;print(data)
+    &lt;xarray.Dataset&gt;
+    Dimensions:    (latitude: 180, longitude: 360, time: 156, depth: 41)
+    Coordinates:
+      * latitude   (latitude) float32 -89.5 -88.5 -87.5 -86.5 ... 87.5 88.5 89.5
+      * longitude  (longitude) float32 1.0 2.0 3.0 4.0 ... 357.0 358.0 359.0 360.0
+      * time       (time) datetime64[ns] 2005-01-15 2005-02-15 ... 2017-12-15
+      * depth      (depth) float32 1.0 5.0 10.0 20.0 ... 1.7e+03 1.8e+03 2e+03
+    Data variables:
+        temp       (time, latitude, longitude, depth) float32 dask.array&lt;chunksize=(1, 180, 360, 10), meta=np.ndarray&gt;
+        SA         (time, latitude, longitude, depth) float32 dask.array&lt;chunksize=(1, 180, 360, 10), meta=np.ndarray&gt;
+    &gt;&gt;&gt;mld=data.xocean.mld_sigma0
+    &gt;&gt;&gt;print(data.xocean.ohc_above(mld))
+    &lt;xarray.DataArray &#39;ohc_above&#39; (time: 156, latitude: 180, longitude: 360)&gt;
+    dask.array&lt;where, shape=(156, 180, 360), dtype=float64, chunksize=(1, 180, 360), chunktype=numpy.ndarray&gt;
+    Coordinates:
+        depth      (time, latitude, longitude) float64 dask.array&lt;chunksize=(1, 180, 360), meta=np.ndarray&gt;
+      * time       (time) datetime64[ns] 2005-01-15 2005-02-15 ... 2017-12-15
+      * latitude   (latitude) float32 -89.5 -88.5 -87.5 -86.5 ... 87.5 88.5 89.5
+      * longitude  (longitude) float32 1.0 2.0 3.0 4.0 ... 357.0 358.0 359.0 360.0
+    Attributes:
+        long_name:  Ocean heat content
+        units:      J/m²
+    &gt;&gt;&gt;print(data.xocean.gohc)
+    &lt;xarray.DataArray &#39;gohc&#39; (time: 156)&gt;
+    dask.array&lt;truediv, shape=(156,), dtype=float64, chunksize=(1,), chunktype=numpy.ndarray&gt;
+    Coordinates:
+      * time     (time) datetime64[ns] 2005-01-15 2005-02-15 ... 2017-12-15
+        depth    float32 1.0
+    Attributes:
+        long_name:  Global ocean heat content wrt to ocean surface area
+        units:      J/m²
+    &#34;&#34;&#34;    
+    def __init__(self, xarray_obj):
+        super().__init__(xarray_obj)
+        fields=[&#39;temp&#39;,&#39;PT&#39;,&#39;CT&#39;,&#39;psal&#39;,&#39;SA&#39;,&#39;SR&#39;,&#39;P&#39;,&#39;rho&#39;,&#39;sigma0&#39;,&#39;Cp&#39;,&#39;heat&#39;,&#39;slh&#39;,&#39;ohc&#39;,&#39;ssl&#39;,&#39;ieeh&#39;,&#39;gohc&#39;,&#39;eeh&#39;,
+                &#39;ocean_depth&#39;,&#39;mld_theta0&#39;,&#39;mld_sigma0&#39;,&#39;mld_sigma0var&#39;]
+        for f in fields:
+            if hasattr(xarray_obj,f):
+                setattr(self,f+&#34;_&#34;,xarray_obj[f])
+            else:
+                setattr(self,f+&#34;_&#34;,None)
+                
+        if NoneType(self.heat_):
+            if NoneType(self.temp_) and NoneType(self.CT_) and NoneType(self.PT_):
+                raise ValueError(&#39;At least one temperature must be set (temp, CT or PT)&#39;)
+            if NoneType(self.SA_) and NoneType(self.SR_) and NoneType(self.psal_):
+                raise ValueError(&#39;At least one salinity must be set (psal, SA or SR)&#39;)
+
+        self.oml_theta0_threshold=0.2
+        self.oml_sigma0_threshold=0.03
+
+    @property
+    def temp(self):
+        if NoneType(self.temp_):
+            self.temp_ = proprietes(gsw.t_from_CT(self.SA,self.CT,self.P),
+                          &#39;temp&#39;,&#39;In-situ temperature&#39;,&#39;dgeC&#39;)
+        return self.temp_
+
+    @property
+    def PT(self):
+        if NoneType(self.PT_):
+            self.PT_ = proprietes(gsw.pt0_from_t(self.SA,self.temp,self.P),
+                          &#39;pt&#39;,&#39;Potential temperature&#39;,&#39;degC&#39;)
+        return self.PT_
+
+    @property
+    # Temperature conservative en fonction de la salinité absolue, temperature in-situ, et pression
+    def CT(self):
+        if NoneType(self.CT_):
+            self.CT_ = proprietes(gsw.CT_from_pt(self.SA, self.PT),
+                          &#39;CT&#39;,&#39;Conservative temperature&#39;,&#39;degC&#39;)  # degC
+        return self.CT_
+    
+    @property
+    # Salinité pratique
+    def psal(self):
+        if NoneType(self.psal_):
+            if NoneType(self.SA_) or not(&#39;latitude&#39; in self._obj.coords and &#39;longitude&#39; in self._obj.coords):
+                self.psal_=proprietes(gsw.SP_from_SR(self.SR),
+                          &#39;psal&#39;,&#39;Practical salinity&#39;,&#39;g/kg&#39;) # [g/kg]
+                                
+            else:
+                self.psal_=proprietes(gsw.SP_from_SA(self.SA,self.P,self._obj.longitude, self._obj.latitude),
+                          &#39;psal&#39;,&#39;Practical salinity&#39;,&#39;g/kg&#39;) # [g/kg]
+                                  
+        return self.psal_
+    
+    @property
+    # Salinité relative, en fonction de la salinité pratique
+    def SR(self):
+        if NoneType(self.SR_):
+            self.SR_ = proprietes(gsw.SR_from_SP(self.psal),
+                          &#39;SR&#39;,&#39;Relative salinity&#39;,&#39;g/kg&#39;) # [g/kg]
+        return self.SR_
+    
+    # Salinité absolue, en fonction de la salinité relative, la pression, et la position
+    @property
+    def SA(self):
+        if NoneType(self.SA_):
+            if &#39;latitude&#39; in self._obj.coords and &#39;longitude&#39; in self._obj.coords:
+                self.SA_ = proprietes(gsw.SA_from_SP(self.psal,self.P,self._obj.longitude, self._obj.latitude),
+                          &#39;SA&#39;,&#39;Absolute salinity&#39;,&#39;g/kg&#39;) # [g/kg]
+            else:
+                self.SA_ = self.SR
+        return self.SA_
+    
+    @property
+    # Pression en fonction de la profondeur et de la latitude
+    def P(self):
+        if NoneType(self.P_):
+            if &#39;latitude&#39; in self._obj.coords:
+                self.P_ = proprietes(gsw.p_from_z(self._obj.depth*-1, self._obj.latitude),
+                                  &#39;p_db&#39;,&#39;Pressure&#39;,&#39;dbar&#39;)
+            else:
+                self.P_ = proprietes(gsw.p_from_z(self._obj.depth*-1, 0),
+                                  &#39;p_db&#39;,&#39;Pressure&#39;,&#39;dbar&#39;)
+        return self.P_
+
+    @property
+    # Densité en fonction de la salinité absolue, la température conservative et la pression
+    def rho(self):
+        if NoneType(self.rho_):
+            self.rho_ = proprietes(gsw.rho(self.SA, self.CT, self.P),
+                          &#39;rho&#39;,&#39;Density&#39;,&#39;kg/m3&#39;) # [kg/m3]
+        return self.rho_
+    
+    @property
+    # Anomalie de densité potentielle à 0dbar en fonction de la salinité absolue et la température conservative
+    def sigma0(self):
+        if NoneType(self.sigma0_):
+            self.sigma0_ = proprietes(gsw.sigma0(self.SA, self.CT),
+                          &#39;sigma0&#39;,&#39;Potential Density Anomaly&#39;,&#39;kg/m3&#39;) # [kg/m3]
+        return self.sigma0_
+    
+    @property
+    # Capacité calorifique en fonction de la salinité absolue, la température in-situ et la pression
+    def Cp(self):
+        if NoneType(self.Cp_):
+            self.Cp_ = proprietes(gsw.cp_t_exact(self.SA, self.temp, self.P),
+                          &#39;Cp&#39;,&#39;Specific heat capacity&#39;, &#39;J/kg/degC&#39;) # [j/kg/degC)]
+        return self.Cp_
+    
+    @property
+    # Contenu en chaleur des couches en fonction de la densité, la capacité calorifique, et la température conservative
+    def heat(self):
+        if NoneType(self.heat_):
+            self.heat_ = proprietes((self.rho * self.Cp * self.CT),
+                          &#39;Heat&#39;,&#39;Heat content&#39;,&#39;J/m3&#39;) # [J/m3]
+        return self.heat_
+    
+    @property
+    # Anomalie relative de densité par rapport à une référence (0,35)
+    def slh(self):
+        if NoneType(self.slh_):
+            if &#39;latitude&#39; in self._obj.coords:
+                rhoref = gsw.rho(gsw.SA_from_SP(35,self.P,self._obj.longitude, self._obj.latitude),
+                                 0, self.P)
+            else:
+                rhoref = gsw.rho(gsw.SR_from_SP(35), 0, self.P)
+        return  proprietes(((1. - self.rho/rhoref)),
+                           &#39;slh&#39;,&#39;Steric sea layer height anomaly&#39;,&#39;-&#39;) # [-]
+    
+    @property
+    # Contenu en chaleur de la colonne
+    def ohc(self):
+        if NoneType(self.ohc_):
+            self.ohc_ = proprietes(self.heat.xocean.integ_depth(),
+                          &#39;ohc&#39;,&#39;Ocean heat content&#39;,&#39;J/m²&#39;) # [J/m²]
+        return self.ohc_
+    
+    @property
+    # Ecart de hauteur d&#39;eau de la colonne par rapport à une référence (0,35)
+    def ssl(self):
+        if NoneType(self.ssl_):
+            self.ssl_ = proprietes(self.slh.xocean.integ_depth(),
+                          &#39;ssl&#39;,&#39;Steric sea surface level anomaly&#39;,&#39;m&#39;) # [m]
+        return self.ssl_
+    
+    @property
+    # IEEH de la colonne (grandeur surfacique)
+    def ieeh(self):
+        if NoneType(self.ieeh_):
+            self.ieeh_ = proprietes(self.ssl/self.ohc,
+                          &#39;IEEH&#39;,&#39;Integrated expansion efficiency oh heat&#39;,&#39;m/(J/m²)&#39;) # [m/(J/m²)]
+        return self.ieeh_
+
+    @property
+    def gohc(self):
+        return proprietes(self.ohc.xocean.mean([&#39;latitude&#39;,&#39;longitude&#39;],weights=[&#39;latitude&#39;]),
+                         &#39;gohc&#39;,&#39;Global ocean heat content wrt to ocean surface area&#39;,&#39;J/m²&#39;)
+
+    @property
+    def gohc_TOA(self):
+        return proprietes(self.ohc.xocean.mean([&#39;latitude&#39;,&#39;longitude&#39;],weights=[&#39;latitude&#39;],na_eq_zero=True),
+                         &#39;gohc&#39;,&#39;Global ocean heat content wrt to TOA area&#39;,&#39;J/m²&#39;)
+    
+    def ohc_above(self,target):
+        res=self.heat.xocean.above(target)
+        return proprietes(res.where(res!=0),
+            &#39;ohc_above&#39;,&#39;Ocean heat content&#39;,&#39;J/m²&#39;) # [J/m²]
+        
+    def gohc_above(self,target,na_eq_zero=False):
+        return proprietes(self.ohc_above(target).xocean.mean([&#39;latitude&#39;,&#39;longitude&#39;],weights=[&#39;latitude&#39;],na_eq_zero=na_eq_zero),
+                         &#39;gohc_above&#39;,&#39;Global ocean heat content above target&#39;,&#39;J/m²&#39;)
+
+
+    @property
+    def ocean_depth(self):
+        if NoneType(self.ocean_depth_):
+            self.ocean_depth_=xr.where(self.temp.isel(time=0).isnull(),np.nan,self._obj.depth).max(&#39;depth&#39;)
+        return self.ocean_depth_
+        
+        
+    # Profondeur de l&#39;Ocean Mixed Layer definie par une variation de temperature potentielle de 0.2°C par rapport à -10m
+    @property
+    def mld_theta0(self):
+
+        theta0=self.PT.interp(depth=10).drop(&#34;depth&#34;)
+        mld1=self.PT.xgeo.isosurface(theta0-self.oml_theta0_threshold,&#34;depth&#34;,upper=True)
+        mld2=self.PT.xgeo.isosurface(theta0+self.oml_theta0_threshold,&#34;depth&#34;,upper=True)
+        mld1=mld1.fillna(mld2)
+        mld2=mld2.fillna(mld1)
+        self.mld_theta0_ = xr.where(mld2&lt;mld1,mld2,mld1).rename(&#39;OMLD_theta0&#39;).fillna(self.ocean_depth)
+        
+        return self.mld_theta0_
+
+    # Profondeur de l&#39;Ocean Mixed Layer definie par une diminution de temperature potentielle de 0.2°C par rapport à -10m
+    @property
+    def mld_theta0minus_only(self):
+
+        theta0=self.PT.interp(depth=10).drop(&#34;depth&#34;)
+        self.mld_theta0_ = self.PT.xgeo.isosurface(theta0-self.oml_theta0_threshold,&#34;depth&#34;,upper=True).\
+            rename(&#39;OMLD_theta0minus_only&#39;).fillna(self.ocean_depth)
+        
+        return self.mld_theta0_
+    
+    # Profondeur de l&#39;Ocean Mixed Layer definie par une augmentation de densité potentielle de 0.03kg/m3 par rapport à -10m
+    @property    
+    def mld_sigma0(self):
+
+        sigma0=self.sigma0.interp(depth=10).drop(&#34;depth&#34;)
+        self.mld_sigma0_=self.sigma0.xgeo.isosurface(sigma0+self.oml_sigma0_threshold,&#34;depth&#34;,upper=True).\
+            rename(&#39;OMLD_sigma0&#39;).fillna(self.ocean_depth)
+        
+        return self.mld_sigma0_
+    
+    # Profondeur de l&#39;Ocean Mixed Layer definie par une augmentation de densité potentielle correspondant à -0.2°C par rapport à -10m
+    @property
+    def mld_sigma0var(self):
+        ref = self._obj.interp(depth=10)
+        ref[&#39;PT&#39;]=ref[&#39;PT&#39;]-self.oml_theta0_threshold
+        self.mld_sigma0var_=self.sigma0.xgeo.isosurface(ref.xocean.sigma0.drop(&#34;depth&#34;),&#34;depth&#34;,upper=True).\
+            rename(&#39;OMLD_sigma0var&#39;).fillna(self.ocean_depth)
+        
+        return self.mld_sigma0var_</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="lenapy.xGeo.GeoSet" href="xGeo.html#lenapy.xGeo.GeoSet">GeoSet</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="lenapy.xOcean.OceanSet.CT"><code class="name">var <span class="ident">CT</span></code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+# Temperature conservative en fonction de la salinité absolue, temperature in-situ, et pression
+def CT(self):
+    if NoneType(self.CT_):
+        self.CT_ = proprietes(gsw.CT_from_pt(self.SA, self.PT),
+                      &#39;CT&#39;,&#39;Conservative temperature&#39;,&#39;degC&#39;)  # degC
+    return self.CT_</code></pre>
+</details>
+</dd>
+<dt id="lenapy.xOcean.OceanSet.Cp"><code class="name">var <span class="ident">Cp</span></code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+# Capacité calorifique en fonction de la salinité absolue, la température in-situ et la pression
+def Cp(self):
+    if NoneType(self.Cp_):
+        self.Cp_ = proprietes(gsw.cp_t_exact(self.SA, self.temp, self.P),
+                      &#39;Cp&#39;,&#39;Specific heat capacity&#39;, &#39;J/kg/degC&#39;) # [j/kg/degC)]
+    return self.Cp_</code></pre>
+</details>
+</dd>
+<dt id="lenapy.xOcean.OceanSet.P"><code class="name">var <span class="ident">P</span></code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+# Pression en fonction de la profondeur et de la latitude
+def P(self):
+    if NoneType(self.P_):
+        if &#39;latitude&#39; in self._obj.coords:
+            self.P_ = proprietes(gsw.p_from_z(self._obj.depth*-1, self._obj.latitude),
+                              &#39;p_db&#39;,&#39;Pressure&#39;,&#39;dbar&#39;)
+        else:
+            self.P_ = proprietes(gsw.p_from_z(self._obj.depth*-1, 0),
+                              &#39;p_db&#39;,&#39;Pressure&#39;,&#39;dbar&#39;)
+    return self.P_</code></pre>
+</details>
+</dd>
+<dt id="lenapy.xOcean.OceanSet.PT"><code class="name">var <span class="ident">PT</span></code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def PT(self):
+    if NoneType(self.PT_):
+        self.PT_ = proprietes(gsw.pt0_from_t(self.SA,self.temp,self.P),
+                      &#39;pt&#39;,&#39;Potential temperature&#39;,&#39;degC&#39;)
+    return self.PT_</code></pre>
+</details>
+</dd>
+<dt id="lenapy.xOcean.OceanSet.SA"><code class="name">var <span class="ident">SA</span></code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def SA(self):
+    if NoneType(self.SA_):
+        if &#39;latitude&#39; in self._obj.coords and &#39;longitude&#39; in self._obj.coords:
+            self.SA_ = proprietes(gsw.SA_from_SP(self.psal,self.P,self._obj.longitude, self._obj.latitude),
+                      &#39;SA&#39;,&#39;Absolute salinity&#39;,&#39;g/kg&#39;) # [g/kg]
+        else:
+            self.SA_ = self.SR
+    return self.SA_</code></pre>
+</details>
+</dd>
+<dt id="lenapy.xOcean.OceanSet.SR"><code class="name">var <span class="ident">SR</span></code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+# Salinité relative, en fonction de la salinité pratique
+def SR(self):
+    if NoneType(self.SR_):
+        self.SR_ = proprietes(gsw.SR_from_SP(self.psal),
+                      &#39;SR&#39;,&#39;Relative salinity&#39;,&#39;g/kg&#39;) # [g/kg]
+    return self.SR_</code></pre>
+</details>
+</dd>
+<dt id="lenapy.xOcean.OceanSet.gohc"><code class="name">var <span class="ident">gohc</span></code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def gohc(self):
+    return proprietes(self.ohc.xocean.mean([&#39;latitude&#39;,&#39;longitude&#39;],weights=[&#39;latitude&#39;]),
+                     &#39;gohc&#39;,&#39;Global ocean heat content wrt to ocean surface area&#39;,&#39;J/m²&#39;)</code></pre>
+</details>
+</dd>
+<dt id="lenapy.xOcean.OceanSet.gohc_TOA"><code class="name">var <span class="ident">gohc_TOA</span></code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def gohc_TOA(self):
+    return proprietes(self.ohc.xocean.mean([&#39;latitude&#39;,&#39;longitude&#39;],weights=[&#39;latitude&#39;],na_eq_zero=True),
+                     &#39;gohc&#39;,&#39;Global ocean heat content wrt to TOA area&#39;,&#39;J/m²&#39;)</code></pre>
+</details>
+</dd>
+<dt id="lenapy.xOcean.OceanSet.heat"><code class="name">var <span class="ident">heat</span></code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+# Contenu en chaleur des couches en fonction de la densité, la capacité calorifique, et la température conservative
+def heat(self):
+    if NoneType(self.heat_):
+        self.heat_ = proprietes((self.rho * self.Cp * self.CT),
+                      &#39;Heat&#39;,&#39;Heat content&#39;,&#39;J/m3&#39;) # [J/m3]
+    return self.heat_</code></pre>
+</details>
+</dd>
+<dt id="lenapy.xOcean.OceanSet.ieeh"><code class="name">var <span class="ident">ieeh</span></code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+# IEEH de la colonne (grandeur surfacique)
+def ieeh(self):
+    if NoneType(self.ieeh_):
+        self.ieeh_ = proprietes(self.ssl/self.ohc,
+                      &#39;IEEH&#39;,&#39;Integrated expansion efficiency oh heat&#39;,&#39;m/(J/m²)&#39;) # [m/(J/m²)]
+    return self.ieeh_</code></pre>
+</details>
+</dd>
+<dt id="lenapy.xOcean.OceanSet.mld_sigma0"><code class="name">var <span class="ident">mld_sigma0</span></code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property    
+def mld_sigma0(self):
+
+    sigma0=self.sigma0.interp(depth=10).drop(&#34;depth&#34;)
+    self.mld_sigma0_=self.sigma0.xgeo.isosurface(sigma0+self.oml_sigma0_threshold,&#34;depth&#34;,upper=True).\
+        rename(&#39;OMLD_sigma0&#39;).fillna(self.ocean_depth)
+    
+    return self.mld_sigma0_</code></pre>
+</details>
+</dd>
+<dt id="lenapy.xOcean.OceanSet.mld_sigma0var"><code class="name">var <span class="ident">mld_sigma0var</span></code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def mld_sigma0var(self):
+    ref = self._obj.interp(depth=10)
+    ref[&#39;PT&#39;]=ref[&#39;PT&#39;]-self.oml_theta0_threshold
+    self.mld_sigma0var_=self.sigma0.xgeo.isosurface(ref.xocean.sigma0.drop(&#34;depth&#34;),&#34;depth&#34;,upper=True).\
+        rename(&#39;OMLD_sigma0var&#39;).fillna(self.ocean_depth)
+    
+    return self.mld_sigma0var_</code></pre>
+</details>
+</dd>
+<dt id="lenapy.xOcean.OceanSet.mld_theta0"><code class="name">var <span class="ident">mld_theta0</span></code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def mld_theta0(self):
+
+    theta0=self.PT.interp(depth=10).drop(&#34;depth&#34;)
+    mld1=self.PT.xgeo.isosurface(theta0-self.oml_theta0_threshold,&#34;depth&#34;,upper=True)
+    mld2=self.PT.xgeo.isosurface(theta0+self.oml_theta0_threshold,&#34;depth&#34;,upper=True)
+    mld1=mld1.fillna(mld2)
+    mld2=mld2.fillna(mld1)
+    self.mld_theta0_ = xr.where(mld2&lt;mld1,mld2,mld1).rename(&#39;OMLD_theta0&#39;).fillna(self.ocean_depth)
+    
+    return self.mld_theta0_</code></pre>
+</details>
+</dd>
+<dt id="lenapy.xOcean.OceanSet.mld_theta0minus_only"><code class="name">var <span class="ident">mld_theta0minus_only</span></code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def mld_theta0minus_only(self):
+
+    theta0=self.PT.interp(depth=10).drop(&#34;depth&#34;)
+    self.mld_theta0_ = self.PT.xgeo.isosurface(theta0-self.oml_theta0_threshold,&#34;depth&#34;,upper=True).\
+        rename(&#39;OMLD_theta0minus_only&#39;).fillna(self.ocean_depth)
+    
+    return self.mld_theta0_</code></pre>
+</details>
+</dd>
+<dt id="lenapy.xOcean.OceanSet.ocean_depth"><code class="name">var <span class="ident">ocean_depth</span></code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def ocean_depth(self):
+    if NoneType(self.ocean_depth_):
+        self.ocean_depth_=xr.where(self.temp.isel(time=0).isnull(),np.nan,self._obj.depth).max(&#39;depth&#39;)
+    return self.ocean_depth_</code></pre>
+</details>
+</dd>
+<dt id="lenapy.xOcean.OceanSet.ohc"><code class="name">var <span class="ident">ohc</span></code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+# Contenu en chaleur de la colonne
+def ohc(self):
+    if NoneType(self.ohc_):
+        self.ohc_ = proprietes(self.heat.xocean.integ_depth(),
+                      &#39;ohc&#39;,&#39;Ocean heat content&#39;,&#39;J/m²&#39;) # [J/m²]
+    return self.ohc_</code></pre>
+</details>
+</dd>
+<dt id="lenapy.xOcean.OceanSet.psal"><code class="name">var <span class="ident">psal</span></code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+# Salinité pratique
+def psal(self):
+    if NoneType(self.psal_):
+        if NoneType(self.SA_) or not(&#39;latitude&#39; in self._obj.coords and &#39;longitude&#39; in self._obj.coords):
+            self.psal_=proprietes(gsw.SP_from_SR(self.SR),
+                      &#39;psal&#39;,&#39;Practical salinity&#39;,&#39;g/kg&#39;) # [g/kg]
+                            
+        else:
+            self.psal_=proprietes(gsw.SP_from_SA(self.SA,self.P,self._obj.longitude, self._obj.latitude),
+                      &#39;psal&#39;,&#39;Practical salinity&#39;,&#39;g/kg&#39;) # [g/kg]
+                              
+    return self.psal_</code></pre>
+</details>
+</dd>
+<dt id="lenapy.xOcean.OceanSet.rho"><code class="name">var <span class="ident">rho</span></code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+# Densité en fonction de la salinité absolue, la température conservative et la pression
+def rho(self):
+    if NoneType(self.rho_):
+        self.rho_ = proprietes(gsw.rho(self.SA, self.CT, self.P),
+                      &#39;rho&#39;,&#39;Density&#39;,&#39;kg/m3&#39;) # [kg/m3]
+    return self.rho_</code></pre>
+</details>
+</dd>
+<dt id="lenapy.xOcean.OceanSet.sigma0"><code class="name">var <span class="ident">sigma0</span></code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+# Anomalie de densité potentielle à 0dbar en fonction de la salinité absolue et la température conservative
+def sigma0(self):
+    if NoneType(self.sigma0_):
+        self.sigma0_ = proprietes(gsw.sigma0(self.SA, self.CT),
+                      &#39;sigma0&#39;,&#39;Potential Density Anomaly&#39;,&#39;kg/m3&#39;) # [kg/m3]
+    return self.sigma0_</code></pre>
+</details>
+</dd>
+<dt id="lenapy.xOcean.OceanSet.slh"><code class="name">var <span class="ident">slh</span></code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+# Anomalie relative de densité par rapport à une référence (0,35)
+def slh(self):
+    if NoneType(self.slh_):
+        if &#39;latitude&#39; in self._obj.coords:
+            rhoref = gsw.rho(gsw.SA_from_SP(35,self.P,self._obj.longitude, self._obj.latitude),
+                             0, self.P)
+        else:
+            rhoref = gsw.rho(gsw.SR_from_SP(35), 0, self.P)
+    return  proprietes(((1. - self.rho/rhoref)),
+                       &#39;slh&#39;,&#39;Steric sea layer height anomaly&#39;,&#39;-&#39;) # [-]</code></pre>
+</details>
+</dd>
+<dt id="lenapy.xOcean.OceanSet.ssl"><code class="name">var <span class="ident">ssl</span></code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+# Ecart de hauteur d&#39;eau de la colonne par rapport à une référence (0,35)
+def ssl(self):
+    if NoneType(self.ssl_):
+        self.ssl_ = proprietes(self.slh.xocean.integ_depth(),
+                      &#39;ssl&#39;,&#39;Steric sea surface level anomaly&#39;,&#39;m&#39;) # [m]
+    return self.ssl_</code></pre>
+</details>
+</dd>
+<dt id="lenapy.xOcean.OceanSet.temp"><code class="name">var <span class="ident">temp</span></code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def temp(self):
+    if NoneType(self.temp_):
+        self.temp_ = proprietes(gsw.t_from_CT(self.SA,self.CT,self.P),
+                      &#39;temp&#39;,&#39;In-situ temperature&#39;,&#39;dgeC&#39;)
+    return self.temp_</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Methods</h3>
+<dl>
+<dt id="lenapy.xOcean.OceanSet.gohc_above"><code class="name flex">
+<span>def <span class="ident">gohc_above</span></span>(<span>self, target, na_eq_zero=False)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def gohc_above(self,target,na_eq_zero=False):
+    return proprietes(self.ohc_above(target).xocean.mean([&#39;latitude&#39;,&#39;longitude&#39;],weights=[&#39;latitude&#39;],na_eq_zero=na_eq_zero),
+                     &#39;gohc_above&#39;,&#39;Global ocean heat content above target&#39;,&#39;J/m²&#39;)</code></pre>
+</details>
+</dd>
+<dt id="lenapy.xOcean.OceanSet.ohc_above"><code class="name flex">
+<span>def <span class="ident">ohc_above</span></span>(<span>self, target)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def ohc_above(self,target):
+    res=self.heat.xocean.above(target)
+    return proprietes(res.where(res!=0),
+        &#39;ohc_above&#39;,&#39;Ocean heat content&#39;,&#39;J/m²&#39;) # [J/m²]</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="lenapy.xGeo.GeoSet" href="xGeo.html#lenapy.xGeo.GeoSet">GeoSet</a></b></code>:
+<ul class="hlist">
+<li><code><a title="lenapy.xGeo.GeoSet.climato" href="xGeo.html#lenapy.xGeo.GeoSet.climato">climato</a></code></li>
+<li><code><a title="lenapy.xGeo.GeoSet.fill_time" href="xGeo.html#lenapy.xGeo.GeoSet.fill_time">fill_time</a></code></li>
+<li><code><a title="lenapy.xGeo.GeoSet.filter" href="xGeo.html#lenapy.xGeo.GeoSet.filter">filter</a></code></li>
+<li><code><a title="lenapy.xGeo.GeoSet.interp_time" href="xGeo.html#lenapy.xGeo.GeoSet.interp_time">interp_time</a></code></li>
+<li><code><a title="lenapy.xGeo.GeoSet.isosurface" href="xGeo.html#lenapy.xGeo.GeoSet.isosurface">isosurface</a></code></li>
+<li><code><a title="lenapy.xGeo.GeoSet.mean" href="xGeo.html#lenapy.xGeo.GeoSet.mean">mean</a></code></li>
+<li><code><a title="lenapy.xGeo.GeoSet.regrid" href="xGeo.html#lenapy.xGeo.GeoSet.regrid">regrid</a></code></li>
+<li><code><a title="lenapy.xGeo.GeoSet.regridder" href="xGeo.html#lenapy.xGeo.GeoSet.regridder">regridder</a></code></li>
+<li><code><a title="lenapy.xGeo.GeoSet.sum" href="xGeo.html#lenapy.xGeo.GeoSet.sum">sum</a></code></li>
+<li><code><a title="lenapy.xGeo.GeoSet.to_datetime" href="xGeo.html#lenapy.xGeo.GeoSet.to_datetime">to_datetime</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="lenapy" href="index.html">lenapy</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="">
+<li><code><a title="lenapy.xOcean.NoneType" href="#lenapy.xOcean.NoneType">NoneType</a></code></li>
+<li><code><a title="lenapy.xOcean.proprietes" href="#lenapy.xOcean.proprietes">proprietes</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="lenapy.xOcean.OceanArray" href="#lenapy.xOcean.OceanArray">OceanArray</a></code></h4>
+<ul class="">
+<li><code><a title="lenapy.xOcean.OceanArray.above" href="#lenapy.xOcean.OceanArray.above">above</a></code></li>
+<li><code><a title="lenapy.xOcean.OceanArray.add_value_surface" href="#lenapy.xOcean.OceanArray.add_value_surface">add_value_surface</a></code></li>
+<li><code><a title="lenapy.xOcean.OceanArray.cum_integ_depth" href="#lenapy.xOcean.OceanArray.cum_integ_depth">cum_integ_depth</a></code></li>
+<li><code><a title="lenapy.xOcean.OceanArray.integ_depth" href="#lenapy.xOcean.OceanArray.integ_depth">integ_depth</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="lenapy.xOcean.OceanSet" href="#lenapy.xOcean.OceanSet">OceanSet</a></code></h4>
+<ul class="">
+<li><code><a title="lenapy.xOcean.OceanSet.CT" href="#lenapy.xOcean.OceanSet.CT">CT</a></code></li>
+<li><code><a title="lenapy.xOcean.OceanSet.Cp" href="#lenapy.xOcean.OceanSet.Cp">Cp</a></code></li>
+<li><code><a title="lenapy.xOcean.OceanSet.P" href="#lenapy.xOcean.OceanSet.P">P</a></code></li>
+<li><code><a title="lenapy.xOcean.OceanSet.PT" href="#lenapy.xOcean.OceanSet.PT">PT</a></code></li>
+<li><code><a title="lenapy.xOcean.OceanSet.SA" href="#lenapy.xOcean.OceanSet.SA">SA</a></code></li>
+<li><code><a title="lenapy.xOcean.OceanSet.SR" href="#lenapy.xOcean.OceanSet.SR">SR</a></code></li>
+<li><code><a title="lenapy.xOcean.OceanSet.gohc" href="#lenapy.xOcean.OceanSet.gohc">gohc</a></code></li>
+<li><code><a title="lenapy.xOcean.OceanSet.gohc_TOA" href="#lenapy.xOcean.OceanSet.gohc_TOA">gohc_TOA</a></code></li>
+<li><code><a title="lenapy.xOcean.OceanSet.gohc_above" href="#lenapy.xOcean.OceanSet.gohc_above">gohc_above</a></code></li>
+<li><code><a title="lenapy.xOcean.OceanSet.heat" href="#lenapy.xOcean.OceanSet.heat">heat</a></code></li>
+<li><code><a title="lenapy.xOcean.OceanSet.ieeh" href="#lenapy.xOcean.OceanSet.ieeh">ieeh</a></code></li>
+<li><code><a title="lenapy.xOcean.OceanSet.mld_sigma0" href="#lenapy.xOcean.OceanSet.mld_sigma0">mld_sigma0</a></code></li>
+<li><code><a title="lenapy.xOcean.OceanSet.mld_sigma0var" href="#lenapy.xOcean.OceanSet.mld_sigma0var">mld_sigma0var</a></code></li>
+<li><code><a title="lenapy.xOcean.OceanSet.mld_theta0" href="#lenapy.xOcean.OceanSet.mld_theta0">mld_theta0</a></code></li>
+<li><code><a title="lenapy.xOcean.OceanSet.mld_theta0minus_only" href="#lenapy.xOcean.OceanSet.mld_theta0minus_only">mld_theta0minus_only</a></code></li>
+<li><code><a title="lenapy.xOcean.OceanSet.ocean_depth" href="#lenapy.xOcean.OceanSet.ocean_depth">ocean_depth</a></code></li>
+<li><code><a title="lenapy.xOcean.OceanSet.ohc" href="#lenapy.xOcean.OceanSet.ohc">ohc</a></code></li>
+<li><code><a title="lenapy.xOcean.OceanSet.ohc_above" href="#lenapy.xOcean.OceanSet.ohc_above">ohc_above</a></code></li>
+<li><code><a title="lenapy.xOcean.OceanSet.psal" href="#lenapy.xOcean.OceanSet.psal">psal</a></code></li>
+<li><code><a title="lenapy.xOcean.OceanSet.rho" href="#lenapy.xOcean.OceanSet.rho">rho</a></code></li>
+<li><code><a title="lenapy.xOcean.OceanSet.sigma0" href="#lenapy.xOcean.OceanSet.sigma0">sigma0</a></code></li>
+<li><code><a title="lenapy.xOcean.OceanSet.slh" href="#lenapy.xOcean.OceanSet.slh">slh</a></code></li>
+<li><code><a title="lenapy.xOcean.OceanSet.ssl" href="#lenapy.xOcean.OceanSet.ssl">ssl</a></code></li>
+<li><code><a title="lenapy.xOcean.OceanSet.temp" href="#lenapy.xOcean.OceanSet.temp">temp</a></code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+</footer>
+</body>
+</html>
