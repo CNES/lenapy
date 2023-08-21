@@ -1,5 +1,5 @@
-Module lenapy.produits
-======================
+Module produits
+===============
 This module allows to load temperature and salinity data from different products and format the data with unified definition for variables and coordinates, compatible with the use of xOcean :
 standardized coordinates names : latitude, longitude, depth, time
 standardized variables names : temp or PT or CT for temperature, psal, SA, SR for salinity
@@ -50,8 +50,6 @@ Functions
     ----------
     rep : string
         path of the product's directory
-    corr : {"g10","l09","c13","c14"}
-        correction applyed
     ymin : int, optional
         lowest bound of the time intervalle to be loaded (year)
     ymax : int, optional
