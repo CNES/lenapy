@@ -562,8 +562,6 @@ def ECCO(rep,chunks=None,ymin=0,ymax=9999,filtre='',**kwargs):
     ----------
     rep : string
         path of the product's directory
-    corr : {"g10","l09","c13","c14"}
-        correction applyed
     ymin : int, optional
         lowest bound of the time intervalle to be loaded (year)
     ymax : int, optional
