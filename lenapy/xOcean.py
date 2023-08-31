@@ -348,9 +348,9 @@ class OceanArray(xg.GeoArray):
         """
         if self._obj.depth[0]!=0:
             v0 = self._obj.isel(depth=0)
-            v0['depth']=v0['depth']*0.
+            v0['depth']=xr.zeros_like(v0.depth)
             if value!=None:
-                v0.values=v0.values*0.+value
+                v0=xr.full_like(v0,fill_value=value)
             return xr.concat([v0,self._obj],dim='depth')
         else:
             return self._obj
