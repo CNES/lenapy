@@ -201,7 +201,7 @@ class GeoSet:
         return xr.Dataset(res)
     
     
-    def isosurface(self, dim, criterion, upper=False):
+    def isosurface(self, criterion, dim, coord=None,upper=False):
         """
         Compute the isosurface along the specified coordinate at the value defined  by the kwarg field=value.
         For example, we want to compute the isosurface defined by a temperature of 10°C along depth dimension.
@@ -211,10 +211,12 @@ class GeoSet:
         
         Parameters
         ----------
-        dim : string
-            dimension along which to compute the isosurface
         criterion : dict
             one-entry dictionnary with the key equal to a variable of the dataset, and the value equal to the isosurface criterion
+        dim : string
+            dimension along which to compute the isosurface
+        coord : str (optional)
+            The field coordinate to interpolate. If absent, coordinate is supposed to be "dim"
         upper : boolean (default=False)
             order to perform the research of the criterion value. If False, from the end, if True, form the beggining
             
@@ -245,15 +247,17 @@ class GeoSet:
         """
         # Calcule l'isosurface selon la coordonnée 'dim' pour le champ défini par le dictionnaire **kwargs (ex : temp=10)
         # Retourne tous les champs interpolés sur cette isosurface (pour ceux ayant "dim" en coordonnée), ainsi que l'isosurface elle-même
+        if coord==None:
+            coord=dim
         k=list(criterion.keys())[0]
         if not(k in self._obj.data_vars):
             raise KeyError("%s not in %s"%(criterion[0],list(data_vars)))
             
-        r=isosurface(self._obj[k],criterion[k],dim, upper=upper)
+        r=isosurface(self._obj[k],criterion[k],dim,coord,upper=upper)
         res=xr.Dataset()
         for var in self._obj.data_vars:
-            if dim in self._obj[var].coords:
-                res[var]=self._obj[var].interp({dim:r})
+            if coord in self._obj[var].coords:
+                res[var]=self._obj[var].interp({coord:r})
             else:
                 res[var]=self._obj[var]
 
@@ -491,8 +495,8 @@ class GeoArray:
         elif type(weights)==list or type(weights)==str:
             w=1
             if 'latitude' in weights and 'latitude' in self._obj.coords:
-                # poids = cos(latitude)
-                w=np.cos(np.radians(self._obj.latitude))
+                # poids = cos(latitude)*earth oblatness factor
+                w=np.cos(np.radians(self._obj.latitude ))/(1+LNPY_f*np.cos(2*np.radians(self._obj.latitude )))**2
             if 'depth' in weights and 'depth' in self._obj.coords:
                 # poids *= épaisseur des couches (l'épaisseur de la première couche est la première profondeur)
                 w=w*xr.concat((self._obj.depth.isel(depth=0),self._obj.depth.diff(dim='depth')),dim='depth')
@@ -540,8 +544,8 @@ class GeoArray:
         elif type(weights)==list or type(weights)==str:
             w=1
             if 'latitude' in weights and 'latitude' in self._obj.coords:
-                # poids = cos(latitude)
-                w=np.cos(np.radians(self._obj.latitude))
+                # poids = cos(latitude)*earth oblatness factor
+                w=np.cos(np.radians(self._obj.latitude ))/(1+LNPY_f*np.cos(2*np.radians(self._obj.latitude )))**2
             if 'depth' in weights and 'depth' in self._obj.coords:
                 # poids *= épaisseur des couches (l'épaisseur de la première couche est la première profondeur)
                 w=w*xr.concat((self._obj.depth.isel(depth=0),self._obj.depth.diff(dim='depth')),dim='depth')
@@ -551,7 +555,7 @@ class GeoArray:
             return data.weighted(weights).sum(argsum,**kwargs)
     
 
-    def isosurface(self, target, dim, upper=False):   
+    def isosurface(self, target, dim, coord=None, upper=False):   
         """
         Compute the isosurface along the specified coordinate at the value defined  by the target.
         Data is supposed to be monotonic along the chosen dimension. If not, the first fitting value encountered is retained,
@@ -563,6 +567,8 @@ class GeoArray:
             criterion value to be satisfied at the iso surface
         dim : string
             dimension along which to compute the isosurface
+        coord : str (optional)
+            The field coordinate to interpolate. If absent, coordinate is supposed to be "dim"
         upper : boolean (default=False)
             order to perform the research of the criterion value. If False, from the end, if True, form the beggining
             
@@ -582,7 +588,7 @@ class GeoArray:
           * longitude  (longitude) float32 1.0 2.0 3.0 4.0 ... 177.0 178.0 179.0 180.0
             time       datetime64[ns] 2005-01-15
         """        
-        return isosurface(self._obj,target,dim,upper=upper)
+        return isosurface(self._obj,target,dim,coord,upper=upper)
 
     def regridder(self,gr_out,*args,mask_in=None,**kwargs):
         """

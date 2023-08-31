@@ -70,7 +70,7 @@ def filter(data,filter_name=lanczos,q=3,**kwargs):
     return v3+v0
 
     
-def isosurface(data, target, dim, upper=False):
+def isosurface(data, target, dim, coord=None, upper=False):
     """
     Linearly interpolate a coordinate isosurface where a field
     equals a target
@@ -83,6 +83,8 @@ def isosurface(data, target, dim, upper=False):
         The target isosurface value
     dim : str
         The field dimension to interpolate
+    coord : str (optional)
+        The field coordinate to interpolate. If absent, coordinate is supposed to be "dim"
     upper : bool
         if True, returns the highest point of the isosurface, else the lowest
 
@@ -98,11 +100,14 @@ def isosurface(data, target, dim, upper=False):
     <xarray.DataArray ()>
     array(4.5)
     """
+    if coord==None:
+        coord=dim
+        
     slice0 = {dim: slice(None, -1)}
     slice1 = {dim: slice(1, None)}
 
-    field0 = data.isel(slice0).drop(dim)
-    field1 = data.isel(slice1).drop(dim)
+    field0 = data.isel(slice0).drop(coord)
+    field1 = data.isel(slice1).drop(coord)
 
     crossing_mask_decr = (field0 > target) & (field1 <= target)
     crossing_mask_incr = (field0 < target) & (field1 >= target)
@@ -110,8 +115,8 @@ def isosurface(data, target, dim, upper=False):
         crossing_mask_decr | crossing_mask_incr, 1, np.nan
     )
 
-    coords0 = crossing_mask * data[dim].isel(slice0).drop(dim)
-    coords1 = crossing_mask * data[dim].isel(slice1).drop(dim)
+    coords0 = crossing_mask * data[coord].isel(slice0).drop(coord)
+    coords1 = crossing_mask * data[coord].isel(slice1).drop(coord)
     field0 = crossing_mask * field0
     field1 = crossing_mask * field1
 
@@ -156,12 +161,14 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
 
     if not 'time' in data.coords: raise AssertionError('The time coordinates does not exist')
 
+    # Mise à l'échelle pour éviter les pb de précision machine
     d_mean  = data.mean(['time'])
+    d_sig = data.std('time')
     
     # Eliminer les séries où il y a moins de 6 points (pas de climato possible)
-    data_valid=(data-d_mean).where(data.count(dim='time')>5,0)
+    data_valid=(data-d_mean).where(data.count(dim='time')>5,0)/d_sig
     
-    fit=data_valid.curvefit('time',function_climato).curvefit_coefficients
+    fit=data_valid.curvefit('time',function_climato).curvefit_coefficients*d_sig
     [a,b,c,d,e,f] = [fit.sel(param=u) for u in ['a','b','c','d','e','f']]
     time=data_valid.time.astype('float')
 
@@ -189,13 +196,17 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
     else:
         return res
     
-def generate_climato(time, coefficients, mean=True, trend=True, cycle=False):
-    e=coefficients.MeanValue
-    f=coefficients.Trend/(DAY_YEAR*SECONDS_DAY*1.e9)
-    a=coefficients.Year_amplitude*np.cos(coefficients.Day0_YearCycle/DAY_YEAR*2*np.pi)
-    b=coefficients.Year_amplitude*np.sin(coefficients.Day0_YearCycle/DAY_YEAR*2*np.pi)
-    c=coefficients.HalfYear_Amplitude*np.cos(coefficients.Day0_HalfYearCycle/DAY_YEAR*2*np.pi)
-    d=coefficients.HalfYear_Amplitude*np.sin(coefficients.Day0_HalfYearCycle/DAY_YEAR*2*np.pi)
+def generate_climato(time, coefficients, mean=True, trend=False, cycle=True):
+    a=b=c=d=e=f=0.
+    if mean:
+        e=coefficients.MeanValue
+    if trend:
+        f=coefficients.Trend/(DAY_YEAR*SECONDS_DAY*1.e9)
+    if cycle:
+        a=coefficients.Year_amplitude*np.cos(coefficients.Day0_YearCycle/DAY_YEAR*2*np.pi)
+        b=coefficients.Year_amplitude*np.sin(coefficients.Day0_YearCycle/DAY_YEAR*2*np.pi)
+        c=coefficients.HalfYear_Amplitude*np.cos(coefficients.Day0_HalfYearCycle/DAY_YEAR*2*np.pi)
+        d=coefficients.HalfYear_Amplitude*np.sin(coefficients.Day0_HalfYearCycle/DAY_YEAR*2*np.pi)
     
     return function_climato(time,a,b,c,d,e,f)
     
@@ -255,3 +266,60 @@ def fill_time(data):
     
     # Retourne la donnée interpolée
     return data.interp(time=newtime)
+
+def surface_cell(data):
+    """
+    Returns the earth surface of each cell defined by a longitude/latitude in a array
+    Cells limits are half distance between each given coordinate. That means that given coordinates are not necessary the center of each cell.
+    Border cells are supposed to have the same size on each side of the given coordinate.
+    Ex : coords=[1,2,4,7,9] ==> cells size are [1,1.5,2.5,2.5,2]
+
+
+    Parameters
+    ----------
+    data : dataarray or dataset
+        Must have latitude and longitude coordinates
+
+    Returns
+    -------
+    surface : dataarray
+        dataarray with cells surface
+
+    Example
+    -------
+    >>>data = xgeo.open_geodata('/home/user/lenapy/data/gohc_2020.nc')
+    >>>surface = surface_cell(data)
+
+    """
+
+    dlat=ecarts(data,'latitude')
+    dlon=ecarts(data,'longitude')
+    
+    return np.radians(dlat)*np.radians(dlon)*LNPY_RTER**2*np.cos(np.radians(data.latitude))/(1+LNPY_f*np.cos(2*np.radians(data.latitude)))**2
+
+def ecarts(data,dim):
+    """
+    Return the width of each cells along specified coordinate.
+    Cells limits are half distance between each given coordinate. That means that given coordinates are not necessary the center of each cell.
+    Border cells are supposed to have the same size on each side of the given coordinate.
+    Ex : coords=[1,2,4,7,9] ==> cells size are [1,1.5,2.5,2.5,2]
+    
+    Parameters
+    ----------
+    data : dataarray or dataset
+        Must have latitude and longitude coordinates
+    
+    dim : str
+        Coordinate along which to compute cell width
+
+    Returns
+    -------
+    width : dataarray
+        dataarray with cell width for each coordinate
+    
+    """
+        
+    i0=data[dim].isel({dim:slice(None,2)}).diff(dim,label='lower')
+    i1=(data[dim]-data[dim].diff(dim,label='upper')/2).diff(dim,label='lower')
+    i2=data[dim].isel({dim:slice(-2,None)}).diff(dim,label='upper')
+    return xr.concat([i0,i1,i2],dim=dim)
