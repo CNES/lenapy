@@ -1,6 +1,6 @@
 from setuptools import setup
 setup(name='lenapy',
-version='0.2',
+version='0.3',
 description='',
 url='#',
 author='Sebastien Fourest & EMC2 team',
