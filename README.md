@@ -7,13 +7,19 @@ LENAPY is a set of unctions which are an extension of the xarray DataSet and Dat
 
 
 ## Installation
-Clone the git repository in a dedicated environment, and simply type ``pip install .`` in the lenapy directory.
-To clone the repository, execute the following command :
- * From hal :
+To install and add lenapy to an existing virtual environment, an external library (esmpy) has to be manually installed :
+ * Activate the conda environment :
+ ``conda activate my_env``
+ * Install esmpy library
+ ``conda install -c conda-forge esmpy=8.1.0``
+ * Clone lenapy gitlab repository
+  - From hal or trex:
  ``git clone git@gitlab.cnes.fr:campus/lenapy.git``
- * From an external environment :
+  - From an external environment :
  ``git clone gu=<login>@git@gitlab-ssh.cnes.fr:campus/lenapy.git``
-
+ * Install lenapy from the downloaded lenapy repository
+ ``pip intall .``
+ 
 ## Usage
 Just import the lenapy module at the beggining of the code :
 ``
@@ -24,7 +30,7 @@ To use any implemented function, add .xgeo or .xocean after the data name. Repea
 Ex:
 data.xgeo.mean(['latitude','longitude'],weights=['latitude']).xgeo.climato()
 
-## Full documentation is [here](doc/index.html)
+## Full documentation is [here](doc/index.md)
 
 
 ## Support

@@ -211,7 +211,7 @@ def generate_climato(time, coefficients, mean=True, trend=False, cycle=True):
     return function_climato(time,a,b,c,d,e,f)
     
 def trend(data):
-    return data.polyfit(dim='time',deg=1).polyfit_coefficients[0].values*1.e9
+    return data.polyfit(dim='time',deg=1).polyfit_coefficients[0]*1.e9
 
 def interp_time(data,other,**kwargs):
 

@@ -250,13 +250,13 @@ class OceanSet(xg.GeoSet):
         return self.ieeh_
 
     @property
-    def gohc(self):
-        return proprietes(self.ohc.xocean.mean(['latitude','longitude'],weights=['latitude']),
+    def gohc(self,mask=True):
+        return proprietes(self.ohc.xocean.mean(['latitude','longitude'],weights=['latitude'],mask=mask),
                          'gohc','Global ocean heat content wrt to ocean surface area','J/m²')
 
     @property
-    def gohc_TOA(self):
-        return proprietes(self.ohc.xocean.mean(['latitude','longitude'],weights=['latitude'],na_eq_zero=True),
+    def gohc_TOA(self,mask=True):
+        return proprietes(self.ohc.xocean.mean(['latitude','longitude'],weights=['latitude'],na_eq_zero=True,mask=mask),
                          'gohc','Global ocean heat content wrt to TOA area','J/m²')
     
     def ohc_above(self,target):
@@ -264,8 +264,8 @@ class OceanSet(xg.GeoSet):
         return proprietes(res.where(res!=0),
             'ohc_above','Ocean heat content','J/m²') # [J/m²]
         
-    def gohc_above(self,target,na_eq_zero=False):
-        return proprietes(self.ohc_above(target).xocean.mean(['latitude','longitude'],weights=['latitude'],na_eq_zero=na_eq_zero),
+    def gohc_above(self,target,na_eq_zero=False,mask=True):
+        return proprietes(self.ohc_above(target).xocean.mean(['latitude','longitude'],weights=['latitude'],na_eq_zero=na_eq_zero,mask=mask),
                          'gohc_above','Global ocean heat content above target','J/m²')
 
 

@@ -71,6 +71,51 @@ def open_mfgeodata(fic,*args,rename={},nan=None,chunks=None,**kwargs):
     res=rename_data(xr.open_mfdataset(fic,*args,**kwargs),**rename)
     return res.where(res!=nan).chunk(chunks=chunks)
     
+def open_mask(file,field,grid=None):
+    """
+    Open a mask in a dataset file, choose a given field, and regrid according to a given geometry. 
+    The returned mask contains an extra dimension named 'zone', corresponding to the different values
+    of the mask contained in the opened dataset.
+    Required format for the dataset to be opened :
+     - contains several dataarrays, each one being a mask (identified as 'field')
+     - each mask is defined by values, whose signification is given in the attributes of the dataarray : {'value1' : 'label1',...}
+    
+    Parameters
+    ----------
+    file : path
+        path and filename of the mask file to be opened
+    field : string
+        name of the data to be used as a mask in the dataset
+    grid : dataset, optional
+        dataset to be regridded on. If None, no regridding is performed
+        
+    Returns
+    -------
+    mask : DataArray
+        DataArray with regridded mask
+    
+    Example
+    -------
+    >>> mask = xgeo.open_mask('/home/user/lenapy/data/mask/GEO_mask_1deg_20210406.nc','mask_continents')
+    >>> mask.zone
+    <xarray.DataArray (latitude: 360, longitude: 720, zone: 9)>
+        array([[[False,  True, False, ..., False, False, False],
+        ...
+                [False, False, False, ..., False, False, False]]])
+        Coordinates:
+          * longitude  (longitude) float64 -179.8 -179.2 -178.8 ... 178.8 179.2 179.8
+          * latitude   (latitude) float64 -89.75 -89.25 -88.75 ... 88.75 89.25 89.75
+          * zone       (zone) <U18 'Greenland' 'Antarctica' ... 'Maritime continent'
+    """    
+
+    mask=xr.open_dataset(file)[field]
+    labels=xr.DataArray(data=np.int16(list(mask.attrs.keys())),dims='zone',coords=dict(zone=list(mask.attrs.values())))
+    if grid!=None:
+        reg=xe.Regridder(mask,grid,method='nearest_s2d')
+        mask = reg(mask)
+    return xr.where(mask==labels,True,False)
+
+
 @xr.register_dataset_accessor("xgeo")
 class GeoSet:
     """
@@ -405,6 +450,26 @@ class GeoSet:
         """
         return fill_time(self._obj)
         
+    def surface_cell(self):
+        """
+        Returns the earth surface of each cell defined by a longitude/latitude in a array
+        Cells limits are half distance between each given coordinate. That means that given coordinates are not necessary the center of each cell.
+        Border cells are supposed to have the same size on each side of the given coordinate.
+        Ex : coords=[1,2,4,7,9] ==> cells size are [1,1.5,2.5,2.5,2]
+
+        Returns
+        -------
+        surface : dataarray
+            dataarray with cells surface
+
+        Example
+        -------
+        >>>data = xgeo.open_geodata('/home/user/lenapy/data/gohc_2020.nc')
+        >>>surface = data.xgeo.surface_cell()
+
+        """
+        return surface_cell(self._obj)
+    
 @xr.register_dataarray_accessor("xgeo")
 class GeoArray:
     def __init__(self, xarray_obj):
@@ -615,7 +680,7 @@ class GeoArray:
         """
 
         ds=xr.Dataset({'data':self._obj})
-        return ds.xgeo.regridder(gr_out,*args,mask_in,**kwargs)
+        return ds.xgeo.regridder(gr_out,*args,mask_in=mask_in,**kwargs)
     
     def regrid(self,regridder,*args,**kwargs):
         """
@@ -730,3 +795,23 @@ class GeoArray:
         """
         return fill_time(self._obj)
     
+
+    def surface_cell(self):
+        """
+        Returns the earth surface of each cell defined by a longitude/latitude in a array
+        Cells limits are half distance between each given coordinate. That means that given coordinates are not necessary the center of each cell.
+        Border cells are supposed to have the same size on each side of the given coordinate.
+        Ex : coords=[1,2,4,7,9] ==> cells size are [1,1.5,2.5,2.5,2]
+
+        Returns
+        -------
+        surface : dataarray
+            dataarray with cells surface
+
+        Example
+        -------
+        >>>data = xgeo.open_geodata('/home/user/lenapy/data/gohc_2020.nc')
+        >>>surface = data.xgeo.surface_cell()
+
+        """
+        return surface_cell(self._obj)
