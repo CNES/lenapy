@@ -2,33 +2,9 @@ import xarray as xr
 import numpy as np
 import pandas as pd
 from .constants import *
-
-def lanczos(coupure,ordre):
-    """ 
-    Filtrage de Lanczos
-    Implémente un filtre dont la réponse fréquentielle est une porte de largeur spécifiée par "coupure", 
-    convoluée à une autre porte dont la largeur est plus étroite d'un facteur "ordre". Temporellement,
-    le filtre est tronqué à +/- ordre * coupure / 2
-    Plus "ordre" est grand, plus on se rapproche d'un filtre parfait (sinus cardinal)
-    Parameters
-    ----------
-    coupure : integer
-    
-    ordre : integer
-        ordre du filtre
-    """
-    
-    c=coupure/2.
-    x = np.arange(-ordre*c,ordre*c+1,1)
-    y = np.sinc(x/c)*np.sinc(x/c/ordre)/c
-    y[np.abs(x)>ordre*c]=0.
-    y=y/np.sum(y)
-    return xr.DataArray(y, dims=('x',), coords={'x':x})
-
-def moving_average(npoints):
-    return np.ones(npoints)/npoints
+import lenapy.filters
                    
-def filter(data,filter_name=lanczos,q=3,**kwargs):
+def filter(data,filter_name='lanczos',q=3,**kwargs):
     """
     Filtre les données en appliquant sur data le filtre filter_name, avec les paramètres définis dans **kwargs
     Effectue un miroir des données au début et à la fin pour éviter les effets de bords. Ce miroir est réalisé
@@ -47,9 +23,12 @@ def filter(data,filter_name=lanczos,q=3,**kwargs):
     """
 
     if not 'time' in data.coords: raise AssertionError('The time coordinates does not exist')
-
+    try:
+        f = getattr(lenapy.filters,filter_name)
+    except:
+        f = filter_name
     # Noyau de convolution
-    data_noyau=filter_name(**kwargs)
+    data_noyau=f(**kwargs)
     k=len(data_noyau)
 
     noyau=xr.DataArray(data_noyau,dims=['time_win'],coords={'time_win':np.arange(k)})
@@ -192,7 +171,7 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
                        'Day0_HalfYearCycle':np.mod(np.arctan2(d,c)/2./np.pi*DAY_YEAR,DAY_YEAR/2.),
                        'MeanValue':d_mean,
                        'Trend':f*DAY_YEAR*SECONDS_DAY*1.e9
-                      })
+                      }).drop('param')
     else:
         return res
     
@@ -215,12 +194,12 @@ def trend(data):
 
 def interp_time(data,other,**kwargs):
 
-    if not 'time' in data.coords: raise AssertionError('The time coordinates does not exist')
+    if not 'time' in data.coords: raise AssertionError('The time coordinate does not exist')
 
     return data.interp(time=other.time,**kwargs)
 
 def to_datetime(data,input_type):
-    if not 'time' in data.coords: raise AssertionError('The time coordinates does not exist')
+    if not 'time' in data.coords: raise AssertionError('The time coordinate does not exist')
     if data['time'].dtype=='<M8[ns]':
         return data
 

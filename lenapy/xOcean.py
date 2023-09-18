@@ -250,13 +250,13 @@ class OceanSet(xg.GeoSet):
         return self.ieeh_
 
     @property
-    def gohc(self,mask=True):
-        return proprietes(self.ohc.xocean.mean(['latitude','longitude'],weights=['latitude'],mask=mask),
+    def gohc(self):
+        return proprietes(self.ohc.xocean.mean(['latitude','longitude'],weights=['latitude']),
                          'gohc','Global ocean heat content wrt to ocean surface area','J/m²')
 
     @property
-    def gohc_TOA(self,mask=True):
-        return proprietes(self.ohc.xocean.mean(['latitude','longitude'],weights=['latitude'],na_eq_zero=True,mask=mask),
+    def gohc_TOA(self):
+        return proprietes(self.ohc.xocean.mean(['latitude','longitude'],weights=['latitude'],na_eq_zero=True),
                          'gohc','Global ocean heat content wrt to TOA area','J/m²')
     
     def ohc_above(self,target):
@@ -272,7 +272,7 @@ class OceanSet(xg.GeoSet):
     @property
     def ocean_depth(self):
         if NoneType(self.ocean_depth_):
-            self.ocean_depth_=xr.where(self.temp.isel(time=0).isnull(),np.nan,self._obj.depth).max('depth')
+            self.ocean_depth_=xr.where(self.temp.isnull(),np.nan,self._obj.depth).max('depth')
         return self.ocean_depth_
         
         

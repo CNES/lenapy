@@ -9,7 +9,7 @@ from .plotting import *
 from .sandbox import *
 from .produits import rename_data
 
-def open_geodata(file,*args,rename={},nan=None,chunks=None,**kwargs):
+def open_geodata(file,*args,rename={},nan=None,chunks=None,time_type=None,**kwargs):
     """
     Open a dataset base on xr.open_dataset method, while normalizing coordinates names and choosing NaN values
     
@@ -25,6 +25,9 @@ def open_geodata(file,*args,rename={},nan=None,chunks=None,**kwargs):
         value to be replaced by NaN
     chunks : dict, optional
         dictionnaty to perform chunks on data
+    time_type : str, optional
+        type used for time coordinate, used to convert to datetime64
+        possible values : 'frac_year' or '360_day'
     **kwargs : optional
         any keyword arguments passed to open_dataset method
         
@@ -38,9 +41,11 @@ def open_geodata(file,*args,rename={},nan=None,chunks=None,**kwargs):
     data = xgeo.open_geodata('/home/user/lenapy/data/gohc_2020.nc')
     """
     res=rename_data(xr.open_dataset(file,*args,**kwargs),**rename)
+    if time_type != None:
+        res=to_datetime(res,input_type=time_type)
     return res.where(res!=nan).chunk(chunks=chunks)
 
-def open_mfgeodata(fic,*args,rename={},nan=None,chunks=None,**kwargs):
+def open_mfgeodata(fic,*args,rename={},nan=None,chunks=None,time_type=None,**kwargs):
     """
     Open a dataset base on xr.open_mfdataset method, while normalizing coordinates names and choosing NaN values
     
@@ -56,6 +61,9 @@ def open_mfgeodata(fic,*args,rename={},nan=None,chunks=None,**kwargs):
         value to be replaced by NaN
     chunks : dict, optional
         dictionnaty to perform chunks on data
+    time_type : str, optional
+        type used for time coordinate, used to convert to datetime64
+        possible values : 'frac_year' or '360_day'
     **kwargs : optional
         any keyword arguments passed to open_dataset method
         
@@ -69,6 +77,8 @@ def open_mfgeodata(fic,*args,rename={},nan=None,chunks=None,**kwargs):
     data = xgeo.open_mfgeodata('/home/user/lenapy/data/gohc_*.nc')
     """
     res=rename_data(xr.open_mfdataset(fic,*args,**kwargs),**rename)
+    if time_type != None:
+        res=to_datetime(res,input_type=time_type)
     return res.where(res!=nan).chunk(chunks=chunks)
     
 def open_mask(file,field,grid=None):
@@ -110,7 +120,7 @@ def open_mask(file,field,grid=None):
 
     mask=xr.open_dataset(file)[field]
     labels=xr.DataArray(data=np.int16(list(mask.attrs.keys())),dims='zone',coords=dict(zone=list(mask.attrs.values())))
-    if grid!=None:
+    if type(grid)!=type(None):
         reg=xe.Regridder(mask,grid,method='nearest_s2d')
         mask = reg(mask)
     return xr.where(mask==labels,True,False)
@@ -372,7 +382,7 @@ class GeoSet:
         """
         return regridder(self._obj,*args,**kwargs)
     
-    def filter(self, filter_name=lanczos,q=3, **kwargs):
+    def filter(self, filter_name='lanczos',q=3, **kwargs):
         """
         Apply a specified filter on all the time-dependent data in the dataset
         Boundaries are handled by operating a mirror operation on the residual data after removing a q-order polyfit from the data
@@ -380,8 +390,9 @@ class GeoSet:
         
         Parameters
         ----------
-        filter_name : function
-            filter function name, from the .utils file
+        filter_name : function or string
+            if string, filter function name, from the .filters file
+            if function, external function defined by user, returning a kernel
         q : int
             order of the polyfit to handle boundary effects
         **kwargs :
@@ -710,7 +721,7 @@ class GeoArray:
         """        
         return regridder(self._obj,*args,**kwargs)
 
-    def filter(self, filter_name=lanczos,q=3, **kwargs):
+    def filter(self, filter_name='lanczos',q=3, **kwargs):
         """
         Apply a specified filter on all the time-dependent datarray
         Boundaries are handled by operating a mirror operation on the residual data after removing a q-order polyfit from the data
@@ -718,8 +729,9 @@ class GeoArray:
         
         Parameters
         ----------
-        filter_name : function
-            filter function name, from the .utils file
+        filter_name : function or string
+            if string, filter function name, from the .filters file
+            if function, external function defined by user, returning a kernel
         q : int
             order of the polyfit to handle boundary effects
         **kwargs :
