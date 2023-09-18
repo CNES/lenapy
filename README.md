@@ -1,7 +1,7 @@
 # LENAPY
 
 ## Description
-LENAPY is a set of unctions which are an extension of the xarray DataSet and DataArray. All funcionts can be used by adding the extension .xgeo or .xocean after the object's name. Three main modules are implemented :
+LENAPY is a set of unctions which are an extension of the xarray DataSet and DataArray. All functions can be used by adding the extension .xgeo or .xocean after the object's name. Two main modules are implemented :
  * xGeo : for all classical operations on lat/lon grids used in geodesy, altimetry
  * xOcean : implementation of the gsw library
 
@@ -30,7 +30,7 @@ To use any implemented function, add .xgeo or .xocean after the data name. Repea
 Ex:
 data.xgeo.mean(['latitude','longitude'],weights=['latitude']).xgeo.climato()
 
-## Full documentation is [here](doc/index.md)
+## Full documentation is [here](doc/index.html)
 
 
 ## Support
