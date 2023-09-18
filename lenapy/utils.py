@@ -2,7 +2,7 @@ import xarray as xr
 import numpy as np
 import pandas as pd
 from .constants import *
-import lenapy.filters
+from . import filters
                    
 def filter(data,filter_name='lanczos',q=3,**kwargs):
     """
@@ -24,7 +24,7 @@ def filter(data,filter_name='lanczos',q=3,**kwargs):
 
     if not 'time' in data.coords: raise AssertionError('The time coordinates does not exist')
     try:
-        f = getattr(lenapy.filters,filter_name)
+        f = getattr(filters,filter_name)
     except:
         f = filter_name
     # Noyau de convolution
