@@ -211,6 +211,8 @@ def to_datetime(data,input_type):
     elif input_type=='360_day':
         data.time.attrs['calendar']='360_day'
         data = xr.decode_cf(data).convert_calendar("standard",align_on="year")
+    elif input_type=='cftime':
+        data['time']=data.indexes['time'].to_datetimeindex()
     else:
         raise ValueError(f'Format {input_type} not yet considered, please convert manually to datatime')
       

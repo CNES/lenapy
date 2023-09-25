@@ -27,7 +27,7 @@ def open_geodata(file,*args,rename={},nan=None,chunks=None,time_type=None,**kwar
         dictionnaty to perform chunks on data
     time_type : str, optional
         type used for time coordinate, used to convert to datetime64
-        possible values : 'frac_year' or '360_day'
+        possible values : 'frac_year' or '360_day' or 'cftime'
     **kwargs : optional
         any keyword arguments passed to open_dataset method
         
