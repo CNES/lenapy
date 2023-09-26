@@ -112,7 +112,7 @@ def function_climato(t,a,b,c,d,e,f):
         l=2.*np.pi/(DAY_YEAR*SECONDS_DAY*1.e9)
         return a*np.cos(l*t)+b*np.sin(l*t)+c*np.cos(2.*l*t)+d*np.sin(2.*l*t)+e+f*t
         
-def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs=False):
+def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs=False,time_period=slice(None,None)):
     """
     Analyse du cycle annuel, bi-annuel et de la tendance
     Decompose les données en entrée en :
@@ -136,20 +136,26 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
         renvoie le cycle annuel et bi-annuel
     return_coeffs : Bool (default=False)
         retourne en plus les coefficients des cycles et de la tendance linéaire
+    time_period : slice (default=slice(None,None==
+        Periode de reference sur laquelle est calculee la climato
     """
 
     if not 'time' in data.coords: raise AssertionError('The time coordinates does not exist')
 
+    # Donnees de la periode de reference
+    data_ref=data.sel(time=time_period)
+    
     # Mise à l'échelle pour éviter les pb de précision machine
-    d_mean  = data.mean(['time'])
-    d_sig = data.std('time')
+    d_mean  = data_ref.mean(['time'])
+    d_sig = data_ref.std('time')
     
     # Eliminer les séries où il y a moins de 6 points (pas de climato possible)
-    data_valid=(data-d_mean).where(data.count(dim='time')>5,0)/d_sig
+    data_valid=(data_ref-d_mean).where(data_ref.count(dim='time')>5,0)/d_sig
     
     fit=data_valid.curvefit('time',function_climato).curvefit_coefficients*d_sig
     [a,b,c,d,e,f] = [fit.sel(param=u) for u in ['a','b','c','d','e','f']]
-    time=data_valid.time.astype('float')
+    
+    time=data.time.astype('float')
 
     d_cycle = function_climato(time,a,b,c,d,0,0)
     d_trend = function_climato(time,0,0,0,0,e,f)

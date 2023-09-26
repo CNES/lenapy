@@ -89,6 +89,7 @@ def open_mask(file,field,grid=None):
     Required format for the dataset to be opened :
      - contains several dataarrays, each one being a mask (identified as 'field')
      - each mask is defined by values, whose signification is given in the attributes of the dataarray : {'value1' : 'label1',...}
+     If there is no valid attribute, the mask is returned with False where NaN, False or 0 are found, True for any other value.
     
     Parameters
     ----------
@@ -117,15 +118,31 @@ def open_mask(file,field,grid=None):
           * latitude   (latitude) float64 -89.75 -89.25 -88.75 ... 88.75 89.25 89.75
           * zone       (zone) <U18 'Greenland' 'Antarctica' ... 'Maritime continent'
     """    
-
+    # Opening
     mask=xr.open_dataset(file)[field]
-    labels=xr.DataArray(data=np.int16(list(mask.attrs.keys())),dims='zone',coords=dict(zone=list(mask.attrs.values())))
+
+    # Labels reading
+    c=[]
+    d=[]
+    for k in mask.attrs.keys():
+        if k.isnumeric():
+            d.append(int(k))
+            c.append(mask.attrs[k])
+    labels=xr.DataArray(data=d,dims='zone',coords=dict(zone=c))
+
+    # Resampling
     if type(grid)!=type(None):
         reg=xe.Regridder(mask,grid,method='nearest_s2d')
-        mask = reg(mask)
-    return xr.where(mask==labels,True,False)
+        mask = reg(mask)    
+
+    # Returning
+    if len(d)>0:
+        return xr.where(mask==labels,True,False)
+    else:
+        return xr.where(mask.where(mask.notnull(),0).astype('int')==0,False, True)
 
 
+    
 @xr.register_dataset_accessor("xgeo")
 class GeoSet:
     """
@@ -158,7 +175,8 @@ class GeoSet:
             return annual and semi-annual cycles
         return_coeffs : Bool (default=False)
             returns cycle coefficient, mean and trend
-            retourne en plus les coefficients des cycles et de la tendance linéaire
+        time_period : slice (defalut=slice(None,None), ie the whole time period of the data)
+            Reference time period when climatology has to be computed
             
         Returns
         -------
@@ -510,7 +528,8 @@ class GeoArray:
             return annual and semi-annual cycles
         return_coeffs : Bool (default=False)
             returns cycle coefficient, mean and trend
-            retourne en plus les coefficients des cycles et de la tendance linéaire
+        time_period : slice (defalut=slice(None,None), ie the whole time period of the data)
+            Reference time period when climatology has to be computed
             
         Returns
         -------
