@@ -9,7 +9,7 @@ from .plotting import *
 from .sandbox import *
 from .produits import rename_data
 
-def open_geodata(file,*args,rename={},nan=None,chunks=None,time_type=None,**kwargs):
+def open_geodata(file,*args,rename={},nan=None,chunks=None,time_type=None,format=None,**kwargs):
     """
     Open a dataset base on xr.open_dataset method, while normalizing coordinates names and choosing NaN values
     
@@ -27,7 +27,10 @@ def open_geodata(file,*args,rename={},nan=None,chunks=None,time_type=None,**kwar
         dictionnaty to perform chunks on data
     time_type : str, optional
         type used for time coordinate, used to convert to datetime64
-        possible values : 'frac_year' or '360_day' or 'cftime'
+        possible values : 'frac_year' or '360_day' or 'cftime' or 'custom'
+        if 'custom', "decode_times=False" and "format" must be specified
+    format : str, optional
+        strftime to parse time (if time_type=='custom')
     **kwargs : optional
         any keyword arguments passed to open_dataset method
         
@@ -42,10 +45,13 @@ def open_geodata(file,*args,rename={},nan=None,chunks=None,time_type=None,**kwar
     """
     res=rename_data(xr.open_dataset(file,*args,**kwargs),**rename)
     if time_type != None:
-        res=to_datetime(res,input_type=time_type)
-    return res.where(res!=nan).chunk(chunks=chunks)
+        res=to_datetime(res,input_type=time_type,format=format)
+    if type(nan)!=type(None):
+        return res.where(res!=nan).chunk(chunks=chunks)
+    else:
+        return res.chunk(chunks=chunks)
 
-def open_mfgeodata(fic,*args,rename={},nan=None,chunks=None,time_type=None,**kwargs):
+def open_mfgeodata(fic,*args,rename={},nan=None,chunks=None,time_type=None,format=None,**kwargs):
     """
     Open a dataset base on xr.open_mfdataset method, while normalizing coordinates names and choosing NaN values
     
@@ -63,7 +69,10 @@ def open_mfgeodata(fic,*args,rename={},nan=None,chunks=None,time_type=None,**kwa
         dictionnaty to perform chunks on data
     time_type : str, optional
         type used for time coordinate, used to convert to datetime64
-        possible values : 'frac_year' or '360_day'
+        possible values : 'frac_year' or '360_day' or 'cftime' or 'custom'
+        if 'custom', "decode_times=False" and "format" must be specified
+    format : str, optional
+        strftime to parse time (if time_type=='custom')
     **kwargs : optional
         any keyword arguments passed to open_dataset method
         
@@ -78,8 +87,11 @@ def open_mfgeodata(fic,*args,rename={},nan=None,chunks=None,time_type=None,**kwa
     """
     res=rename_data(xr.open_mfdataset(fic,*args,**kwargs),**rename)
     if time_type != None:
-        res=to_datetime(res,input_type=time_type)
-    return res.where(res!=nan).chunk(chunks=chunks)
+        res=to_datetime(res,input_type=time_type,format=format)
+    if type(nan)!=type(None):
+        return res.where(res!=nan).chunk(chunks=chunks)
+    else:
+        return res.chunk(chunks=chunks)
     
 def open_mask(file,field,grid=None):
     """
@@ -151,53 +163,6 @@ class GeoSet:
     def __init__(self, xarray_obj):
         self._obj = xarray_obj
         
-    def climato(self,**kwargs):
-        """
-        Perform climato analysis on all the variables in a dataset
-        Input data are decomposed into :
-            annual cycle
-            semi-annual cycle
-            trend
-            mean
-            residual signal
-        The returned data are a combination of these elements depending on passed arguments (signal, mean, trend, cycle)
-        If return_coeffs=True, the coefficients of the decompositions are returned
-        
-        Parameters
-        ----------
-        signal : Bool (default=True)
-            returns residual signal
-        mean : Bool (default=True)
-            returns mean signal
-        trend : Bool (default=True)
-            returns trend
-        cycle : Bool (default=False)
-            return annual and semi-annual cycles
-        return_coeffs : Bool (default=False)
-            returns cycle coefficient, mean and trend
-        time_period : slice (defalut=slice(None,None), ie the whole time period of the data)
-            Reference time period when climatology has to be computed
-            
-        Returns
-        -------
-        climato : dataset
-            a dataset with the same structure as the input, with modified data according to the chosen options
-        if return_coeffs=True, an extra dataset is provided with the coefficients of the decomposition
-        
-        Example
-        -------
-        >>>data = xgeo.open_geodata('/home/user/lenapy/data/gohc_2020.nc')
-        >>>output,coeffs = data.xgeo.climato(mean=True, trend=True, signal=True,return_coeffs=True)
-        """
-
-        # Pour toutes les données dépendant du temps, retourne l'analyse de la climato
-        res={}
-        for var in self._obj.data_vars:
-            if 'time' in self._obj[var].coords:
-                res[var]=climato(self._obj[var],**kwargs)
-            else:
-                res[var]=self._obj[var]
-        return xr.Dataset(res)
 
     def mean(self,*args,**kwargs):
         """
@@ -210,8 +175,10 @@ class GeoSet:
         
         weights : None or list or dataarray
             if None, no weight is applyed
-            if 'latitude' or 'depth', a weight is applyed as the cosine of the latitude or 
-                    the thickness of the layer
+            if 'latitude', a weight is applyed as the cosine of the latitude 
+            if 'latitude-ellipsoide',  a weight is applyed as the cosine of the latitude 
+                    multiplied by an oblatness factor
+            if 'depth', a weight is applyed as the thickness of the layer
             if dataarray :
                     input data are multiplied by this dataarray before averaging
         mask : None or dataarray
@@ -248,8 +215,10 @@ class GeoSet:
         
         weights : None or list or dataarray
             if None, no weight is applyed
-            if 'latitude' or 'depth', a weight is applyed as the cosine of the latitude or 
-                    the thickness of the layer
+            if 'latitude', a weight is applyed as the cosine of the latitude 
+            if 'latitude-ellipsoide',  a weight is applyed as the cosine of the latitude 
+                    multiplied by an oblatness factor
+            if 'depth', a weight is applyed as the thickness of the layer
             if dataarray :
                     input data are multiplied by this dataarray before summing
         mask : None or dataarray
@@ -336,7 +305,7 @@ class GeoSet:
 
         return res
 
-    def regridder(self,gr_out,*args,mask_in=None,**kwargs):
+    def regridder(self,gr_out,*args,mask_in=None,mask_out=None,**kwargs):
         """
         Implement a xesmf regridder instance to be used with regrid method to perform regridding from dataset 
         coordinates to gr_out coordinates
@@ -368,8 +337,11 @@ class GeoSet:
             
         ds_out=xr.Dataset({
         "latitude":gr_out.latitude,
-        "longitude":gr_out.longitude
+        "longitude":gr_out.longitude,
         })
+        if type(mask_out)!=type(None):
+            ds_out['mask']=mask_out
+
 
         return xe.Regridder(ds,ds_out,*args,**kwargs)
     
@@ -400,84 +372,7 @@ class GeoSet:
         """
         return regridder(self._obj,*args,**kwargs)
     
-    def filter(self, filter_name='lanczos',q=3, **kwargs):
-        """
-        Apply a specified filter on all the time-dependent data in the dataset
-        Boundaries are handled by operating a mirror operation on the residual data after removing a q-order polyfit from the data
-        Available filters are in the .utils python file
-        
-        Parameters
-        ----------
-        filter_name : function or string
-            if string, filter function name, from the .filters file
-            if function, external function defined by user, returning a kernel
-        q : int
-            order of the polyfit to handle boundary effects
-        **kwargs :
-            keyword arguments for the chosen filter
-            
-        Returns
-        -------
-        filtered : filtered dataset
-        
-        Example
-        -------
-        >>>data = xgeo.open_geodata('/home/user/lenapy/data/isas.nc')
-        >>>data.xgeo.filter(lanczos,q=3,coupure=12,order=2)
-        
-        """
-        res={}
-        for var in self._obj.data_vars:
-            if 'time' in self._obj[var].coords:
-                res[var]=self._obj[var].xgeo.filter(filter_name=filter_name,q=q,**kwargs)
-            else:
-                res[var]=self._obj[var]
-        return xr.Dataset(res)
 
-    def interp_time(self,other,**kwargs):
-        """
-        Interpolate dataarray at the same dates than other
-        
-        Parameter
-        ---------
-        other : dataarray
-            must have a time dimension
-            
-        Return
-        ------
-        interpolated : dataarray
-            new dataarray interpolated
-        """        
-        res={}
-        for var in self._obj.data_vars:
-            if 'time' in self._obj[var].coords:
-                res[var]=self._obj[var].xgeo.interp_time(other,**kwargs)
-            else:
-                res[var]=self._obj[var]
-        return xr.Dataset(res)
-
-    def to_datetime(self,input_type):
-        """
-        Convert dataset time format to standard pandas time format
-        
-        Parameter
-        ---------
-        input_type : string
-            Can be 'frac_year' or '360_day'
-            
-        Return
-        ------
-        converted : dataset
-            new dataset with the time dimension in a standard pandas format
-        """
-        return to_datetime(self._obj,input_type)        
-
-    def fill_time(self):
-        """
-        Fill missing values in a timeseries in adding some new points, by respecting the time sampling. Missing values are not NaN
-        but real absent points in the timeseries. A linear interpolation is performed at the missing points.
-        """
-        return fill_time(self._obj)
         
     def surface_cell(self):
         """
@@ -504,45 +399,7 @@ class GeoArray:
     def __init__(self, xarray_obj):
         self._obj = xarray_obj
         
-    def climato(self,**kwargs):
-        """
-        Perform climato analysis on a dataarray
-        Input data are decomposed into :
-            annual cycle
-            semi-annual cycle
-            trend
-            mean
-            residual signal
-        The returned data are a combination of these elements depending on passed arguments (signal, mean, trend, cycle)
-        If return_coeffs=True, the coefficients of the decompositions are returned
-        
-        Parameters
-        ----------
-        signal : Bool (default=True)
-            returns residual signal
-        mean : Bool (default=True)
-            returns mean signal
-        trend : Bool (default=True)
-            returns trend
-        cycle : Bool (default=False)
-            return annual and semi-annual cycles
-        return_coeffs : Bool (default=False)
-            returns cycle coefficient, mean and trend
-        time_period : slice (defalut=slice(None,None), ie the whole time period of the data)
-            Reference time period when climatology has to be computed
-            
-        Returns
-        -------
-        climato : dataarray
-            a dataarray with the same structure as the input, with modified data according to the chosen options
-        if return_coeffs=True, an extra dataset is provided with the coefficients of the decomposition
-        
-        Example
-        -------
-        >>>data = xgeo.open_geodata('/home/user/lenapy/data/gohc_2020.nc').ohc
-        >>>output,coeffs = data.xgeo.climato(mean=True, trend=True, signal=True,return_coeffs=True)
-        """
-        return climato(self._obj,**kwargs)
+
         
     def mean(self,*args,weights=None,mask=True,na_eq_zero=False,**kwargs):
         """
@@ -555,8 +412,10 @@ class GeoArray:
         
         weights : None or list or dataarray
             if None, no weight is applyed
-            if 'latitude' or 'depth', a weight is applyed as the cosine of the latitude or 
-                    the thickness of the layer
+            if 'latitude', a weight is applyed as the cosine of the latitude 
+            if 'latitude-ellipsoide',  a weight is applyed as the cosine of the latitude 
+                    multiplied by an oblatness factor
+            if 'depth', a weight is applyed as the thickness of the layer
             if dataarray :
                     input data are multiplied by this dataarray before averaging
         mask : None or dataarray
@@ -590,6 +449,9 @@ class GeoArray:
         elif type(weights)==list or type(weights)==str:
             w=1
             if 'latitude' in weights and 'latitude' in self._obj.coords:
+                # poids = cos(latitude)
+                w=np.cos(np.radians(self._obj.latitude ))
+            if 'latitude_ellipsoide' in weights and 'latitude' in self._obj.coords:
                 # poids = cos(latitude)*earth oblatness factor
                 w=np.cos(np.radians(self._obj.latitude ))/(1+LNPY_f*np.cos(2*np.radians(self._obj.latitude )))**2
             if 'depth' in weights and 'depth' in self._obj.coords:
@@ -611,8 +473,10 @@ class GeoArray:
         
         weights : None or list or dataarray
             if None, no weight is applyed
-            if 'latitude' or 'depth', a weight is applyed as the cosine of the latitude or 
-                    the thickness of the layer
+            if 'latitude', a weight is applyed as the cosine of the latitude 
+            if 'latitude-ellipsoide',  a weight is applyed as the cosine of the latitude 
+                    multiplied by an oblatness factor
+            if 'depth', a weight is applyed as the thickness of the layer
             if dataarray :
                     input data are multiplied by this dataarray before summing
         mask : None or dataarray
@@ -639,6 +503,9 @@ class GeoArray:
         elif type(weights)==list or type(weights)==str:
             w=1
             if 'latitude' in weights and 'latitude' in self._obj.coords:
+                # poids = cos(latitude)
+                w=np.cos(np.radians(self._obj.latitude ))
+            if 'latitude_ellipsoide' in weights and 'latitude' in self._obj.coords:
                 # poids = cos(latitude)*earth oblatness factor
                 w=np.cos(np.radians(self._obj.latitude ))/(1+LNPY_f*np.cos(2*np.radians(self._obj.latitude )))**2
             if 'depth' in weights and 'depth' in self._obj.coords:
@@ -685,7 +552,7 @@ class GeoArray:
         """        
         return isosurface(self._obj,target,dim,coord,upper=upper)
 
-    def regridder(self,gr_out,*args,mask_in=None,**kwargs):
+    def regridder(self,gr_out,*args,mask_in=None,mask_out=None,**kwargs):
         """
         Implement a xesmf regridder instance to be used with regrid method to perform regridding from dataarray 
         coordinates to gr_out coordinates
@@ -710,7 +577,7 @@ class GeoArray:
         """
 
         ds=xr.Dataset({'data':self._obj})
-        return ds.xgeo.regridder(gr_out,*args,mask_in=mask_in,**kwargs)
+        return ds.xgeo.regridder(gr_out,*args,mask_in=mask_in,mask_out=mask_out,**kwargs)
     
     def regrid(self,regridder,*args,**kwargs):
         """
@@ -740,92 +607,11 @@ class GeoArray:
         """        
         return regridder(self._obj,*args,**kwargs)
 
-    def filter(self, filter_name='lanczos',q=3, **kwargs):
-        """
-        Apply a specified filter on all the time-dependent datarray
-        Boundaries are handled by operating a mirror operation on the residual data after removing a q-order polyfit from the data
-        Available filters are in the .utils python file
-        
-        Parameters
-        ----------
-        filter_name : function or string
-            if string, filter function name, from the .filters file
-            if function, external function defined by user, returning a kernel
-        q : int
-            order of the polyfit to handle boundary effects
-        **kwargs :
-            keyword arguments for the chosen filter
-            
-        Returns
-        -------
-        filtered : filtered dataset
-        
-        Example
-        -------
-        >>>data = xgeo.open_geodata('/home/user/lenapy/data/isas.nc').temp
-        >>>data.xgeo.filter(lanczos,q=3,coupure=12,order=2)
-        
-        """        
-        return filter(self._obj,filter_name=filter_name,q=q,**kwargs)
-    
-    def interp_time(self,other,**kwargs):
-        """
-        Interpolate dataarray at the same dates than other
-        
-        Parameter
-        ---------
-        other : dataarray
-            must have a time dimension
-            
-        Return
-        ------
-        interpolated : dataarray
-            new dataarray interpolated
-        """        
-        return interp_time(self._obj,other,**kwargs)
-    
-    def plot_timeseries_uncertainty(self, **kwargs):
-        plot_timeseries_uncertainty(self._obj, **kwargs)
-        
-    def to_datetime(self,input_type):
-        """
-        Convert dataarray time format to standard pandas time format
-        
-        Parameter
-        ---------
-        input_type : string
-            Can be 'frac_year' or '360_day'
-            
-        Return
-        ------
-        converted : dataarray
-            new dataarray with the time dimension in a standard pandas format
-        """
-        return to_datetime(self._obj,input_type)        
 
-    def diff_3pts(self,dim):
-        """
-        Derivative formula along the selected dimension, returning on each point the linear regression on the three points
-        defined by the selected point and its two neighbours
-        """
-        return diff_3pts(self._obj,dim)
 
     def to_difgri(self,dir_out,prefix,suffix):
         to_difgri(self._obj,dir_out,prefix,suffix)
 
-    def trend(self):
-        """
-        Perform a linear regression on the data, and returns the slope coefficient
-        """
-        return trend(self._obj)
-    
-    def fill_time(self):
-        """
-        Fill missing values in a timeseries in adding some new points, by respecting the time sampling. Missing values are not NaN
-        but real absent points in the timeseries. A linear interpolation is performed at the missing points.
-        """
-        return fill_time(self._obj)
-    
 
     def surface_cell(self):
         """

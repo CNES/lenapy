@@ -204,7 +204,7 @@ def interp_time(data,other,**kwargs):
 
     return data.interp(time=other.time,**kwargs)
 
-def to_datetime(data,input_type):
+def to_datetime(data,input_type,format=None):
     if not 'time' in data.coords: raise AssertionError('The time coordinate does not exist')
     if data['time'].dtype=='<M8[ns]':
         return data
@@ -219,6 +219,9 @@ def to_datetime(data,input_type):
         data = xr.decode_cf(data).convert_calendar("standard",align_on="year")
     elif input_type=='cftime':
         data['time']=data.indexes['time'].to_datetimeindex()
+    elif input_type=='custom':
+        data['time']=[ pd.to_datetime(i,format=format) for i in data.time]
+
     else:
         raise ValueError(f'Format {input_type} not yet considered, please convert manually to datatime')
       
@@ -310,3 +313,13 @@ def ecarts(data,dim):
     i1=(data[dim]-data[dim].diff(dim,label='upper')/2).diff(dim,label='lower')
     i2=data[dim].isel({dim:slice(-2,None)}).diff(dim,label='upper')
     return xr.concat([i0,i1,i2],dim=dim)
+
+def JJ_to_date(jj):
+    """
+    Turns a date in format 'Jours Julien CNES' into a standard datetime64 format
+    """
+    if jj==None:
+        return jj
+    dt=np.timedelta64(jj,'D')
+    t0=np.datetime64('1950-01-01','ns')
+    return t0+dt
