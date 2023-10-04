@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+import warnings
 import numpy as np
 import xarray as xr
 import xesmf as xe
@@ -394,6 +394,27 @@ class GeoSet:
         """
         return surface_cell(self._obj)
     
+    
+    def climato(self,*args,**kwargs):
+        warnings.warn("xgeo.climato() : This function is now in xtime module, please modify your code")
+        return self._obj.xtime.climato(*args,**kwargs)
+
+    def filter(self,*args,**kwargs):
+        warnings.warn("xgeo.filter() : This function is now in xtime module, please modify your code")
+        return self._obj.xtime.filter(*args,**kwargs)
+
+    def interp_time(self,*args,**kwargs):
+        warnings.warn("xgeo.interp_time() : This function is now in xtime module, please modify your code")
+        return self._obj.xtime.interp_time(*args,**kwargs)
+
+    def to_datetime(self,*args,**kwargs):
+        warnings.warn("xgeo.to_datetime() : This function is now in xtime module, please modify your code")
+        return self._obj.xtime.to_datetime(*args,**kwargs)
+
+    def fill_time(self,*args,**kwargs):
+        warnings.warn("xgeo.fill_time() : This function is now in xtime module, please modify your code")
+        return self._obj.xtime.fill_time(*args,**kwargs)
+    
 @xr.register_dataarray_accessor("xgeo")
 class GeoArray:
     def __init__(self, xarray_obj):
@@ -632,3 +653,32 @@ class GeoArray:
 
         """
         return surface_cell(self._obj)
+    
+    def climato(self,*args,**kwargs):
+        warnings.warn("xgeo.climato() : This function is now in xtime module, please modify your code")
+        return self._obj.xtime.climato(*args,**kwargs)
+
+    def filter(self,*args,**kwargs):
+        warnings.warn("xgeo.filter() : This function is now in xtime module, please modify your code")
+        return self._obj.xtime.filter(*args,**kwargs)
+
+    def interp_time(self,*args,**kwargs):
+        warnings.warn("xgeo.interp_time() : This function is now in xtime module, please modify your code")
+        return self._obj.xtime.interp_time(*args,**kwargs)
+
+    def to_datetime(self,*args,**kwargs):
+        warnings.warn("xgeo.to_datetime() : This function is now in xtime module, please modify your code")
+        return self._obj.xtime.to_datetime(*args,**kwargs)
+
+    def fill_time(self,*args,**kwargs):
+        warnings.warn("xgeo.fill_time() : This function is now in xtime module, please modify your code")
+        return self._obj.xtime.fill_time(*args,**kwargs)    
+
+    def trend(self,*args,**kwargs):
+        warnings.warn("xgeo.trend() : This function is now in xtime module, please modify your code")
+        return self._obj.xtime.trend(*args,**kwargs)        
+        
+    def diff_3pts(self,*args,**kwargs):
+        warnings.warn("xgeo.diff_3pts() : This function is now in xtime module, please modify your code")
+        return self._obj.xtime.diff_3pts(*args,**kwargs)    
+    
