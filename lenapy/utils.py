@@ -4,7 +4,7 @@ import pandas as pd
 from .constants import *
 from . import filters
                    
-def filter(data,filter_name='lanczos',q=3,**kwargs):
+def filter(data,filter_name='lanczos',annual_cycle=False,q=3,**kwargs):
     """
     Filtre les données en appliquant sur data le filtre filter_name, avec les paramètres définis dans **kwargs
     Effectue un miroir des données au début et à la fin pour éviter les effets de bords. Ce miroir est réalisé
@@ -33,20 +33,26 @@ def filter(data,filter_name='lanczos',q=3,**kwargs):
 
     noyau=xr.DataArray(data_noyau,dims=['time_win'],coords={'time_win':np.arange(k)})
 
+    if annual_cycle==True:
+        data0=climato(data,mean=False,trend=False)
+        v4=data-data0
+    else:
+        data0=data
+        v4=0.
     # Fit avec un polynome d'ordre q
-    pf=data.polyfit('time',q)
+    pf=data0.polyfit('time',q)
     v0=xr.polyval(data.time,pf).polyfit_coefficients
     # Retrait de ce polynome aux données brutes
-    v1=data-v0
+    v1=data0-v0
     v1['time']=v1['time'].astype('float')
     # Complète les données par effet miroir au début et à la fin
     v2=v1.pad({'time':(k,k)},mode='reflect',reflect_type='even')
     v2['time']=v1['time'].pad({'time':(k,k)},mode='reflect',reflect_type='odd')
     # Convolution par le noyau
-    v3=(v2.rolling(time=k,center=True).construct(time='time_win')*noyau).sum('time_win').isel(time=slice(k,-k))
+    v3=(v2.rolling(time=k,center=True).construct(time='time_win')).weighted(noyau).mean('time_win').isel(time=slice(k,-k))
     v3['time']=data['time']
     # Ajout du polynome aux données filtrées
-    return v3+v0
+    return v3+v0+v4
 
     
 def isosurface(data, target, dim, coord=None, upper=False):
@@ -226,6 +232,27 @@ def to_datetime(data,input_type,format=None):
         raise ValueError(f'Format {input_type} not yet considered, please convert manually to datatime')
       
     return data
+
+def split_duplicate_coords(data):
+    for u in data.var():
+        if (len(set(data[u].dims))!=len(data[u].dims)):
+            new_coords={}
+            for c in data[u].dims:
+                if (c in new_coords.keys()):
+                    new_coords[c+"_"]=data[u].coords[c]
+                else:
+                    new_coords[c]=data[u].coords[c]
+            data[u]=xr.DataArray(data=data[u].values,dims=new_coords.keys(),coords=new_coords)
+    return data
+
+def longitude_increase(data):
+    if 'longitude' in data.coords:
+        l=xr.where(data.longitude<data.longitude.isel(longitude=0),data.longitude+360,data.longitude)
+        if l.max()>360:
+            l=l-360
+        data['longitude']=l
+    return data
+        
 
 def diff_3pts(data,dim):
     y=data.where(~data.isnull()).rolling({dim:3},center=True,min_periods=3).construct('win')

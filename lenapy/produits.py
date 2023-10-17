@@ -219,15 +219,15 @@ def NCEI(rep,ymin=0,ymax=9999,filtre='',**kwargs):
     
     #Salinite
     fics_sal=filtre_liste(glob(os.path.join(rep,'**','sanom*.nc')),year,ymin,ymax,filtre)
-    sal=xr.open_mfdataset(fics_sal,preprocess=rename_data,decode_times=False,**kwargs).xgeo.to_datetime("360_day").s_an
+    sal=xr.open_mfdataset(fics_sal,preprocess=rename_data,decode_times=False,**kwargs).xtime.to_datetime("360_day").s_an
     fics_climsal=glob(os.path.join(rep,'climato','*s1[3-6]_01.nc'))
-    climsal=xr.open_mfdataset(fics_climsal,preprocess=rename_data,decode_times=False,**kwargs).xgeo.to_datetime("360_day").s_an
+    climsal=xr.open_mfdataset(fics_climsal,preprocess=rename_data,decode_times=False,**kwargs).xtime.to_datetime("360_day").s_an
     
     #Temperature
     fics_temp=filtre_liste(glob(os.path.join(rep,'**','tanom*.nc')),year,ymin,ymax,filtre)
-    temp=xr.open_mfdataset(fics_temp,preprocess=rename_data,decode_times=False,**kwargs).xgeo.to_datetime("360_day").t_an
+    temp=xr.open_mfdataset(fics_temp,preprocess=rename_data,decode_times=False,**kwargs).xtime.to_datetime("360_day").t_an
     fics_climtemp=glob(os.path.join(rep,'climato','*t1[3-6]_01.nc'))
-    climtemp=xr.open_mfdataset(fics_climtemp,preprocess=rename_data,decode_times=False,**kwargs).xgeo.to_datetime("360_day").t_an
+    climtemp=xr.open_mfdataset(fics_climtemp,preprocess=rename_data,decode_times=False,**kwargs).xtime.to_datetime("360_day").t_an
     
     return xr.Dataset({\
                        'temp':(temp.groupby('time.month')+climtemp.groupby('time.month').mean('time')).drop('month'),
@@ -277,7 +277,7 @@ def SIO(rep,chunks=None,ymin=0,ymax=9999,filtre='',**kwargs):
     fics_anom=filtre_liste(glob(os.path.join(rep,'**','RG_ArgoClim_20*.nc')),year,ymin,ymax,filtre)
     fics_clim=glob(os.path.join(rep,'**','RG_ArgoClim_cl*.nc'))
     
-    anom=xr.open_mfdataset(fics_anom,preprocess=rename_data,decode_times=False,chunks=chunks,**kwargs).xgeo.to_datetime("360_day")
+    anom=xr.open_mfdataset(fics_anom,preprocess=rename_data,decode_times=False,chunks=chunks,**kwargs).xtime.to_datetime("360_day")
     clim=xr.open_mfdataset(fics_clim,preprocess=rename_data,**kwargs)
 
     temp = anom.ARGO_TEMPERATURE_ANOMALY + clim.ARGO_TEMPERATURE_MEAN
@@ -327,7 +327,7 @@ def IPRC(rep,chunks=None,ymin=0,ymax=9999,filtre='',**kwargs):
     """     
     def preproc(ds):
         date=os.path.basename(os.path.splitext(ds.encoding["source"])[0]).split('_')
-        return rename_data(ds).assign_coords(time=np.datetime64('%s-%s-15'%(date[1],date[2]))).expand_dims(dim='time')
+        return rename_data(ds).assign_coords(time=np.datetime64('%s-%s-15'%(date[1],date[2]),'ns')).expand_dims(dim='time')
         
 
     def year(f):
@@ -427,7 +427,7 @@ def IAP(rep,chunks=None,ymin=0,ymax=9999,filtre='',**kwargs):
     """     
     def preproc(ds):
         date=os.path.basename(os.path.splitext(ds.encoding["source"])[0]).split('_')
-        return rename_data(ds).assign_coords(time=np.datetime64('%s-%s-15'%(date[-3],date[-1]))).expand_dims(dim='time')
+        return rename_data(ds).assign_coords(time=np.datetime64('%s-%s-15'%(date[-3],date[-1]),'ns')).expand_dims(dim='time')
 
     def year(f):
         return f.split('_')[-3]
@@ -527,7 +527,7 @@ def JAMSTEC(rep,chunks=None,ymin=0,ymax=9999,filtre='',**kwargs):
     """       
     def preproc(ds):
         date=os.path.basename(os.path.splitext(ds.encoding["source"])[0]).split('_')[1]
-        ds=rename_data(ds).assign_coords(time=np.datetime64('%s-%s-15'%(date[0:4],date[4:6]))).expand_dims(dim='time')
+        ds=rename_data(ds).assign_coords(time=np.datetime64('%s-%s-15'%(date[0:4],date[4:6]),'ns')).expand_dims(dim='time')
         ds['longitude']=np.mod(ds.longitude,360)
         return ds
 

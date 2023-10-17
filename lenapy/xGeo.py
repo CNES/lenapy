@@ -9,7 +9,7 @@ from .plotting import *
 from .sandbox import *
 from .produits import rename_data
 
-def open_geodata(file,*args,rename={},nan=None,chunks=None,time_type=None,format=None,**kwargs):
+def open_geodata(file,*args,rename={},nan=None,chunks=None,time_type=None,format=None,duplicate_coords=True,**kwargs):
     """
     Open a dataset base on xr.open_dataset method, while normalizing coordinates names and choosing NaN values
     
@@ -31,6 +31,8 @@ def open_geodata(file,*args,rename={},nan=None,chunks=None,time_type=None,format
         if 'custom', "decode_times=False" and "format" must be specified
     format : str, optional
         strftime to parse time (if time_type=='custom')
+    duplicate_coords : boolean, optional
+        rename duplicate coordinates, by adding a "_" at the end of duplicate ones
     **kwargs : optional
         any keyword arguments passed to open_dataset method
         
@@ -44,14 +46,17 @@ def open_geodata(file,*args,rename={},nan=None,chunks=None,time_type=None,format
     data = xgeo.open_geodata('/home/user/lenapy/data/gohc_2020.nc')
     """
     res=rename_data(xr.open_dataset(file,*args,**kwargs),**rename)
+    if duplicate_coords:
+        res=split_duplicate_coords(res)
     if time_type != None:
         res=to_datetime(res,input_type=time_type,format=format)
+    res=longitude_increase(res)
     if type(nan)!=type(None):
         return res.where(res!=nan).chunk(chunks=chunks)
     else:
         return res.chunk(chunks=chunks)
 
-def open_mfgeodata(fic,*args,rename={},nan=None,chunks=None,time_type=None,format=None,**kwargs):
+def open_mfgeodata(fic,*args,rename={},nan=None,chunks=None,time_type=None,format=None,duplicate_coords=True,**kwargs):
     """
     Open a dataset base on xr.open_mfdataset method, while normalizing coordinates names and choosing NaN values
     
@@ -73,6 +78,8 @@ def open_mfgeodata(fic,*args,rename={},nan=None,chunks=None,time_type=None,forma
         if 'custom', "decode_times=False" and "format" must be specified
     format : str, optional
         strftime to parse time (if time_type=='custom')
+    duplicate_coords : boolean, optional
+        rename duplicate coordinates, by adding a "_" at the end of duplicate ones
     **kwargs : optional
         any keyword arguments passed to open_dataset method
         
@@ -86,8 +93,11 @@ def open_mfgeodata(fic,*args,rename={},nan=None,chunks=None,time_type=None,forma
     data = xgeo.open_mfgeodata('/home/user/lenapy/data/gohc_*.nc')
     """
     res=rename_data(xr.open_mfdataset(fic,*args,**kwargs),**rename)
+    if duplicate_coords:
+        res=split_duplicate_coords(res)
     if time_type != None:
         res=to_datetime(res,input_type=time_type,format=format)
+    res=longitude_increase(res)
     if type(nan)!=type(None):
         return res.where(res!=nan).chunk(chunks=chunks)
     else:
