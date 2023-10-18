@@ -38,6 +38,7 @@ from glob import glob
 import numpy as np
 import xarray as xr
 import gsw
+from .utils import longitude_increase
 
 def rename_data(data,**kwargs):
     """
@@ -427,7 +428,7 @@ def IAP(rep,chunks=None,ymin=0,ymax=9999,filtre='',**kwargs):
     """     
     def preproc(ds):
         date=os.path.basename(os.path.splitext(ds.encoding["source"])[0]).split('_')
-        return rename_data(ds).assign_coords(time=np.datetime64('%s-%s-15'%(date[-3],date[-1]),'ns')).expand_dims(dim='time')
+        return longitude_increase(rename_data(ds).roll(longitude=180,roll_coords=True).assign_coords(time=np.datetime64('%s-%s-15'%(date[-3],date[-1]),'ns')).expand_dims(dim='time'))
 
     def year(f):
         return f.split('_')[-3]

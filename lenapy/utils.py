@@ -1,9 +1,11 @@
 import xarray as xr
 import numpy as np
 import pandas as pd
+import netCDF4
 from .constants import *
 from . import filters
                    
+
 def filter(data,filter_name='lanczos',annual_cycle=False,q=3,**kwargs):
     """
     Filtre les données en appliquant sur data le filtre filter_name, avec les paramètres définis dans **kwargs
@@ -34,26 +36,33 @@ def filter(data,filter_name='lanczos',annual_cycle=False,q=3,**kwargs):
     noyau=xr.DataArray(data_noyau,dims=['time_win'],coords={'time_win':np.arange(k)})
 
     if annual_cycle==True:
-        data0=climato(data,mean=False,trend=False)
-        v4=data-data0
+        # On vire la climato
+        data0,coeffs=climato(data,mean=False,trend=False,return_coeffs=True)
     else:
         data0=data
-        v4=0.
-    # Fit avec un polynome d'ordre q
+
+    # On fait un miroir sans la climato
     pf=data0.polyfit('time',q)
-    v0=xr.polyval(data.time,pf).polyfit_coefficients
+    v0=xr.polyval(data0.time,pf).polyfit_coefficients
     # Retrait de ce polynome aux données brutes
     v1=data0-v0
     v1['time']=v1['time'].astype('float')
     # Complète les données par effet miroir au début et à la fin
     v2=v1.pad({'time':(k,k)},mode='reflect',reflect_type='even')
     v2['time']=v1['time'].pad({'time':(k,k)},mode='reflect',reflect_type='odd')
-    # Convolution par le noyau
-    v3=(v2.rolling(time=k,center=True).construct(time='time_win')).weighted(noyau).mean('time_win').isel(time=slice(k,-k))
-    v3['time']=data['time']
-    # Ajout du polynome aux données filtrées
-    return v3+v0+v4
 
+    if annual_cycle==True:
+        v3=generate_climato(v2['time'], coeffs, mean=True, trend=True, cycle=True)
+    else:
+        v3=0.
+
+    # Convolution par le noyau
+    v4=((v3+v2).rolling(time=k,center=True).construct(time='time_win')).weighted(noyau).mean('time_win').isel(time=slice(k,-k))
+    v4['time']=data['time']
+    
+    # Ajout du polynome aux données filtrées
+    return v0+v4
+ 
     
 def isosurface(data, target, dim, coord=None, upper=False):
     """
@@ -159,7 +168,7 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
     data_valid=(data_ref-d_mean).where(data_ref.count(dim='time')>5,0)/d_sig
     
     fit=data_valid.curvefit('time',function_climato).curvefit_coefficients*d_sig
-    [a,b,c,d,e,f] = [fit.sel(param=u) for u in ['a','b','c','d','e','f']]
+    [a,b,c,d,e,f] = [fit.sel(param=u).drop('param') for u in ['a','b','c','d','e','f']]
     
     time=data.time.astype('float')
 
@@ -181,16 +190,16 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
                        'Day0_YearCycle':np.mod(np.arctan2(b,a)/2./np.pi*DAY_YEAR,DAY_YEAR),
                        'HalfYear_Amplitude':np.sqrt(c**2+d**2),
                        'Day0_HalfYearCycle':np.mod(np.arctan2(d,c)/2./np.pi*DAY_YEAR,DAY_YEAR/2.),
-                       'MeanValue':d_mean,
+                       'Origin':e+d_mean,
                        'Trend':f*DAY_YEAR*SECONDS_DAY*1.e9
-                      }).drop('param')
+                      })
     else:
         return res
     
 def generate_climato(time, coefficients, mean=True, trend=False, cycle=True):
     a=b=c=d=e=f=0.
     if mean:
-        e=coefficients.MeanValue
+        e=coefficients.Origin
     if trend:
         f=coefficients.Trend/(DAY_YEAR*SECONDS_DAY*1.e9)
     if cycle:
@@ -227,7 +236,8 @@ def to_datetime(data,input_type,format=None):
         data['time']=data.indexes['time'].to_datetimeindex()
     elif input_type=='custom':
         data['time']=[ pd.to_datetime(i,format=format) for i in data.time]
-
+    elif input_type=='gregorian':
+        data['time']=netCDF4.num2date(data.time, data.time.Units, data.time.calendar)
     else:
         raise ValueError(f'Format {input_type} not yet considered, please convert manually to datatime')
       
