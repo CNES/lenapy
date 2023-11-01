@@ -404,6 +404,22 @@ class GeoSet:
         """
         return surface_cell(self._obj)
     
+    def reset_longitude(self,origin=-180):
+        """
+        Rolls the longitude in order to place the specified longitude at the beggining of the array
+
+        Returns
+        -------
+        origin : float
+            first longitude in the array
+
+        Example
+        -------
+        >>>data = xgeo.open_geodata('/home/user/lenapy/data/gohc_2020.nc')
+        >>>surface = data.xgeo.surface_cell()
+
+        """
+        return reset_longitude(self._obj,origin)
     
     def climato(self,*args,**kwargs):
         warnings.warn("xgeo.climato() : This function is now in xtime module, please modify your code")
@@ -424,6 +440,8 @@ class GeoSet:
     def fill_time(self,*args,**kwargs):
         warnings.warn("xgeo.fill_time() : This function is now in xtime module, please modify your code")
         return self._obj.xtime.fill_time(*args,**kwargs)
+    
+    
     
 @xr.register_dataarray_accessor("xgeo")
 class GeoArray:
@@ -663,6 +681,23 @@ class GeoArray:
 
         """
         return surface_cell(self._obj)
+    
+    def reset_longitude(self,origin=-180):
+        """
+        Rolls the longitude in order to place the specified longitude at the beggining of the array
+
+        Returns
+        -------
+        origin : float
+            first longitude in the array
+
+        Example
+        -------
+        >>>data = xgeo.open_geodata('/home/user/lenapy/data/gohc_2020.nc')
+        >>>surface = data.xgeo.surface_cell()
+
+        """
+        return reset_longitude(self._obj,origin)
     
     def climato(self,*args,**kwargs):
         warnings.warn("xgeo.climato() : This function is now in xtime module, please modify your code")

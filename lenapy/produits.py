@@ -38,7 +38,7 @@ from glob import glob
 import numpy as np
 import xarray as xr
 import gsw
-from .utils import longitude_increase
+
 
 def rename_data(data,**kwargs):
     """
@@ -428,7 +428,7 @@ def IAP(rep,chunks=None,ymin=0,ymax=9999,filtre='',**kwargs):
     """     
     def preproc(ds):
         date=os.path.basename(os.path.splitext(ds.encoding["source"])[0]).split('_')
-        return longitude_increase(rename_data(ds).roll(longitude=180,roll_coords=True).assign_coords(time=np.datetime64('%s-%s-15'%(date[-3],date[-1]),'ns')).expand_dims(dim='time'))
+        return rename_data(ds).assign_coords(time=np.datetime64('%s-%s-15'%(date[-3],date[-1]),'ns')).expand_dims(dim='time')
 
     def year(f):
         return f.split('_')[-3]
@@ -600,4 +600,135 @@ def ECCO(rep,chunks=None,ymin=0,ymax=9999,filtre='',**kwargs):
                         'psal':data.SALT
                           })        
 
-# Ajouter LYMAN
+#--------------------- IAP ---------------------
+def Lyman(rep,chunks=None,ymin=0,ymax=9999,filtre='',**kwargs):
+    """
+    Load data from Lyman product.
+    
+    Product's directory must have the following format:
+    
+    Parameters
+    ----------
+    rep : string
+        path of the product's directory
+    ymin : int, optional
+        lowest bound of the time intervalle to be loaded (year)
+    ymax : int, optional
+        highest bound of the time intervalle to be loaded (year)
+    filter : string, optionnal
+        string pattern to filter datafiles names
+    **kwargs :  optional
+        The keyword arguments form of open_mfdataset
+
+    Returns
+    -------
+    product : Dataset
+        New dataset containing ohc data from the product
+
+    Examples
+    --------
+    >>> data=IAP('/home/usr/lenapy/data/IAP',ymin=2005,ymax=2007,chunks={'depth':10})
+    >>> data.sel(time=slice('2005-06','2007-06')).xocean.gohc.plot()
+
+    """     
+
+    def preproc(ds):
+        return rename_data(ds).xgeo.reset_longitude(-180)
+
+    def year(f):
+        return f.split('_')[-2]
+    
+    fics=filtre_liste(glob(os.path.join(rep,'**','RFROM_OHCA*.nc')),year,ymin,ymax,filtre)
+    
+    data=xr.open_mfdataset(fics,preprocess=preproc,chunks=chunks,**kwargs)
+
+    return xr.Dataset({'ohc':data.ocean_heat_content_anomaly.sum('mean_depth').chunk(chunks=chunks),
+                          })        
+
+#--------------------- NOC OI --------------------
+def NOC_OI(rep,chunks={},ymin=0,ymax=9999,filtre='',**kwargs):
+    """
+    Load data from NOC ARGO OI product.
+    Depth coordinate is derived from pressure.
+    
+    Parameters
+    ----------
+    rep : string
+        path of the product's directory
+    ymin : int, optional
+        lowest bound of the time intervalle to be loaded (year)
+    ymax : int, optional
+        highest bound of the time intervalle to be loaded (year)
+    filter : string, optionnal
+        string pattern to filter datafiles names
+    **kwargs :  optional
+        The keyword arguments form of open_mfdataset
+
+    Returns
+    -------
+    product : Dataset
+        New dataset containing in-situ temperature and practical salinity data from the product
+
+    Examples
+    --------
+    >>> data=JAMSTEC('/home/usr/lenapy/data/JAMSTEC',ymin=2005,ymax=2007,chunks={'depth':10})
+    >>> data.sel(time=slice('2005-06','2007-06')).xocean.gohc.plot()
+
+    """       
+    def preproc(ds):
+        ds['time']=ds.indexes['time'].to_datetimeindex()
+        return ds
+    
+    fics=glob(os.path.join(rep,'*.nc'))
+    
+    data=xr.open_mfdataset(fics,preprocess=preproc,chunks=chunks,**kwargs).sel(time=slice(str(ymin),str(ymax)))
+
+    depth=-gsw.z_from_p(data.pressure,0)
+    pressure=gsw.p_from_z(-depth,data.latitude)
+    pressure=xr.where(pressure<data.pressure,pressure,data.pressure)
+
+    return xr.Dataset({'temp':data.temperature.interp(pressure=pressure).assign_coords(pressure=depth).rename(pressure='depth').chunk(chunks=chunks),
+                       'psal':data.practical_salinity.interp(pressure=pressure).assign_coords(pressure=depth).rename(pressure='depth').chunk(chunks=chunks),
+                      })
+def SODA(rep,chunks={},ymin=0,ymax=9999,filtre='',**kwargs):
+    """
+    Load data from SODA product.
+    
+    Parameters
+    ----------
+    rep : string
+        path of the product's directory
+    ymin : int, optional
+        lowest bound of the time intervalle to be loaded (year)
+    ymax : int, optional
+        highest bound of the time intervalle to be loaded (year)
+    filter : string, optionnal
+        string pattern to filter datafiles names
+    **kwargs :  optional
+        The keyword arguments form of open_mfdataset
+
+    Returns
+    -------
+    product : Dataset
+        New dataset containing potential temperature and practical salinity data from the product
+
+    Examples
+    --------
+    >>> data=SODA('/home/usr/lenapy/data/SODA',ymin=2005,ymax=2007,chunks={'depth':10})
+    >>> data.sel(time=slice('2005-06','2007-06')).xocean.gohc.plot()
+
+    """       
+    def preproc(ds):
+        return ds.rename(dict(xt_ocean='longitude',yt_ocean='latitude',st_ocean='depth'))
+    
+    def year(f):
+        return f.split('_')[-1]
+  
+    fics=filtre_liste(glob(os.path.join(rep,'*.nc')),year,ymin,ymax,filtre)
+    
+    data=xr.open_mfdataset(fics,preprocess=preproc,chunks=chunks,**kwargs).chunk(chunks=chunks)
+                   
+    return xr.Dataset({'PT':data.temp,
+                        'psal':data.salt
+                          })        
+

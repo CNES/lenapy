@@ -263,12 +263,25 @@ def longitude_increase(data):
         data['longitude']=l
     return data
         
-
+def reset_longitude(data, orig=-180):
+    i=((np.mod(data.longitude-orig+180,360)-180)**2).argmin().values
+    return longitude_increase(data.roll(longitude=-i,roll_coords=True))
+    
 def diff_3pts(data,dim):
     y=data.where(~data.isnull()).rolling({dim:3},center=True,min_periods=3).construct('win')
     x=data[dim].where(~data.isnull()).rolling({dim:3},center=True,min_periods=3).construct('win').astype('float')
 
     return ((x*y).mean('win')-x.mean('win')*y.mean('win'))/((x**2).mean('win')-(x.mean('win'))**2)
+
+def diff_2pts(data,dim,interp_na=True,**kw):
+    if interp_na:
+        d=data.interpolate_na(dim=dim,**kw)
+    else:
+        d=data
+    y=d.diff(dim)
+    x=d[dim].rolling({dim:2}).mean()
+    return y.assign_coords({dim:x})
+    
 
 def fill_time(data):
     # Complète les trous de données dans une série temporelle en respectant approximativement l'échantillonnage, 
