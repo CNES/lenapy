@@ -22,42 +22,45 @@ class OceanSet(xg.GeoSet):
     This class extends any dataset to a xOcean object, that allows to access to any TEOS10 variable simply by calling the name of the variable through the xOcean interface.
     The initial dataset must contains the fields necessary to compute the output variable (ex : temperature and salinity to compute heat, heat to compute ohc,...)
 
-    Availabe fields
+    Available fields
     ---------------
     Temperatures : one of the three types of temperature must be present in the original dataset to perform derived computation.
-        temp  : in-situ temperature        
-        PT    : potential temperature     
-        CT    : conservative temperature 
+        -temp  : in-situ temperature        
+        -PT    : potential temperature     
+        -CT    : conservative temperature 
 
     Salinities :  one of the three types of salinities must be present in the original dataset to perform derived computation.
-        psal  : practical salinity  
-        SR    : relative salinity    
-        SA    : absolute salinity. If there is no location information (lat,lon), absolute salinity is returned equal to relative salinity
+        -psal  : practical salinity  
+        -SR    : relative salinity    
+        -SA    : absolute salinity. If there is no location information (lat,lon), absolute salinity is returned equal to relative salinity
 
     Physical properties :
-        P     : pressure. If location information is present, pressure is adjusted with regard to latitude, otherwise latitude is equal to 0
-        Cp    : heat capacity
-        rho   : density
-        sigma0: potential density anomaly at 0 dbar
+        -P     : pressure. If location information is present, pressure is adjusted with regard to latitude, otherwise latitude is equal to 0
+        -Cp    : heat capacity
+        -rho   : density
+        -sigma0: potential density anomaly at 0 dbar
 
     Heat content :
-        heat  : specific heat content (J/m3)
-        ohc   : local ocean heat content (J/m²), it is heat integrated over the whole ocean depth
-        gohc  : global ocean heat content (J/m²), it is ohc averaged over latitude-longitude, excluding continents
-        gohc_TOA: idem gohc, including continents (where ohc=0)
-        ohc_above: idem ohc, where heat is integrated above a given depth
-        gohc_above: idem gohc, averaging ohc_above instead of ohc
+        -heat  : specific heat content (J/m3)
+        -ohc   : local ocean heat content (J/m²), it is heat integrated over the whole ocean depth
+        -gohc  : global ocean heat content (J/m²), it is ohc averaged over latitude-longitude, excluding continents
+        -gohc_TOA: idem gohc, including continents (where ohc=0)
+        -ohc_above: idem ohc, where heat is integrated above a given depth
+        -gohc_above: idem gohc, averaging ohc_above instead of ohc
 
     Sea level :
-        slh   : steric sea layer height anomaly (-), equal to (1. - rho/rhoref)
-        ssl   : steric sea surface level anomaly (m), it is slh integrated over the whole ocean depth
-        ieeh  : integrated expansion efficiency oh heat (m/(J/m²)), it is (ssl/ohc)
+        -slh   : steric sea layer height anomaly (-), equal to (1. - rho/rhoref)
+        -ssl   : steric sea surface level anomaly (m), it is slh integrated over the whole ocean depth
+        -ssl_above : idem ssl, where heat is integrated above a given depth
+        -tssl  : thermosteric sea surface level anomaly above given depth (parameter 'above'), averaging period for salinty given by parameter 'mean_time_period'
+        -hssl  : halosteric sea surface level anomaly above given depth (parameter 'above'), averaging period for temperature given by parameter 'mean_time_period'
+        -ieeh  : integrated expansion efficiency oh heat (m/(J/m²)), it is (ssl/ohc)
 
     Layer depth :
-        ocean_depth  : maximum depth with non Nan values for temperature
-        mld_theta0   : ocean mixed layer depth, defined by a temperature drop from 0.2°C wrt to -10m depth 
-        mld_sigma0   : ocean mixed layer depth, defined by a potential density increase of 0.03kg/m3 wrt to -10m depth
-        mld_sigma0var: ocean mixed layer depth, defined by a potential density equal to the potential density at -10m depth with a temperature dropped by 0.2°C
+        -ocean_depth  : maximum depth with non Nan values for temperature
+        -mld_theta0   : ocean mixed layer depth, defined by a temperature drop from 0.2°C wrt to -10m depth 
+        -mld_sigma0   : ocean mixed layer depth, defined by a potential density increase of 0.03kg/m3 wrt to -10m depth
+        -mld_sigma0var: ocean mixed layer depth, defined by a potential density equal to the potential density at -10m depth with a temperature dropped by 0.2°C
 
     Examples
     --------
@@ -97,7 +100,7 @@ class OceanSet(xg.GeoSet):
     """    
     def __init__(self, xarray_obj):
         super().__init__(xarray_obj)
-        fields=['temp','PT','CT','psal','SA','SR','P','rho','sigma0','Cp','heat','slh','ohc','ssl','ieeh','gohc','eeh',
+        fields=['temp','PT','CT','psal','SA','SR','P','rho','sigma0','Cp','heat','slh','ohc','ssl','tssl','hssl','ieeh','gohc','eeh',
                 'ocean_depth','mld_theta0','mld_sigma0','mld_sigma0var']
         for f in fields:
             if hasattr(xarray_obj,f):
@@ -189,6 +192,7 @@ class OceanSet(xg.GeoSet):
                           'rho','Density','kg/m3') # [kg/m3]
         return self.rho_
     
+    
     @property
     # Anomalie de densité potentielle à 0dbar en fonction de la salinité absolue et la température conservative
     def sigma0(self):
@@ -240,6 +244,32 @@ class OceanSet(xg.GeoSet):
             self.ssl_ = proprietes(self.slh.xocean.integ_depth(),
                           'ssl','Steric sea surface level anomaly','m') # [m]
         return self.ssl_
+
+    # Ecart de hauteur d'eau thermosterique de la colonne par rapport à une référence (0,35)
+    def tssl(self,mean_time_period=slice('2005','2015'),above=None):
+        rhoref = gsw.rho(gsw.SR_from_SP(35), 0, self.P)
+        rho = gsw.rho(self.SA.sel(time=mean_time_period).mean('time'), self.CT, self.P)
+        tslh = 1.-rho/rhoref
+        if above==None:
+            return proprietes(tslh.xocean.integ_depth(), 'tssl','Thermosteric sea surface level anomaly','m') # [m]
+        else:
+            return proprietes(tslh.xocean.above(above), 'tssl','Thermosteric sea surface level anomaly','m') # [m]            
+            
+    
+    # Ecart de hauteur d'eau halosterique de la colonne par rapport à une référence (0,35)
+    def hssl(self,mean_time_period=slice('2005','2015'),above=None):
+        rhoref = gsw.rho(gsw.SR_from_SP(35), 0, self.P)
+        rho = gsw.rho(self.SA, self.CT.sel(time=mean_time_period).mean('time'), self.P)
+        hslh = 1.-rho/rhoref
+        if above==None:
+            return proprietes(hslh.xocean.integ_depth(),'hssl','Haloosteric sea surface level anomaly','m') # [m]
+        else:
+            return proprietes(hslh.xocean.above(above),'hssl','Haloosteric sea surface level anomaly','m') # [m]
+    
+    # Ecart de hauteur d'eau de la colonne par rapport à une référence (0,35)
+    def ssl_above(self,target):
+        return proprietes(self.slh.xocean.above(target),
+                          'ssl','Steric sea surface level anomaly above targeted depth','m') # [m]
     
     @property
     # IEEH de la colonne (grandeur surfacique)
@@ -255,6 +285,20 @@ class OceanSet(xg.GeoSet):
                          'gohc','Global ocean heat content wrt to ocean surface area','J/m²')
 
     @property
+    def msl(self):
+        return proprietes(self.ssl.xocean.mean(['latitude','longitude'],weights=['latitude']),
+                         'msl','Mean ocean sea level anomaly','m')
+    
+    def tmsl(self,**kw):
+        return proprietes(self.tssl(**kw).xocean.mean(['latitude','longitude'],weights=['latitude']),
+                         'tmsl','Mean thermosteric ocean sea level anomaly','m')
+    
+    def hmsl(self,**kw):
+        return proprietes(self.hssl(**kw).xocean.mean(['latitude','longitude'],weights=['latitude']),
+                         'hmsl','Mean halosteric ocean sea level anomaly','m')
+
+    
+    @property
     def gohc_TOA(self):
         return proprietes(self.ohc.xocean.mean(['latitude','longitude'],weights=['latitude'],na_eq_zero=True),
                          'gohc','Global ocean heat content wrt to TOA area','J/m²')
@@ -262,7 +306,7 @@ class OceanSet(xg.GeoSet):
     def ohc_above(self,target):
         res=self.heat.xocean.above(target)
         return proprietes(res.where(res!=0),
-            'ohc_above','Ocean heat content','J/m²') # [J/m²]
+            'ohc_above','Ocean heat content above targeted depth','J/m²') # [J/m²]
         
     def gohc_above(self,target,na_eq_zero=False,mask=True):
         return proprietes(self.ohc_above(target).xocean.mean(['latitude','longitude'],weights=['latitude'],na_eq_zero=na_eq_zero,mask=mask),
@@ -419,5 +463,6 @@ class OceanArray(xg.GeoArray):
           * longitude  (longitude) float32 1.0 2.0 3.0 4.0 ... 357.0 358.0 359.0 360.0
 
         """
-        return self.cum_integ_depth().xocean.add_value_surface(0.).interp({'depth':depth},**kwargs)
+        d=xr.where(self._obj.depth.max()<depth,self._obj.depth.max(),depth)
+        return self.cum_integ_depth().xocean.add_value_surface(0.).interp({'depth':d},**kwargs)
     

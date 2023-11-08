@@ -18,6 +18,7 @@ def filter(data,filter_name='lanczos',annual_cycle=False,q=3,**kwargs):
         Données à filtrer
     filter_name : func (default=Lanczos)
         nom de la fonction de filtrage
+    annual_cycle : Bool (deafult=False) : retire le cycle annuel avant de filtrer, et le rajoute à la fin
     q : integer (default=3)
         ordre du polynome pour l'effet miroir (gestion des bords)
     **kwargs :
