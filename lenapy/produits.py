@@ -38,6 +38,7 @@ from glob import glob
 import numpy as np
 import xarray as xr
 import gsw
+import xesmf as xe
 
 
 def rename_data(data,**kwargs):
@@ -690,6 +691,8 @@ def NOC_OI(rep,chunks={},ymin=0,ymax=9999,filtre='',**kwargs):
     return xr.Dataset({'temp':data.temperature.interp(pressure=pressure).assign_coords(pressure=depth).rename(pressure='depth').chunk(chunks=chunks),
                        'psal':data.practical_salinity.interp(pressure=pressure).assign_coords(pressure=depth).rename(pressure='depth').chunk(chunks=chunks),
                       })
+
+#--------------------- SODA --------------------
 def SODA(rep,chunks={},ymin=0,ymax=9999,filtre='',**kwargs):
     """
     Load data from SODA product.
@@ -731,4 +734,42 @@ def SODA(rep,chunks={},ymin=0,ymax=9999,filtre='',**kwargs):
     return xr.Dataset({'PT':data.temp,
                         'psal':data.salt
                           })        
+
+#--------------------- ORAS5 --------------------
+def ORAS5(rep,chunks={},ymin=0,ymax=9999,filtre='',**kwargs):
+    """
+    Load data from ORAS5 product.
+    
+    Parameters
+    ----------
+    rep : string
+        path of the product's directory
+    ymin : int, optional
+        lowest bound of the time intervalle to be loaded (year)
+    ymax : int, optional
+        highest bound of the time intervalle to be loaded (year)
+    filter : string, optionnal
+        string pattern to filter datafiles names
+    **kwargs :  optional
+        The keyword arguments form of open_mfdataset
+
+    Returns
+    -------
+    product : Dataset
+        New dataset containing potential temperature and practical salinity data from the product
+
+    Examples
+    --------
+    >>> data=ORAS5('/home/usr/lenapy/data/SODA',ymin=2005,ymax=2007,chunks={'depth':10})
+    >>> data.sel(time=slice('2005-06','2007-06')).xocean.gohc.plot()
+
+    """       
+    
+    def year(f):
+        return f.split('_')[-1][0:4]
+  
+    fics=filtre_liste(glob(os.path.join(rep,'processed','*.nc')),year,ymin,ymax,filtre)  
+      
+    return xr.open_mfdataset(fics,chunks=chunks,**kwargs)
+
 
