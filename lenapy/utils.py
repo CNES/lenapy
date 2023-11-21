@@ -18,7 +18,7 @@ def filter(data,filter_name='lanczos',annual_cycle=False,q=3,**kwargs):
         Données à filtrer
     filter_name : func (default=Lanczos)
         nom de la fonction de filtrage
-    annual_cycle : Bool (deafult=False) : retire le cycle annuel avant de filtrer, et le rajoute à la fin
+    annual_cycle : Bool (default=False) : retire le cycle annuel avant de filtrer, et le rajoute à la fin
     q : integer (default=3)
         ordre du polynome pour l'effet miroir (gestion des bords)
     **kwargs :
@@ -214,6 +214,9 @@ def generate_climato(time, coefficients, mean=True, trend=False, cycle=True):
 def trend(data):
     return data.polyfit(dim='time',deg=1).polyfit_coefficients[0]*1.e9
 
+def detrend(data):
+    return data - xr.polyval(data.time,data.polyfit(dim='time',deg=1)).polyfit_coefficients
+    
 def interp_time(data,other,**kwargs):
 
     if not 'time' in data.coords: raise AssertionError('The time coordinate does not exist')
@@ -250,9 +253,9 @@ def split_duplicate_coords(data):
             new_coords={}
             for c in data[u].dims:
                 if (c in new_coords.keys()):
-                    new_coords[c+"_"]=data[u].coords[c]
+                    new_coords[c+"_"]=data[u].coords[c].values
                 else:
-                    new_coords[c]=data[u].coords[c]
+                    new_coords[c]=data[u].coords[c].values
             data[u]=xr.DataArray(data=data[u].values,dims=new_coords.keys(),coords=new_coords)
     return data
 
@@ -274,14 +277,17 @@ def diff_3pts(data,dim):
 
     return ((x*y).mean('win')-x.mean('win')*y.mean('win'))/((x**2).mean('win')-(x.mean('win'))**2)
 
-def diff_2pts(data,dim,interp_na=True,**kw):
+def diff_2pts(data,dim,interp_na=True,datetime_unit='s',**kw):
     if interp_na:
         d=data.interpolate_na(dim=dim,**kw)
     else:
         d=data
-    y=d.diff(dim)
-    x=d[dim].rolling({dim:2}).mean()
-    return y.assign_coords({dim:x})
+    dy=d.diff(dim)
+    dt=d[dim].diff(dim)
+    x=d[dim]-dt/2.
+    res=dy*(pd.to_timedelta("1%s"%datetime_unit).asm8/dt)
+
+    return res.assign_coords({dim:x})
     
 
 def fill_time(data):

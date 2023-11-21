@@ -259,12 +259,27 @@ class TimeArray:
         defined by the selected point and its two neighbours
         """
         return diff_3pts(self._obj,dim)    
+
+    def diff_2pts(self,dim,**kw):
+        """
+        Derivative formula along the selected dimension, returning for each pair of points the slope, set at the middle coordinates of
+        these two points
+        """
+        return diff_2pts(self._obj,dim,**kw)    
+    
     def trend(self):
         """
         Perform a linear regression on the data, and returns the slope coefficient
         """
         return trend(self._obj)
     
+    def detrend(self):
+        """
+        remove the trend from a dataarray
+        """
+        return detrend(self._obj)
+    
+
     def fill_time(self):
         """
         Fill missing values in a timeseries in adding some new points, by respecting the time sampling. Missing values are not NaN

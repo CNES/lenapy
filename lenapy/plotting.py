@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy import interpolate
 
 def plot_timeseries_uncertainty(xgeo_data, 
                                 x_dim='time',
@@ -230,3 +231,105 @@ class TaylorDiagram(object):
         contours = self.ax.contour(ts, rs, rms, levels, **kwargs)
 
         return contours
+
+    
+
+def watson_graph(trends, uncertainty_min, uncertainty_max, txts, colors_plot=None, stylish_levels=None, show_values=True, ylims_user=None,ax=None, 
+                 fontsize=12,ylabel_pos=None):
+
+    if ylims_user is None:
+        ylims_user=[min(uncertainty_min),max(uncertainty_max)]
+        
+    if ylabel_pos==None:
+        ylabel_pos=ylims_user[0]
+
+    for ii in range(len(trends)):
+        draw_bar(ax, ii, trends[ii], uncertainty_max[ii], uncertainty_min[ii], colors_plot[ii], txt=txts[ii], marker='o', ls='-', lw=3, show_values=show_values, stylish_levels=stylish_levels,fontsize=fontsize,ylabel_pos=ylabel_pos)
+
+    ax.set_xlim([-0.5, len(trends)-0.2])
+    ax.set_ylim(ylims_user)
+    xlims = ax.get_xlim()
+    ylims = ax.get_ylim()
+
+    leg_x0, leg_x1, leg_y0, leg_y1 = xlims[0]+(xlims[1]-xlims[0])*0.88, xlims[0]+(xlims[1]-xlims[0])*0.91, ylims[0]+(ylims[1]-ylims[0])*0.8, ylims[0]+(ylims[1]-ylims[0])*0.9
+    if all([el == colors_plot[0] for el in colors_plot]):
+        color_loc = colors_plot[0]
+    else:
+        color_loc = 'black'
+    y_step = (leg_y1-leg_y0)/(0.7*len(stylish_levels))
+    barwidth_loc = 0.5*(leg_x1-leg_x0)
+    leg_xmid = 0.5*(leg_x0+leg_x1)
+    zorder = 100 + 30*len(stylish_levels)
+    tt=0
+    for ii in stylish_levels:
+        if tt==0:
+            ax.fill_between(np.linspace(leg_xmid-barwidth_loc, leg_xmid+barwidth_loc, 2), np.ones(2)*(leg_y0+(ii)*y_step), np.ones(2)*(leg_y0+(ii+1)*y_step), color=color_loc, zorder=zorder+10)
+            ax.text(leg_xmid+barwidth_loc+0.1*(leg_x1-leg_x0), leg_y0+(ii+1)*y_step, '%.0f%% C.L.'%(sigma_to_confidence_interval(ii+1)*100.), fontsize=12, ha="left", va="center", \
+                #bbox=dict(facecolor='white', edgecolor='white')
+                   )
+            ax.text(leg_xmid-barwidth_loc-0.1*(leg_x1-leg_x0), leg_y0+(ii+1)*y_step, '%.2f - $\sigma$'%(ii+1), fontsize=12, ha="right", va="center", \
+                #bbox=dict(facecolor='white', edgecolor='white')
+                   )
+            barwidth_loc *= 0.6
+            zorder -= 10
+            tt=tt+1
+        else:
+            ax.fill_between(np.linspace(leg_xmid-barwidth_loc, leg_xmid+barwidth_loc, 2), np.ones(2)*(leg_y0+(ii)*y_step), np.ones(2)*(leg_y0+(ii+1)*y_step), color=color_loc, zorder=zorder+10, alpha=0.5)
+            ax.text(leg_xmid+barwidth_loc+0.1*(leg_x1-leg_x0), leg_y0+(ii+1)*y_step, '%.0f%% C.L.'%(sigma_to_confidence_interval(ii+1)*100.), fontsize=12, ha="left", va="center", \
+                #bbox=dict(facecolor='white', edgecolor='white')
+                   )
+            ax.text(leg_xmid-barwidth_loc-0.1*(leg_x1-leg_x0), leg_y0+(ii+1)*y_step, '%.2f - $\sigma$'%(ii+1), fontsize=12, ha="right", va="center", \
+                #bbox=dict(facecolor='white', edgecolor='white')
+                   )
+            barwidth_loc *= 0.6
+            zorder -= 10
+
+    ax.set_xticks([])
+    ax.set_axisbelow(True)
+    ax.grid(True)
+
+
+    
+def draw_bar(ax, x, y, y_max, y_min, color, txt=None, marker=None, ls='-', lw=1, bar_tick_width=0.1, fontsize=12, show_values=True, stylish_levels=None,ylabel_pos=0):
+    dy = (y_max - y_min)/2
+    y_mean = (y_max+y_min)/2
+
+    color_loc = color
+    barwidth_loc = bar_tick_width
+    zorder = 100 + 10*len(stylish_levels)
+    tt=0
+    for ii in stylish_levels:
+        if tt==0:
+            ax.fill_between(np.array([x-barwidth_loc, x+barwidth_loc]), np.ones(2)*(y_mean-(ii+1)*dy), np.ones(2)*(y_mean+(ii+1)*dy), color=[color_loc], zorder=zorder)
+            tt=tt+1
+        else:
+            ax.fill_between(np.array([x-barwidth_loc, x+barwidth_loc]), np.ones(2)*(y_mean-(ii+1)*dy), np.ones(2)*(y_mean+(ii+1)*dy), color=[color_loc], zorder=zorder, alpha=0.5)
+        barwidth_loc *= 0.6
+        zorder -= 10
+
+    if marker is not None:
+        ax.scatter(x, y, marker=marker, color='white', zorder = 100 + 10*len(stylish_levels)+10)
+    if txt is not None:
+        ax.text(x+0.05*txt.count('\n'), ylabel_pos, txt, color=color, fontsize=fontsize, fontweight='bold', rotation=45, ha="center", va="top")
+    if show_values:
+       ax.text(x, y_mean-dy*1.65-0.1, '%.2f\n [%.2f; %.2f]'%(y, y_mean-dy*1.65, y_mean+dy*1.65), fontsize=fontsize-2, rotation=0, ha="center", va="center")
+
+    
+def sigma_to_confidence_interval(sigma_in, message=False):
+    f_convert = sigma_to_confidence_interval_object(0.0001, 10.,10000)
+    if message:
+        print('%s sigma = %s %% confidence interval'%(sigma_in, 100.*f_convert(sigma_in)))
+    return f_convert(sigma_in)
+
+def sigma_to_confidence_interval_object(min_sigma, max_sigma, number_measures):
+    if min_sigma < 0. or max_sigma <= 0. or number_measures < 2:
+        raise IOError('min_sigma must be >=0 and max_sigma must be >0 and number_measures must be >=2')
+    x = np.concatenate((np.zeros(1).astype(np.float64), np.logspace(np.log10(min_sigma),np.log10(max_sigma),number_measures).astype(np.float64)), axis=0)
+    semigauss = np.exp(-0.5*(x**2))
+    y = np.zeros(number_measures+1).astype(np.float64)
+    tot = 0.5*np.sqrt(2.0*np.pi)
+    u = np.float64(0.)
+    for ii in range(1,number_measures):
+        u += 0.5*(semigauss[ii-1]+semigauss[ii])*(x[ii]-x[ii-1])
+        y[ii] = u/tot
+    return interpolate.interp1d(x,y,kind='linear', bounds_error=False,fill_value=1.)

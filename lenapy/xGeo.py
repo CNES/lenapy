@@ -46,10 +46,10 @@ def open_geodata(file,*args,rename={},nan=None,chunks=None,time_type=None,format
     data = xgeo.open_geodata('/home/user/lenapy/data/gohc_2020.nc')
     """
     res=rename_data(xr.open_dataset(file,*args,**kwargs),**rename)
-    if duplicate_coords:
-        res=split_duplicate_coords(res)
     if time_type != None:
         res=to_datetime(res,input_type=time_type,format=format)
+    if duplicate_coords:
+        res=split_duplicate_coords(res)
     res=longitude_increase(res)
     if type(nan)!=type(None):
         return res.where(res!=nan).chunk(chunks=chunks)

@@ -4,19 +4,19 @@ import yaml
 from .utils import *
 
 class estimateur:
-    def __init__(self,data,degree,tref=None,sigma=None):
+    def __init__(self,data,degree,tref=None,sigma=None,datetime_unit="s"):
         if type(tref)==type(None):
             tref=data.time.isel(time=0)
         if type(sigma)==type(None):
             sigma=np.diag(np.ones(len(data.time)))
-            
-        t1=(data.time-tref).astype('float')*1.e-9/86400./365.25
+        
+        t1=(data.time-tref)/pd.to_timedelta("1%s"%datetime_unit).asm8
         self.deg=xr.DataArray(data=np.arange(degree),dims='degree',coords=dict(degree=np.arange(degree)))
         self.data = data
         self.expl = (t1**self.deg)
         self.X = self.expl.values
         self.Y = data.values
-        self.sigma=sigma
+        self.cov_matrix=sigma
 
     def OLS(self):
         H = np.linalg.inv(np.dot(self.X.T,self.X))
@@ -24,7 +24,7 @@ class estimateur:
         self.params = xr.zeros_like(self.deg)+self.beta
         
     def GLS(self):
-        eigenvalues,eigenvectors=np.linalg.eig(self.sigma)
+        eigenvalues,eigenvectors=np.linalg.eig(self.cov_matrix)
         eigenvalues=np.where(eigenvalues<0,0.,eigenvalues)
         C=np.linalg.inv((np.sqrt(eigenvalues)*eigenvectors).real)
         
@@ -49,7 +49,7 @@ class estimateur:
     
     def cov_estim(self):
         H = np.linalg.inv(np.dot(self.X.T,self.X))
-        A = np.dot(np.dot(self.X.T,self.sigma),self.X)
+        A = np.dot(np.dot(self.X.T,self.cov_matrix),self.X)
         return np.dot(np.dot(H,A),H)
 
     def std_err(self):
