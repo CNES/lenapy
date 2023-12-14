@@ -234,7 +234,7 @@ class TaylorDiagram(object):
 
     
 
-def watson_graph(trends, uncertainty_min, uncertainty_max, txts, colors_plot=None, stylish_levels=None, show_values=True, ylims_user=None,ax=None, 
+def watson_graph(trends, uncertainty_min, uncertainty_max, txts=None, colors_plot=None, stylish_levels=None, show_values=True, show_interv=True, ylims_user=None,ax=None, 
                  fontsize=12,ylabel_pos=None):
 
     if ylims_user is None:
@@ -242,9 +242,15 @@ def watson_graph(trends, uncertainty_min, uncertainty_max, txts, colors_plot=Non
         
     if ylabel_pos==None:
         ylabel_pos=ylims_user[0]
+        
+    if txts==None:
+        txts=[None]*len(trends)
+        
+    if len(np.ravel(show_interv))==1:
+        show_interv=[show_interv]*len(trends)
 
     for ii in range(len(trends)):
-        draw_bar(ax, ii, trends[ii], uncertainty_max[ii], uncertainty_min[ii], colors_plot[ii], txt=txts[ii], marker='o', ls='-', lw=3, show_values=show_values, stylish_levels=stylish_levels,fontsize=fontsize,ylabel_pos=ylabel_pos)
+        draw_bar(ax, ii, trends[ii], uncertainty_max[ii], uncertainty_min[ii], colors_plot[ii], txt=txts[ii], marker='o', ls='-', lw=3, show_values=show_values, show_interv=show_interv[ii],stylish_levels=stylish_levels,fontsize=fontsize,ylabel_pos=ylabel_pos)
 
     ax.set_xlim([-0.5, len(trends)-0.2])
     ax.set_ylim(ylims_user)
@@ -290,7 +296,7 @@ def watson_graph(trends, uncertainty_min, uncertainty_max, txts, colors_plot=Non
 
 
     
-def draw_bar(ax, x, y, y_max, y_min, color, txt=None, marker=None, ls='-', lw=1, bar_tick_width=0.1, fontsize=12, show_values=True, stylish_levels=None,ylabel_pos=0):
+def draw_bar(ax, x, y, y_max, y_min, color, txt=None, marker=None, ls='-', lw=1, bar_tick_width=0.1, fontsize=12, show_values=True, show_interv=True,stylish_levels=None,ylabel_pos=0):
     dy = (y_max - y_min)/2
     y_mean = (y_max+y_min)/2
 
@@ -312,7 +318,10 @@ def draw_bar(ax, x, y, y_max, y_min, color, txt=None, marker=None, ls='-', lw=1,
     if txt is not None:
         ax.text(x+0.05*txt.count('\n'), ylabel_pos, txt, color=color, fontsize=fontsize, fontweight='bold', rotation=45, ha="center", va="top")
     if show_values:
-       ax.text(x, y_mean-dy*1.65-0.1, '%.2f\n [%.2f; %.2f]'%(y, y_mean-dy*1.65, y_mean+dy*1.65), fontsize=fontsize-2, rotation=0, ha="center", va="center")
+        if show_interv:
+            ax.text(x, y_mean-dy*1.65-0.1, '%.2f\n [%.2f; %.2f]'%(y, y_mean-dy*1.65, y_mean+dy*1.65), fontsize=fontsize-2, rotation=0, ha="center", va="center")
+        else:
+            ax.text(x, y_mean-dy*1.65-0.1, '%.2f'%(y), fontsize=fontsize-2, rotation=0, ha="center", va="center")
 
     
 def sigma_to_confidence_interval(sigma_in, message=False):

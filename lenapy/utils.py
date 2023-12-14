@@ -6,7 +6,7 @@ from .constants import *
 from . import filters
                    
 
-def filter(data,filter_name='lanczos',annual_cycle=False,q=3,**kwargs):
+def filter(data,filter_name='lanczos',time_coord='time',annual_cycle=False,q=3,**kwargs):
     """
     Filtre les données en appliquant sur data le filtre filter_name, avec les paramètres définis dans **kwargs
     Effectue un miroir des données au début et à la fin pour éviter les effets de bords. Ce miroir est réalisé
@@ -18,6 +18,8 @@ def filter(data,filter_name='lanczos',annual_cycle=False,q=3,**kwargs):
         Données à filtrer
     filter_name : func (default=Lanczos)
         nom de la fonction de filtrage
+    time_coord : str (default='time')
+        dimension name along which to apply the filter
     annual_cycle : Bool (default=False) : retire le cycle annuel avant de filtrer, et le rajoute à la fin
     q : integer (default=3)
         ordre du polynome pour l'effet miroir (gestion des bords)
@@ -25,7 +27,7 @@ def filter(data,filter_name='lanczos',annual_cycle=False,q=3,**kwargs):
         paramètres de la fonction de filtrage demandée
     """
 
-    if not 'time' in data.coords: raise AssertionError('The time coordinates does not exist')
+    if not time_coord in data.coords: raise AssertionError('The time coordinates does not exist')
     try:
         f = getattr(filters,filter_name)
     except:
@@ -43,23 +45,23 @@ def filter(data,filter_name='lanczos',annual_cycle=False,q=3,**kwargs):
         data0=data
 
     # On fait un miroir sans la climato
-    pf=data0.polyfit('time',q)
-    v0=xr.polyval(data0.time,pf).polyfit_coefficients
+    pf=data0.polyfit(time_coord,q)
+    v0=xr.polyval(data0[time_coord],pf).polyfit_coefficients
     # Retrait de ce polynome aux données brutes
     v1=data0-v0
-    v1['time']=v1['time'].astype('float')
+    v1[time_coord]=v1[time_coord].astype('float')
     # Complète les données par effet miroir au début et à la fin
-    v2=v1.pad({'time':(k,k)},mode='reflect',reflect_type='even')
-    v2['time']=v1['time'].pad({'time':(k,k)},mode='reflect',reflect_type='odd')
+    v2=v1.pad({time_coord:(k,k)},mode='reflect',reflect_type='even')
+    v2[time_coord]=v1[time_coord].pad({time_coord:(k,k)},mode='reflect',reflect_type='odd')
 
     if annual_cycle==True:
-        v3=generate_climato(v2['time'], coeffs, mean=True, trend=True, cycle=True)
+        v3=generate_climato(v2[time_coord], coeffs, mean=True, trend=True, cycle=True)
     else:
         v3=0.
 
     # Convolution par le noyau
-    v4=((v3+v2).rolling(time=k,center=True).construct(time='time_win')).weighted(noyau).mean('time_win').isel(time=slice(k,-k))
-    v4['time']=data['time']
+    v4=((v3+v2).rolling({time_coord:k},center=True).construct({time_coord:'time_win'})).weighted(noyau).mean('time_win').isel({time_coord:slice(k,-k)})
+    v4[time_coord]=data[time_coord]
     
     # Ajout du polynome aux données filtrées
     return v0+v4
