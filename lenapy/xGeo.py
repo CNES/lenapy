@@ -172,6 +172,9 @@ class GeoSet:
     """
     def __init__(self, xarray_obj):
         self._obj = xarray_obj
+        if not 'latitude' in xarray_obj.coords: raise AssertionError('The latitude coordinates does not exist')
+        if not 'longitude' in xarray_obj.coords: raise AssertionError('The longitude coordinates does not exist')
+
         
 
     def mean(self,*args,**kwargs):
@@ -447,6 +450,8 @@ class GeoSet:
 class GeoArray:
     def __init__(self, xarray_obj):
         self._obj = xarray_obj
+        if not 'latitude' in xarray_obj.coords: raise AssertionError('The latitude coordinates does not exist')
+        if not 'longitude' in xarray_obj.coords: raise AssertionError('The longitude coordinates does not exist')
         
 
         

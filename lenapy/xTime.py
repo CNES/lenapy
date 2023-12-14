@@ -17,6 +17,7 @@ class TimeSet:
     """
     def __init__(self, xarray_obj):
         self._obj = xarray_obj
+        if not 'time' in xarray_obj.coords: raise AssertionError('The time coordinates does not exist')
         
     def climato(self,**kwargs):
         """
@@ -149,6 +150,7 @@ class TimeSet:
 class TimeArray:
     def __init__(self, xarray_obj):
         self._obj = xarray_obj
+        if not 'time' in xarray_obj.coords: raise AssertionError('The time coordinates does not exist')
         
     def climato(self,**kwargs):
         """

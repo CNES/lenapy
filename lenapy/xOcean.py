@@ -17,7 +17,7 @@ def NoneType(var):
     return type(var)==type(None)
 
 @xr.register_dataset_accessor("xocean")
-class OceanSet(xg.GeoSet):
+class OceanSet():
     """
     This class extends any dataset to a xOcean object, that allows to access to any TEOS10 variable simply by calling the name of the variable through the xOcean interface.
     The initial dataset must contains the fields necessary to compute the output variable (ex : temperature and salinity to compute heat, heat to compute ohc,...)
@@ -99,7 +99,7 @@ class OceanSet(xg.GeoSet):
         units:      J/m²
     """    
     def __init__(self, xarray_obj):
-        super().__init__(xarray_obj)
+        self._obj = xarray_obj
         fields=['temp','PT','CT','psal','SA','SR','P','rho','sigma0','Cp','heat','slh','ohc','ssl','tssl','hssl','ieeh','gohc','eeh',
                 'ocean_depth','mld_theta0','mld_sigma0','mld_sigma0var']
         for f in fields:
@@ -365,12 +365,12 @@ class OceanSet(xg.GeoSet):
  
 
 @xr.register_dataarray_accessor("xocean")
-class OceanArray(xg.GeoArray):
+class OceanArray():
     """
     This class extends any dataarray to a xOcean object, to perform specific operations on structured dataarray 
     """
     def __init__(self, xarray_obj):
-        super().__init__(xarray_obj)
+        self._obj = xarray_obj
 
     def add_value_surface(self,value=None):
         """ 
