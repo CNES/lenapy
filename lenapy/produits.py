@@ -773,3 +773,62 @@ def ORAS5(rep,chunks={},ymin=0,ymax=9999,filtre='',**kwargs):
     return xr.open_mfdataset(fics,chunks=chunks,**kwargs)
 
 
+def JAMSTEC_NG(rep,chunks=None,ymin=0,ymax=9999,filtre='',**kwargs):
+    """
+    Load data from JAMSTEC product.
+    Depth coordinate is derived from pressure.
+    
+    Product's directory must have the following format:
+    -base directory (ex: JAMSTEC)
+       |-monthly
+           |-TS_timestamp_xxx.nc (ex: TS_202105_GLB.nc)
+    
+    Parameters
+    ----------
+    rep : string
+        path of the product's directory
+    ymin : int, optional
+        lowest bound of the time intervalle to be loaded (year)
+    ymax : int, optional
+        highest bound of the time intervalle to be loaded (year)
+    filter : string, optionnal
+        string pattern to filter datafiles names
+    **kwargs :  optional
+        The keyword arguments form of open_mfdataset
+
+    Returns
+    -------
+    product : Dataset
+        New dataset containing in-situ temperature and practical salinity data from the product
+
+    Examples
+    --------
+    >>> data=JAMSTEC('/home/usr/lenapy/data/JAMSTEC',ymin=2005,ymax=2007,chunks={'depth':10})
+    >>> data.sel(time=slice('2005-06','2007-06')).xocean.gohc.plot()
+
+    """       
+    def preproc(ds):
+        date=os.path.basename(os.path.splitext(ds.encoding["source"])[0]).split('_')[1]
+        ds=rename_data(ds).assign_coords(time=np.datetime64('%s-%s-15'%(date[0:4],date[4:6]),'ns')).expand_dims(dim='time')
+        ds['longitude']=np.mod(ds.longitude,360)
+        return ds
+
+    def year(f):
+        return f.split('_')[1][0:4]
+    
+    fics=filtre_liste(glob(os.path.join(rep,'**','*GLB.nc')),year,ymin,ymax,filtre)
+    
+    data=xr.open_mfdataset(fics,preprocess=preproc,chunks=chunks,**kwargs)
+
+    depth=-gsw.z_from_p(data.PRES,90)
+    pressure=gsw.p_from_z(-depth,data.latitude)
+    
+    # Pour interpoler correctement en surface, on rajoute une couche aribtraire à profondeur nulle identique à lapremière. Cela permet d'éviter les Nan quand on interpole
+    #  à des pressions légèrement inférieures à celles de la première couche
+    v0 = data.isel(PRES=0)
+    v0['PRES']=xr.zeros_like(v0.PRES)
+    data2=xr.concat([v0,data],dim='PRES')
+
+    return xr.Dataset({'temp':data2.TOI.interp(PRES=pressure).assign_coords(PRES=depth).rename(PRES='depth').chunk(chunks=chunks),
+                       'psal':data2.SOI.interp(PRES=pressure).assign_coords(PRES=depth).rename(PRES='depth').chunk(chunks=chunks)
+                      })
