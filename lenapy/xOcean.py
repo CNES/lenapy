@@ -281,26 +281,26 @@ class OceanSet():
 
     @property
     def gohc(self):
-        return proprietes(self.ohc.xocean.mean(['latitude','longitude'],weights=['latitude']),
+        return proprietes(self.ohc.xgeo.mean(['latitude','longitude'],weights=['latitude']),
                          'gohc','Global ocean heat content wrt to ocean surface area','J/m²')
 
     @property
     def msl(self):
-        return proprietes(self.ssl.xocean.mean(['latitude','longitude'],weights=['latitude']),
+        return proprietes(self.ssl.xgeo.mean(['latitude','longitude'],weights=['latitude']),
                          'msl','Mean ocean sea level anomaly','m')
     
     def tmsl(self,**kw):
-        return proprietes(self.tssl(**kw).xocean.mean(['latitude','longitude'],weights=['latitude']),
+        return proprietes(self.tssl(**kw).xgeo.mean(['latitude','longitude'],weights=['latitude']),
                          'tmsl','Mean thermosteric ocean sea level anomaly','m')
     
     def hmsl(self,**kw):
-        return proprietes(self.hssl(**kw).xocean.mean(['latitude','longitude'],weights=['latitude']),
+        return proprietes(self.hssl(**kw).xgeo.mean(['latitude','longitude'],weights=['latitude']),
                          'hmsl','Mean halosteric ocean sea level anomaly','m')
 
     
     @property
     def gohc_TOA(self):
-        return proprietes(self.ohc.xocean.mean(['latitude','longitude'],weights=['latitude'],na_eq_zero=True),
+        return proprietes(self.ohc.xgeo.mean(['latitude','longitude'],weights=['latitude'],na_eq_zero=True),
                          'gohc','Global ocean heat content wrt to TOA area','J/m²')
     
     def ohc_above(self,target):
@@ -309,7 +309,7 @@ class OceanSet():
             'ohc_above','Ocean heat content above targeted depth','J/m²') # [J/m²]
         
     def gohc_above(self,target,na_eq_zero=False,mask=True):
-        return proprietes(self.ohc_above(target).xocean.mean(['latitude','longitude'],weights=['latitude'],na_eq_zero=na_eq_zero,mask=mask),
+        return proprietes(self.ohc_above(target).xgeo.mean(['latitude','longitude'],weights=['latitude'],na_eq_zero=na_eq_zero,mask=mask),
                          'gohc_above','Global ocean heat content above target','J/m²')
 
 

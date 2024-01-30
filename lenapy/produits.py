@@ -823,7 +823,7 @@ def JAMSTEC_NG(rep,chunks=None,ymin=0,ymax=9999,filtre='',**kwargs):
     depth=-gsw.z_from_p(data.PRES,90)
     pressure=gsw.p_from_z(-depth,data.latitude)
     
-    # Pour interpoler correctement en surface, on rajoute une couche aribtraire à profondeur nulle identique à lapremière. Cela permet d'éviter les Nan quand on interpole
+    # Pour interpoler correctement en surface, on rajoute une couche arbitraire à profondeur nulle identique à la première. Cela permet d'éviter les Nan quand on interpole
     #  à des pressions légèrement inférieures à celles de la première couche
     v0 = data.isel(PRES=0)
     v0['PRES']=xr.zeros_like(v0.PRES)
