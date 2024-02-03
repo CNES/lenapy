@@ -1,11 +1,8 @@
 import numpy as np
 import xarray as xr
-import pathlib
-import inspect
 from .constants import *
 
 
-# TODO see if output in xr.Dataset or in array
 def compute_plm(lmax, z, mmax=None, normalization='4pi'):
     """
     Compute all the associated Legendre functions up to a maximum degree and
@@ -113,9 +110,6 @@ def compute_plm(lmax, z, mmax=None, normalization='4pi'):
     rescalem = 1 / scalef
     kstart = 0
 
-    # case lmax == 1, does not go into the 'for' and need m a value for after
-    m = 1
-    # elif lmax != 1
     for m in range(1, lmax + 1):
         rescalem = rescalem * u
         # Calculate P(m,m)
@@ -156,7 +150,7 @@ def compute_plm(lmax, z, mmax=None, normalization='4pi'):
     return plm[:, :mmax + 1, :]
 
 
-def sh_to_grid(data, unit='cmwe', love_file=None, **kwargs):
+def sh_to_grid(data, unit='mewh', love_file=None, **kwargs):
     """
     Transform Spherical Harmonics (SH) dataset into spatial DataArray.
     With choice for unit, love_numbers, degree/order, spatial grid latitude and longitude, Earth hypothesis.
