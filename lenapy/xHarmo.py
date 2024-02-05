@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import xarray as xr
-import numpy as np
 import operator
 import numbers
+from .utils_gravi import *
 
 
 @xr.register_dataset_accessor("xharmo")
@@ -31,33 +31,6 @@ class HarmoSet:
         if 'slm' not in xarray_obj.keys():
             raise AssertionError("The Dataset have to contain 'slm' variable")
 
-    def __neg__(self):
-        self._obj.clm = -self._obj.clm
-        self._obj.slm = -self._obj.slm
-        return self
-
-    def __abs__(self):
-        self._obj.clm = abs(self._obj.clm)
-        self._obj.slm = abs(self._obj.slm)
-        return self
-
-    def __iter__(self, dim='time'):
-        """
-        Iterate over one dimension that is 'time' by default
-        Return a xr.Dataset at each iteration
-
-        Parameters
-        ----------
-        dim : str
-            Dimension of the xarray over which iterate
-
-        """
-        if dim in self._obj.coords:
-            # TODO see add .xharmo ?
-            return iter(self._obj.groupby(dim))
-        else:
-            return [self]
-
     def __add__(self, other):
         return self._apply_operator(operator.add, other)
 
@@ -68,7 +41,7 @@ class HarmoSet:
         return self._apply_operator(operator.sub, other)
 
     def __rsub__(self, other):
-        return (-self).__add__(other)
+        return (-self._obj).xharmo.__add__(other)
 
     def __mul__(self, other):
         return self._apply_operator(operator.mul, other)
@@ -80,8 +53,7 @@ class HarmoSet:
         return self._apply_operator(operator.truediv, other)
 
     def __rtruediv__(self, other):
-        self._obj.clm = 1/self._obj.clm
-        self._obj.slm = 1/self._obj.slm
+        self._obj = 1 / self._obj
         return self.__mul__(other)
 
     def __pow__(self, power):
@@ -114,8 +86,7 @@ class HarmoSet:
         """
         # case where other is a number (int, float, complex)
         if isinstance(other, numbers.Number):
-            self._obj.clm = op(self._obj.clm, other)
-            self._obj.slm = op(self._obj.slm, other)
+            self._obj = op(self._obj, other)
 
         # case where other is another xr.DataSet correspond to an HarmoSet
         else:
@@ -124,17 +95,15 @@ class HarmoSet:
                 other = other.xharmo
 
             # change clm and slm size if other.l or other.m is smaller
-            new_l = min(self._obj.l.size, other._obj.l.size)
-            new_m = min(self._obj.m.size, other._obj.m.size)
-            if self._obj.l.size != new_l or self._obj.m.size != new_m:
-                self._obj.clm = self._obj.clm[:new_l, :new_m]
-                self._obj.slm = self._obj.slm[:new_l, :new_m]
+            new_l_size = min(self._obj.l.size, other._obj.l.size)
+            new_m_size = min(self._obj.m.size, other._obj.m.size)
+            if self._obj.l.size != new_l_size or self._obj.m.size != new_m_size:
+                self._obj = self._obj.isel(l=slice(0, new_l_size), m=slice(0, new_m_size))
 
             # case where other does not have a time dimension
             if 'time' not in other._obj.coords:
-                # TODO test if error in multi-dimension ensemble
-                self._obj.clm = op(self._obj.clm, other._obj.clm[:new_l, :new_m])
-                self._obj.slm = op(self._obj.slm, other._obj.slm[:new_l, :new_m])
+                # TODO test if error in multi-dimension ensemble, if error if other than clm, slm in operation
+                self._obj = op(self._obj, other._obj.isel(l=slice(0, new_l_size), m=slice(0, new_m_size)))
 
             elif 'time' not in self._obj.coords:  # if the previous test, other has time dimension
                 raise AssertionError("Cannot operate on a HarmoSet with time dimension to a Harmoset without it. "
@@ -143,7 +112,7 @@ class HarmoSet:
             # case where both xr.Dataset have a time dimension
             else:
                 pass
-                # TODO deal with missig month
+                # TODO deal with missing month
                 # old_month = self.month
                 # exclude1 = set(self.month) - set(temp.month)
                 # self.month = np.array(list(sorted(set(self.month) - exclude1)))
@@ -158,31 +127,14 @@ class HarmoSet:
                 # for i in range(len(old_month)):
                 #     if not (old_month[i] in exclude1):
                 #         to_keep.append(i)
-                # self._obj.clm = self._obj.clm[:, :, to_keep]
-                # self._obj.slm = self._obj.slm[:, :, to_keep]
+                # self._obj = self._obj.isel(time=to_keep) # voir si isel on l et m
 
         return self
 
-    def copy(self):
-        """
-        Create an independent copy of HarmoSet
+    def sh_to_grid(self, unit='mewh', love_file=None, **kwargs):
+        return sh_to_grid(self._obj, unit=unit, love_file=love_file, **kwargs)
 
-        Returns
-        -------
-        HarmoSet
-            Copy of the object using a new object (deep=True in xarray)
-
-        """
-        return HarmoSet(self._obj.copy(deep=True))
-
-    def mean(self):
-        # TODO test if ds.xharmo.mean() exist, else write it
-        # possibly mean with weight
-        pass
-
-    def convolve(self, var):
-        """ Convolve over degree
-        """
-        # TODO test with self._obj.weighted
-        # might serve for sh_to_grid()
-        pass
+    def change_reference(self, new_radius, new_earth_gravity_constant, old_radius=None, old_earth_gravity_constant=None,
+                         apply=False):
+        return change_reference(self._obj, new_radius, new_earth_gravity_constant, old_radius=old_radius,
+                                old_earth_gravity_constant=old_earth_gravity_constant, apply=apply)

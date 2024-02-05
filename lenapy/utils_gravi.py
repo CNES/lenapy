@@ -402,16 +402,16 @@ def grid_to_sh(grid, lmax, unit='mewh', love_file=None, **kwargs):
 
     # -- create integration factor over the grid
     # longitude degree spacing of each cell in radians
-    diffphi = np.abs(grid.longitude.diff(dim='longitude').values)
+    diff_phi = np.abs(grid.longitude.diff(dim='longitude').values)
     # deal with case where longitude goes from 180 to -180 in the array
-    diffphi[diffphi > np.pi] = np.abs(2 * np.pi - diffphi[diffphi > np.pi])
+    diff_phi[diff_phi > np.pi] = np.abs(2 * np.pi - diff_phi[diff_phi > np.pi])
     # size of the cell is half of the diff with both adjacent grid cell + convert to radians
-    dphi = np.deg2rad(np.concatenate((diffphi[[0]], (diffphi[1:] + diffphi[:-1]) / 2, diffphi[[-1]])))
+    dphi = np.deg2rad(np.concatenate((diff_phi[[0]], (diff_phi[1:] + diff_phi[:-1]) / 2, diff_phi[[-1]])))
 
     # latitude degree spacing in radians
-    diffth = np.abs(grid.latitude.diff(dim='latitude').values)
+    diff_th = np.abs(grid.latitude.diff(dim='latitude').values)
     # size of the cell is half of the diff with both adjacent grid cell + convert to radians
-    dth = np.deg2rad(np.concatenate((diffth[[0]], (diffth[1:] + diffth[:-1]) / 2, diffth[[-1]])))
+    dth = np.deg2rad(np.concatenate((diff_th[[0]], (diff_th[1:] + diff_th[:-1]) / 2, diff_th[[-1]])))
 
     cos_latitude = np.cos(np.deg2rad(grid.latitude.values))
     sin_latitude = np.sin(np.deg2rad(grid.latitude.values))
@@ -476,3 +476,64 @@ def grid_to_sh(grid, lmax, unit='mewh', love_file=None, **kwargs):
     slm.name = 'slm'
 
     return xr.merge([clm, slm], join='exact')
+
+
+def change_reference(ds, new_radius, new_earth_gravity_constant, old_radius=None, old_earth_gravity_constant=None,
+                     apply=False):
+    """
+    Spherical Harmonics dataset are associated with an earth radius *a* and *µ* or *GM* the earth gravity constant.
+    This function return the dataset updated with the new constants associated to it in input
+    (as a deep copy by default). The current reference frame constants can be given in parameters or can be contained in
+    ds.attrs['radius'] and ds.attrs['earth_gravity_constant'].
+
+    Warning ! This function must be applied before removing the mean values of the dataset through time.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        xr.Dataset that corresponds to SH data associated with a current reference frame (constants whise) to update
+    new_radius : float
+        New earth radius constant in meters.
+    new_earth_gravity_constant : float
+        New gravitational constant of the Earth in m^3/s^2.
+    old_radius : float | None, optional
+        Current earth radius constant of the dataset ds in meters. If not given, ds.attrs['radius'] is used.
+    old_earth_gravity_constant : float | None, optional
+        Current gravitational constant of the Earth of the dataset ds in m^3/s^2.
+        If not given, ds.attrs['earth_gravity_constant'] is used.
+    apply : bool, optional
+        If True, apply the update to the current dataset without making a deep copy. Default is False.
+
+    Returns
+    -------
+    ds_out : xr.Dataset
+        Updated dataset with the new constants.
+    """
+    try:
+        if old_radius is None:
+            old_radius = ds.attrs['radius']
+        if old_earth_gravity_constant is None:
+            old_earth_gravity_constant = ds.attrs['earth_gravity_constant']
+    except KeyError:
+        raise KeyError("If you provide no information about the current reference constants of your ds dataset using "
+                       "'old_radius' and 'old_earth_gravity_constant' parameters, those information need to be "
+                       "contained in ds.attrs dict as ds.attrs['radius'] and ds.attrs['earth_gravity_constant'].")
+
+    gravity_constant_ratio = old_earth_gravity_constant/new_earth_gravity_constant
+    update_factor = gravity_constant_ratio * (old_radius/new_radius)**ds.l
+
+    if apply:
+        ds_out = ds
+    else:
+        # Copy the dataset to avoid modifying the input dataset
+        ds_out = ds.copy(deep=True)
+
+    # Update the clm and slm values
+    ds_out['clm'] *= update_factor
+    ds_out['slm'] *= update_factor
+
+    # Update the attributes in the output dataset
+    ds_out.attrs['radius'] = new_radius
+    ds_out.attrs['earth_gravity_constant'] = new_earth_gravity_constant
+
+    return ds_out
