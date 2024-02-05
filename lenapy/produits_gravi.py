@@ -1,24 +1,19 @@
 """
 This module allows to load SH time-variable gravity field data from different products and format the data with unified
-definition for variables and coordinates, compatible with the use of xHarmo :
+definition for variables and coordinates (output dataset are compatible with the use of xHarmo) :
 standardized coordinates names : l, m, time
-standardized variables names : clm and slm
-When loading a product, all the files present in the product directory are parsed. To gain computing time,
-a first filter on the years to load can be applied, as well as a text filter.
-A second date filter can be applied afterward with the .sel(time=slice('begin_date','end_date') method.
-All keyword arguments associated with xr.open_mfdataset can be passed.
+standardized variables names : clm, slm, begin_time, end_time, exact_time and if possible eclm and eslm
+GRACE level 2 products from SDS centers can be open with the engine='gracel2' in xr.open_mfdataset()
+Gravity field products organised as a .gfc files can be open with the engine='gfc' in xr.open_mfdataset()
 Dask is implicitely used when using these interface methods.
-
-Parameters
-----------
-Returns
--------
-product : Dataset
-    New dataset containing SH time-variable gravity field data from the product
 
 Examples
 --------
-...
+>>> files = [os.path.join(csr_data_dir, f) for f in os.listdir(csr_data_dir)]
+>>> ds_csr = xr.open_mfdataset(files, engine='gracel2', combine_attrs="drop_conflicts")
+
+>>> files = [os.path.join(graz_data_dir, f) for f in os.listdir(graz_data_dir)]
+>>> ds_graz = xr.open_mfdataset(files, engine='gfc', combine_attrs="drop_conflicts")
 """
 import os
 import zipfile
@@ -52,7 +47,7 @@ class ReadGFC(BackendEntrypoint):
         ds : xr.Dataset
             Information of the file stored in xr.Dataset format
         """
-        # -- Read file
+        # -- Create a pointer to the '.gfc' file
         ext = os.path.splitext(filename)[-1]
         compress_extensions = ['.gz', '.zip', '.tar', '.gzip', '.ZIP']
 
@@ -75,7 +70,7 @@ class ReadGFC(BackendEntrypoint):
             raise ValueError("File does not have the good extension. "
                              "Should be .gfc or a compress format with a .gfc file in it.")
 
-        # -- Extract parameters from header
+        # -- Extract parameters from '.gfc' header
         header_parameters = ['modelname', 'product_name', 'earth_gravity_constant', 'radius', 'max_degree', 'errors',
                              'norm', 'tide_system']
         parameters_regex = '(' + '|'.join(header_parameters) + ')'
@@ -90,12 +85,13 @@ class ReadGFC(BackendEntrypoint):
             # test to break when end of header
             if 'end_of_head' in line:
                 break
-            # try to intercept case where no end_of_head (starting with degree and order 0)
+            # try to intercept case where no end_of_head (if file is starting with degree 0 and order 0)
             elif '0    0' in line:
                 raise ValueError("No 'end_of_head' line in file ", filename)
+            # keep keys information from the line before end_of_head (to know if there is a time key or not)
             legend_before_end_header = line
 
-        # case for COSTG header
+        # case for COSTG header where 'modelname' is created as 'product_name'
         if 'product_name' in header:
             header['modelname'] = header['product_name']
 
@@ -110,6 +106,7 @@ class ReadGFC(BackendEntrypoint):
             raise ValueError("File header does not contains mandatory keywords"
                              " (http://icgem.gfz-potsdam.de/ICGEM-Format-2023.pdf)")
 
+        # convert str to numbers for adapted header info
         header['max_degree'] = int(header['max_degree'])
         header['earth_gravity_constant'] = float(header['earth_gravity_constant'])
         header['radius'] = float(header['radius'])
@@ -117,7 +114,8 @@ class ReadGFC(BackendEntrypoint):
 
         # test if gfct key then have to deal with time
         if 't' not in legend_before_end_header:
-            # Compute time
+            # -- Compute time
+            # For some products, time is stored as YYYY-MM in modelname
             if any([name in header['modelname'] for name in ('ITSG', 'IGG', 'SWARM', 'Thongji', 'LUH')]):
                 yyyy_mm = re.search(r'(\d{4}-\d{2})', header['modelname']).group(0)
                 begin_time = datetime.datetime.strptime(yyyy_mm, '%Y-%m')
@@ -125,6 +123,7 @@ class ReadGFC(BackendEntrypoint):
                 mid_month = begin_time + (end_time - begin_time) / 2
                 exact_time = mid_month
 
+            # For others products, time is stored as YYYYDOY-YYYYDOY in modelname
             elif any([name in header['modelname'] for name in ('COSTG', 'UTCSR', 'JPLEM', 'GFZOP', 'CNESG')]):
                 dates = re.findall(r'_(\d{7})-(\d{7})_', header['modelname'])[0]
                 begin_time = datetime.datetime.strptime(dates[0], '%Y%j')
@@ -179,12 +178,12 @@ class ReadGFC(BackendEntrypoint):
         else:
             raise AssertionError("Reading of .gfc file with time is not implemented yet")
 
-        # -- Add time information in dataset
+        # -- Add various time information in dataset
         ds['begin_time'] = xr.DataArray([begin_time], dims=['time'])
         ds['end_time'] = xr.DataArray([end_time], dims=['time'])
         ds['exact_time'] = xr.DataArray([exact_time], dims=['time'])
 
-        # close all file pointer
+        # -- Close all file pointers
         if ext in ('.zip', '.ZIP'):
             zip_file.close()
         elif ext == '.tar':
@@ -255,7 +254,7 @@ class ReadGRACEL2(BackendEntrypoint):
         ds : xr.Dataset
             Information of the file stored in xr.Dataset format
         """
-        # -- Read file
+        # -- Create a pointer to the file
         ext = os.path.splitext(filename)[-1]
 
         if ext in ('.gz', '.gzip'):
@@ -272,18 +271,19 @@ class ReadGRACEL2(BackendEntrypoint):
                     line = line.decode()
                 infos = line.split()
 
-                if 'EARTH' in line:  # line with GM and a
+                if line[:5] == 'EARTH':  # line with GM and a
                     header['earth_gravity_constant'] = float(infos[1])
                     header['radius'] = float(infos[2])
-                elif 'SHM' in line:  # line with lmax, norm and tide
+                elif line[:3] == 'SHM':  # line with lmax, norm and tide
                     header['max_degree'] = int(infos[1])
                     header['norm'] = ' '.join(infos[4:6])
                     header['tide_system'] = ' '.join(infos[6:])
 
-                # first line with C00 = 1
+                # first line with C00 = 1 (because no end of header information to deal with)
                 elif 'GRCOF2  ' in line:
                     break
 
+        # Read other L2 products (COST-G, CSR, JPL or GFZ) where header follows the yaml format
         elif any([name in os.path.basename(filename) for name in ('COSTG', 'UTCSR', 'JPLEM', 'GFZOP')]):
             yaml_header_text = []
             while True:
@@ -298,16 +298,15 @@ class ReadGRACEL2(BackendEntrypoint):
                 elif 'GRCOF2  ' in line:
                     raise ValueError("No 'End of YAML header' line in file ", filename)
 
-                # deal with case where file is weirdly filed with 'date_issued: 0000-00-00T00:00:00' to avoid yaml crash
-                # deal also with acknowledgement line from GFZ GFO periods that crash the yaml parser
+                # deal with case where file is weirdly filled with 'date_issued:0000-00-00T00:00:00' to avoid yaml crash
+                # deal also with acknowledgement line from GFZ on GRACE-FO periods that crash the yaml parser
                 elif 'date_issued' in line or 'acknowledgement' in line:
                     continue
-
                 yaml_header_text.append(line)
 
+            # read yaml header to create a dict
             yaml_header = yaml.safe_load(''.join(yaml_header_text))['header']
 
-            # Créer le dictionnaire avec les variables spécifiées
             header = {
                 'earth_gravity_constant': float(yaml_header['non-standard_attributes']['earth_gravity_param']['value']),
                 'radius': float(yaml_header['non-standard_attributes']['mean_equator_radius']['value']),
@@ -319,6 +318,12 @@ class ReadGRACEL2(BackendEntrypoint):
             except KeyError:
                 header['tide_system'] = 'missing'
 
+        else:
+            raise ValueError("Name of the file does not corresponds to GRACE L2 products (https://archive.podaac."
+                             "earthdata.nasa.gov/podaac-ops-cumulus-docs/grace/open/L1B/GFZ/AOD1B/RL04/docs/"
+                             "L2-UserHandbook_v4.0.pdf), it does not contains the name of center key: "
+                             "'COSTG', 'UTCSR', 'GRGS', 'JPLEM' or 'GFZOP'. Name : ", os.path.basename(filename))
+
         lmax = header['max_degree']
 
         # Compute time
@@ -327,7 +332,8 @@ class ReadGRACEL2(BackendEntrypoint):
         except IndexError:
             raise ValueError("Name of the file does not corresponds to GRACE L2 products (https://archive.podaac."
                              "earthdata.nasa.gov/podaac-ops-cumulus-docs/grace/open/L1B/GFZ/AOD1B/RL04/docs/"
-                             "L2-UserHandbook_v4.0.pdf), it does not contains date YYYYDOY-YYYYDOY information")
+                             "L2-UserHandbook_v4.0.pdf), it does not contains date YYYYDOY-YYYYDOY information. "
+                             "Name : ", os.path.basename(filename))
 
         begin_time = datetime.datetime.strptime(dates[0], '%Y%j')
         end_time = datetime.datetime.strptime(dates[1], '%Y%j') + datetime.timedelta(days=1)
@@ -377,6 +383,7 @@ class ReadGRACEL2(BackendEntrypoint):
         ds['end_time'] = xr.DataArray([end_time], dims=['time'])
         ds['exact_time'] = xr.DataArray([exact_time], dims=['time'])
 
+        file.close()
         return ds
 
     open_dataset_parameters = ["filename_or_obj", "drop_variables"]
