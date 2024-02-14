@@ -1,3 +1,4 @@
+import datetime
 import numpy as np
 import xarray as xr
 from .constants import *
@@ -537,3 +538,127 @@ def change_reference(ds, new_radius, new_earth_gravity_constant, old_radius=None
     ds_out.attrs['earth_gravity_constant'] = new_earth_gravity_constant
 
     return ds_out
+
+
+def change_tide_system(ds, new_tide, old_tide=None, k20=None, copy=False):
+    """
+    Apply a C20 offset to the dataset to change of tide system.
+    Follows IERS2010 convention [IERS2010] to convert between tide system ('tide_free', 'zero_tide', 'mean_tide').
+    Warning : It should be noted that each center use his one tide offset, it may differ in terms of offset formula
+    that can come from [IERS2010] and [Smith1998]. The value of k20 can also change between centers.
+
+    Arguments
+    ---------
+    ds : xr.Dataset
+    new_tide : str
+        output tidal system, either 'tide_free', 'zero_tide' or 'mean_tide'.
+    old_tide : str, optional
+        input tidal system, if not given use ds.attrs['tide_system'] information.
+        The function can handle the tide information given by the
+    k20 : float, optional
+        k20 Earth tide external potential Love numbers, default is one recommend in [IERS2010].
+    copy : bool, optional
+       Boolean to choose if the dataset is deep copied or if it is also updated in place.
+       Default is False for no deep copy.
+
+    Returns
+    -------
+    ds_out : xr.Dataset
+        Updated dataset with the new constants. Warning, the dataset is also updated in place if copy=False (default)
+
+    References
+    ----------
+    .. [IERS2010] G. Petit and B. Luzum,
+        "IERS Conventions (2010)",
+        *IERS Technical Note*, 36, 88--89, (2010).
+        `doi: 10.1007/s00190-002-0216-2 <https://doi.org/10.1007/s00190-002-0216-2>`_
+    .. [Smith1998]  D. A. Smith,
+        "There is no such thing as 'The' EGM96 geoid: Subtle points on the use of a global geopotential model",
+        *IGeS Bulletin, International Geoid Service*, 8, 17-28, (1998).
+        `link to archive <https://www.ngs.noaa.gov/PUBS_LIB/EGM96_GEOID_PAPER/egm96_geoid_paper.html>`_
+    """
+    if old_tide is None:
+        if 'tide_system' in ds.attrs:
+            old_tide = ds.attrs['tide_system']
+            if ds.attrs['tide_system'] == 'missing':
+                raise ValueError("No information about tide in ds.attrs['tide_system'], the info is 'missing'. "
+                                 "You need to provide 'old_tide' param")
+        else:
+            raise ValueError("No information ds.attrs['tide_system'] in dataset, you need to provide 'old_tide' param")
+
+    # -- Define IERS 2010 constants
+    A0 = 4.4228e-8
+    H0 = -0.31460
+    if k20 is None:
+        k20 = 0.30190
+
+    # -- conversion for each tidal system
+    if new_tide == 'zero_tide' and 'mean' in old_tide:
+        conv = -1
+    elif new_tide == 'mean_tide' and ('zero' in old_tide or 'inclusive' in old_tide):
+        conv = 1
+    elif new_tide == 'tide_free' and 'mean' in old_tide:
+        conv = -(1 + k20)
+    elif new_tide == 'mean_tide' and 'free' in old_tide:
+        conv = (1 + k20)
+    elif new_tide == 'tide_free' and ('zero' in old_tide or 'inclusive' in old_tide):
+        conv = -k20
+    elif new_tide == 'zero_tide' and ('free' in old_tide or 'exclusive' in old_tide):
+        conv = k20
+    else:
+        conv = 0
+
+    if copy:
+        # create a deep copy to not change the dataset in place
+        ds_out = ds.copy(deep=True)
+    else:
+        ds_out = ds
+
+    ds_out.clm[2, 0] += conv*A0*H0
+    ds_out.attrs['tide_system'] = new_tide
+
+    # -- return ds
+    return ds_out
+
+
+def mid_month_grace_estimate(begin_time, end_time):
+    """
+    Calculate middle of the month date based on begin_time and end_time for GRACE products
+    begin_time is round to equal to the first day of the month and
+    end_time is round to equal to the first day of the month after.
+
+    Parameters
+    ----------
+    begin_time : datetime.datetime
+        Date of the beginning of the month
+    end_time : datetime.datetime
+        Date of the end of the month + 1 day
+
+    Returns
+    -------
+    mid_month : datetime.datetime
+        Date of the middle of the month
+    """
+    # to compute mid_month, need to round begin_time to the 1st of the month
+    # deal with GRACE month when the begin date is not between 16 of month before and 15 of the month
+    # it includes May 2015, Dec 2011 (JPL), Mar 2017 and Oct 2018 that cover second half of month
+    if begin_time.strftime('%Y%j') == '2011351':
+        print(begin_time, end_time)
+
+    if ((begin_time.day <= 15 and begin_time.strftime('%Y%j') != '2015102') or
+            begin_time.strftime('%Y%j') == '2011351' or begin_time.strftime('%Y%j') == '2017076' or
+            begin_time.strftime('%Y%j') == '2018295'):
+        tmp_begin = begin_time.replace(day=1)
+    else:
+        tmp_begin = (begin_time.replace(day=1) + datetime.timedelta(days=32)).replace(day=1)
+
+    # to compute mid_month, need to round end_time to the 1st of the month after
+    # deal with GRACE month when the end date is not between 16 of month and 15 of the month after
+    # it includes Janv 2004, Nov 2011 (CSR, GFZ) and May 2015 and Dec 2011 for TN14
+    if ((end_time.day <= 15 and end_time.strftime('%Y%j') not in ('2004014', '2011320', '2015132')) or
+            end_time.strftime('%Y%j') == '2012016'):
+        tmp_end = end_time.replace(day=1)
+    else:
+        tmp_end = (end_time.replace(day=1) + datetime.timedelta(days=32)).replace(day=1)
+
+    return tmp_begin + (tmp_end - tmp_begin) / 2

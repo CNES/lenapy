@@ -9,11 +9,11 @@ Dask is implicitely used when using these interface methods.
 
 Examples
 --------
->>> files = [os.path.join(csr_data_dir, f) for f in os.listdir(csr_data_dir)]
->>> ds_csr = xr.open_mfdataset(files, engine='gracel2', combine_attrs="drop_conflicts")
+>>> files_csr = [os.path.join(csr_data_dir, f) for f in os.listdir(csr_data_dir)]
+>>> ds_csr = xr.open_mfdataset(files_csr, engine='gracel2', combine_attrs="drop_conflicts")
 
->>> files = [os.path.join(graz_data_dir, f) for f in os.listdir(graz_data_dir)]
->>> ds_graz = xr.open_mfdataset(files, engine='gfc', combine_attrs="drop_conflicts")
+>>> files_graz = [os.path.join(graz_data_dir, f) for f in os.listdir(graz_data_dir)]
+>>> ds_graz = xr.open_mfdataset(files_graz, engine='gfc', combine_attrs="drop_conflicts")
 """
 import os
 import zipfile
@@ -25,6 +25,82 @@ import re
 import xarray as xr
 import numpy as np
 from xarray.backends import BackendEntrypoint
+from .utils_gravi import mid_month_grace_estimate
+
+
+def read_tn14(filename, rmmean=False):
+    """
+    Read TN14 data to produce dataset with C20 and C30 information.
+    Deal with date the same way as others GRACE products
+
+    Parameters
+    ----------
+    filename : str | os.PathLike[Any]
+        path to the TN14 file
+    rmmean : bool, optional
+        Boolean to use information without mean or with ir, default is False for with mean.
+
+    Returns
+    -------
+    ds : xr.Dataset
+        ds with C20 and C30
+    """
+    # Based on TN14 header (file from 13 Jul 2023)
+    infos_tn14 = {'modelname': 'TN14', 'earth_gravity_constant': 0.3986004415e6, 'radius': 6378136.3,
+                  'norm': 'fully_normalized', 'tide_system': 'zero_tide'}
+
+    file = open(filename, 'r')
+
+    line = True
+    # goes while up to end of header or end of file (corresponding to line "Product:\n"
+    while line:
+        line = file.readline()
+        # test to break when end of header
+        if 'product:' in line.lower():
+            break
+
+    # Read file according to header columns (file from 13 Jul 2023)
+    data = np.genfromtxt(file, dtype=[('begin_MJD', float), ('begin_date', float), ('C20', float),
+                                      ('C20_rmmean', float), ('eC20', float), ('C30', float), ('C30_rmmean', float),
+                                      ('eC30', float), ('end_MJD', float), ('end_date', float)])
+    file.close()
+
+    clm, slm = np.zeros((2, 1, data.shape[0])), np.zeros((2, 1, data.shape[0]))
+    eclm, eslm = np.zeros((2, 1, data.shape[0])), np.zeros((2, 1, data.shape[0]))
+
+    # choose between data with mean value or without
+    if not rmmean:
+        clm[0, 0] = data['C20']
+        clm[1, 0] = data['C30']
+    else:
+        clm[0, 0] = data['C20_rmmean'] * 1e-10
+        clm[1, 0] = data['C30_rmmean'] * 1e-10
+
+    eclm[0, 0] = data['eC20'] * 1e-10
+    eclm[1, 0] = data['eC30'] * 1e-10
+
+    # date converted to datetime using MJD information
+    mjd_origin = datetime.datetime(1858, 11, 17)
+
+    begin_time = [mjd_origin + datetime.timedelta(days=beg) for beg in data['begin_MJD']]
+    end_time = [mjd_origin + datetime.timedelta(days=end) for end in data['end_MJD']]
+
+    exact_time = [begin + (end - begin) / 2 for begin, end in zip(begin_time, end_time)]
+
+    # compute middle of the month for GRACE products
+    mid_month = [mid_month_grace_estimate(begin, end) for begin, end in zip(begin_time, end_time)]
+
+    ds = xr.Dataset({'clm': (['l', 'm', 'time'], clm), 'slm': (['l', 'm', 'time'], slm),
+                     'eclm': (['l', 'm', 'time'], eclm), 'eslm': (['l', 'm', 'time'], eslm)},
+                    coords={'l': np.array([2, 3]), 'm': np.array([0]), 'time': mid_month},
+                    attrs=infos_tn14)
+
+    # -- Add various time information in dataset
+    ds['begin_time'] = xr.DataArray(begin_time, dims=['time'])
+    ds['end_time'] = xr.DataArray(end_time, dims=['time'])
+    ds['exact_time'] = xr.DataArray(exact_time, dims=['time'])
+
+    return ds
 
 
 class ReadGFC(BackendEntrypoint):
@@ -75,7 +151,10 @@ class ReadGFC(BackendEntrypoint):
                              'norm', 'tide_system']
         parameters_regex = '(' + '|'.join(header_parameters) + ')'
         header = {}
-        while True:
+        line = True
+
+        # goes while up to end of header or end of file
+        while line:
             line = file.readline()
             if ext in compress_extensions:
                 line = line.decode()
@@ -85,7 +164,7 @@ class ReadGFC(BackendEntrypoint):
             # test to break when end of header
             if 'end_of_head' in line:
                 break
-            # try to intercept case where no end_of_head (if file is starting with degree 0 and order 0)
+            # try to intercept case where no end_of_head to raise Error (if file is starting with degree 0 and order 0)
             elif '0    0' in line:
                 raise ValueError("No 'end_of_head' line in file ", filename)
             # keep keys information from the line before end_of_head (to know if there is a time key or not)
@@ -124,28 +203,16 @@ class ReadGFC(BackendEntrypoint):
                 exact_time = mid_month
 
             # For others products, time is stored as YYYYDOY-YYYYDOY in modelname
+            # For GRACE products, DOY can not coincide with 1st and last day of month
             elif any([name in header['modelname'] for name in ('COSTG', 'UTCSR', 'JPLEM', 'GFZOP', 'CNESG')]):
                 dates = re.findall(r'_(\d{7})-(\d{7})_', header['modelname'])[0]
                 begin_time = datetime.datetime.strptime(dates[0], '%Y%j')
                 end_time = datetime.datetime.strptime(dates[1], '%Y%j') + datetime.timedelta(days=1)
 
                 exact_time = begin_time + (end_time - begin_time) / 2
-                # round begin_time to the 1st of the month and deal with May 2015 and December 2011 (JPL)
-                # March 2017 and october 2018 cover second half of the month
-                if ((begin_time.day <= 15 and begin_time.strftime('%Y%j') != '2015102') or
-                        begin_time.strftime('%Y%j') == '2011351' or begin_time.strftime('%Y%j') == '2017076' or
-                        begin_time.strftime('%Y%j') == '2018295'):
-                    tmp_begin = begin_time.replace(day=1)
-                else:
-                    tmp_begin = (begin_time.replace(day=1) + datetime.timedelta(days=32)).replace(day=1)
 
-                # round end_time to the 1st of the month after and deal with Janv 2004, Nov 2011 (CSR, GFZ) and May 2015
-                if end_time.day <= 15 and end_time.strftime('%Y%j') not in ('2004014', '2011320', '2015132'):
-                    tmp_end = end_time.replace(day=1)
-                else:
-                    tmp_end = (end_time.replace(day=1) + datetime.timedelta(days=32)).replace(day=1)
-
-                mid_month = tmp_begin + (tmp_end - tmp_begin) / 2
+                # compute middle of the month for GRACE products
+                mid_month = mid_month_grace_estimate(begin_time, end_time)
 
             else:
                 raise ValueError("Could not extract date information from the header of ", filename)
@@ -262,10 +329,11 @@ class ReadGRACEL2(BackendEntrypoint):
         else:
             file = open(filename, 'r')
 
+        line = True
         # read GRGS level 2 products
         if 'GRGS' in os.path.basename(filename):
             header = {}
-            while True:
+            while line:
                 line = file.readline()
                 if ext in ('.gz', '.gzip'):
                     line = line.decode()
@@ -286,7 +354,7 @@ class ReadGRACEL2(BackendEntrypoint):
         # Read other L2 products (COST-G, CSR, JPL or GFZ) where header follows the yaml format
         elif any([name in os.path.basename(filename) for name in ('COSTG', 'UTCSR', 'JPLEM', 'GFZOP')]):
             yaml_header_text = []
-            while True:
+            while line:
                 line = file.readline()
                 if ext in ('.gz', '.gzip'):
                     line = line.decode()
@@ -327,6 +395,8 @@ class ReadGRACEL2(BackendEntrypoint):
         lmax = header['max_degree']
 
         # Compute time
+        # time is stored as YYYYDOY - YYYYDOY in filename
+        # For GRACE products, DOY can not coincide with 1st and last day of month
         try:
             dates = re.findall(r'_(\d{7})-(\d{7})_', os.path.basename(filename))[0]
         except IndexError:
@@ -339,22 +409,9 @@ class ReadGRACEL2(BackendEntrypoint):
         end_time = datetime.datetime.strptime(dates[1], '%Y%j') + datetime.timedelta(days=1)
 
         exact_time = begin_time + (end_time - begin_time) / 2
-        # round begin_time to the 1st of the month and deal with May 2015 and December 2011 (JPL)
-        # March 2017 and october 2018 cover second half of the month
-        if ((begin_time.day <= 15 and begin_time.strftime('%Y%j') != '2015102') or
-                begin_time.strftime('%Y%j') == '2011351' or begin_time.strftime('%Y%j') == '2017076' or
-                begin_time.strftime('%Y%j') == '2018295'):
-            tmp_begin = begin_time.replace(day=1)
-        else:
-            tmp_begin = (begin_time.replace(day=1) + datetime.timedelta(days=32)).replace(day=1)
 
-        # round end_time to the 1st of the month after and deal with Janv 2004, Nov 2011 (CSR, GFZ) and May 2015
-        if end_time.day <= 15 and end_time.strftime('%Y%j') not in ('2004014', '2011320', '2015132'):
-            tmp_end = end_time.replace(day=1)
-        else:
-            tmp_end = (end_time.replace(day=1) + datetime.timedelta(days=32)).replace(day=1)
-
-        mid_month = tmp_begin + (tmp_end - tmp_begin) / 2
+        # compute middle of the month for GRACE products
+        mid_month = mid_month_grace_estimate(begin_time, end_time)
 
         # -- Load clm and slm data and errors
         clm, slm = np.zeros((lmax + 1, lmax + 1, 1)), np.zeros((lmax + 1, lmax + 1, 1))
