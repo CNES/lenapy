@@ -2,3 +2,6 @@
 OT.egg-info
 .ipynb*
 .idea
+build
+lenapy.egg-info
+.vscode
