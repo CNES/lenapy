@@ -31,7 +31,8 @@ from .utils_gravi import mid_month_grace_estimate
 def read_tn14(filename, rmmean=False):
     """
     Read TN14 data to produce dataset with C20 and C30 information.
-    Deal with date the same way as others GRACE products
+    Deal with date the same way as others GRACE products.
+    TN14 can be downloaded on https://podaac.jpl.nasa.gov/gravity/grace-documentation.
 
     Parameters
     ----------
@@ -46,13 +47,13 @@ def read_tn14(filename, rmmean=False):
         ds with C20 and C30
     """
     # Based on TN14 header (file from 13 Jul 2023)
-    infos_tn14 = {'modelname': 'TN14', 'earth_gravity_constant': 0.3986004415e6, 'radius': 6378136.3,
+    infos_tn14 = {'modelname': 'TN-14', 'earth_gravity_constant': 0.3986004415e6, 'radius': 6378136.3,
                   'norm': 'fully_normalized', 'tide_system': 'zero_tide'}
 
     file = open(filename, 'r')
 
     line = True
-    # goes while up to end of header or end of file (corresponding to line "Product:\n"
+    # goes while up to end of header or end of file (corresponding to line "Product:\n")
     while line:
         line = file.readline()
         # test to break when end of header
@@ -94,6 +95,83 @@ def read_tn14(filename, rmmean=False):
                      'eclm': (['l', 'm', 'time'], eclm), 'eslm': (['l', 'm', 'time'], eslm)},
                     coords={'l': np.array([2, 3]), 'm': np.array([0]), 'time': mid_month},
                     attrs=infos_tn14)
+
+    # -- Add various time information in dataset
+    ds['begin_time'] = xr.DataArray(begin_time, dims=['time'])
+    ds['end_time'] = xr.DataArray(end_time, dims=['time'])
+    ds['exact_time'] = xr.DataArray(exact_time, dims=['time'])
+
+    return ds
+
+
+def read_tn13(filename, rmmean=False):
+    """
+    Read TN13 data to produce dataset with C10, C11 and S11 information.
+    Deal with date the same way as others GRACE products
+    TN13 can be downloaded on https://podaac.jpl.nasa.gov/gravity/grace-documentation.
+
+    Parameters
+    ----------
+    filename : str | os.PathLike[Any]
+        path to the TN13 file
+    rmmean : bool, optional
+        Boolean to use information without mean or with ir, default is False for with mean.
+
+    Returns
+    -------
+    ds : xr.Dataset
+        ds with C10, C11 and S11
+    """
+    infos_tn13 = {'modelname': 'TN-13', 'norm': 'fully_normalized'}
+
+    file = open(filename, 'r')
+
+    line = True
+    # goes while up to end of header
+    while line:
+        line = file.readline()
+
+        # test to break when end of header
+        if 'end of header' in line.lower():
+            break
+        if 'GRCOF2   ' in line:
+            raise ValueError("No 'end_of_head' line in file ", filename)
+
+    # Read file according to header columns (file from 13 Jul 2023)
+    data = np.genfromtxt(file, dtype=[('flag', str), ('l', int), ('m', int), ('Clm', float), ('Slm', float),
+                                      ('eClm', float), ('eSlm', float), ('begin_date', float), ('end_date', float)])
+    file.close()
+
+    clm, slm = np.zeros((1, 2, data.shape[0]//2)), np.zeros((1, 2, data.shape[0]//2))
+    eclm, eslm = np.zeros((1, 2, data.shape[0]//2)), np.zeros((1, 2, data.shape[0]//2))
+
+    clm[0, 0] = data['Clm'][np.where(data['m'] == 0)]
+    clm[0, 1] = data['Clm'][np.where(data['m'] == 1)]
+    slm[0, 1] = data['Slm'][np.where(data['m'] == 1)]
+
+    # choose between data with mean value or without
+    if rmmean:
+        clm[0, 0] -= np.mean(clm[0, 0])
+        clm[0, 0] -= np.mean(clm[0, 1])
+        slm[0, 0] -= np.mean(slm[0, 1])
+
+    eclm[0, 0] = data['eClm'][np.where(data['m'] == 0)]
+    eclm[0, 1] = data['eClm'][np.where(data['m'] == 1)]
+    eslm[0, 1] = data['eSlm'][np.where(data['m'] == 1)]
+
+    # date converted to datetime from float YYYYMMDD
+    begin_time = [datetime.datetime(int(beg//10000), int(beg//100 - (beg//10000)*100), int(beg%100)) for beg in data['begin_date'][::2]]
+    end_time = [datetime.datetime(int(end//10000), int(end//100 - (end//10000)*100), int(end%100)) for end in data['end_date'][::2]]
+
+    exact_time = [begin + (end - begin) / 2 for begin, end in zip(begin_time, end_time)]
+
+    # compute middle of the month for GRACE products
+    mid_month = [mid_month_grace_estimate(begin, end) for begin, end in zip(begin_time, end_time)]
+
+    ds = xr.Dataset({'clm': (['l', 'm', 'time'], clm), 'slm': (['l', 'm', 'time'], slm),
+                     'eclm': (['l', 'm', 'time'], eclm), 'eslm': (['l', 'm', 'time'], eslm)},
+                    coords={'l': np.array([1]), 'm': np.array([0, 1]), 'time': mid_month},
+                    attrs=infos_tn13)
 
     # -- Add various time information in dataset
     ds['begin_time'] = xr.DataArray(begin_time, dims=['time'])
