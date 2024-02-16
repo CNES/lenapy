@@ -309,12 +309,13 @@ def sh_to_grid(data, unit='mewh', love_file=None, **kwargs):
     else:
         kwargs.setdefault('normalization_plm', '4pi')
         if kwargs['ellispoidal_earth']:
-            plm = compute_plm(kwargs['lmax'], np.cos(geocentric_colat), normalization=kwargs['normalization_plm'])
+            plm = compute_plm(kwargs['lmax'], np.cos(geocentric_colat),
+                              mmax=kwargs['mmax'], normalization=kwargs['normalization_plm'])
         else:
-            plm = compute_plm(kwargs['lmax'], sin_latitude, normalization=kwargs['normalization_plm'])
+            plm = compute_plm(kwargs['lmax'], sin_latitude,
+                              mmax=kwargs['mmax'], normalization=kwargs['normalization_plm'])
         plm = xr.DataArray(plm, dims=['l', 'm', 'latitude'],
-                           coords={'l': np.arange(kwargs['lmax'] + 1), 'm': np.arange(kwargs['lmax'] + 1),
-                                   'latitude': latitude})
+                           coords={'l': data.l, 'm': data.m, 'latitude': latitude})
 
     # scale factor for each degree
     lfactor = l_factor_gravi(kwargs['used_l'], unit, kwargs['include_elastic'],
@@ -324,7 +325,8 @@ def sh_to_grid(data, unit='mewh', love_file=None, **kwargs):
     plm_lfactor = plm.sel(l=kwargs['used_l'], m=kwargs['used_m']) * lfactor[:, np.newaxis, np.newaxis]
 
     # summation over all spherical harmonic degrees
-    d_cslm = (plm_lfactor * data.sel(l=kwargs['used_l'], m=kwargs['used_m'])).sum(dim='l')
+    d_clm = (plm_lfactor * data.sel(l=kwargs['used_l'], m=kwargs['used_m']).clm).sum(dim='l')
+    d_slm = (plm_lfactor * data.sel(l=kwargs['used_l'], m=kwargs['used_m']).slm).sum(dim='l')
 
     # Calculating cos(m*phi) and sin(m*phi)
     c_cos = xr.DataArray(np.cos(kwargs['used_m'][:, np.newaxis] @ np.deg2rad(longitude)[np.newaxis, :]),
@@ -333,7 +335,7 @@ def sh_to_grid(data, unit='mewh', love_file=None, **kwargs):
                          dims=['m', 'longitude'], coords={'m': data.m, 'longitude': longitude})
 
     # Final calcul on the grid
-    xgrid = c_cos.dot(d_cslm.clm) + s_sin.dot(d_cslm.slm)
+    xgrid = c_cos.dot(d_clm) + s_sin.dot(d_slm)
     xgrid = xgrid.transpose("latitude", "longitude", ...)
 
     return xgrid
@@ -447,9 +449,11 @@ def grid_to_sh(grid, lmax, unit='mewh', love_file=None, **kwargs):
     else:
         kwargs.setdefault('normalization_plm', '4pi')
         if kwargs['ellispoidal_earth']:
-            plm = compute_plm(lmax, np.cos(geocentric_colat), normalization=kwargs['normalization_plm'])
+            plm = compute_plm(lmax, np.cos(geocentric_colat),
+                              mmax=kwargs['mmax'], normalization=kwargs['normalization_plm'])
         else:
-            plm = compute_plm(lmax, sin_latitude, normalization=kwargs['normalization_plm'])
+            plm = compute_plm(lmax, sin_latitude,
+                              mmax=kwargs['mmax'], normalization=kwargs['normalization_plm'])
         plm = xr.DataArray(plm, dims=['l', 'm', 'latitude'],
                            coords={'l': np.arange(lmax + 1), 'm': np.arange(lmax + 1), 'latitude': grid.latitude})
 
