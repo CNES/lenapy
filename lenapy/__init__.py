@@ -1,1 +1,1 @@
-from . import xGeo, xOcean, xTime
+from . import xGeo, xOcean, xTime, xHarmo
