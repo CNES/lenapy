@@ -27,8 +27,8 @@ def read_love_numbers(love_file=None):
 
     if love_file is None:
         current_file = inspect.getframeinfo(inspect.currentframe()).filename
-        folderpath = pathlib.Path(current_file).absolute().parent.parent
-        love_file = folderpath.joinpath('data', 'love', 'LoveNumbers_Gegout97.txt')
+        folderpath = pathlib.Path(current_file).absolute().parent
+        love_file = folderpath.joinpath('data', 'LoveNumbers_Gegout97.txt')
 
     return np.genfromtxt(love_file)
 
