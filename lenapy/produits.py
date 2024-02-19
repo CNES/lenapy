@@ -832,3 +832,61 @@ def JAMSTEC_NG(rep,chunks=None,ymin=0,ymax=9999,filtre='',**kwargs):
     return xr.Dataset({'temp':data2.TOI.interp(PRES=pressure).assign_coords(PRES=depth).rename(PRES='depth').chunk(chunks=chunks),
                        'psal':data2.SOI.interp(PRES=pressure).assign_coords(PRES=depth).rename(PRES='depth').chunk(chunks=chunks)
                       })
+
+def NEMO(rep,domcfg,resample='W',dlon=1,dlat=1,fields=dict(CT='votemper',SA='vosaline'),chunks={},ymin=0,ymax=9999,filtre='',**kwargs):
+    """
+    Load data from NEMO product.
+    
+    Parameters
+    ----------
+    rep : string
+        path of the product's directory
+    ymin : int, optional
+        lowest bound of the time intervalle to be loaded (year)
+    ymax : int, optional
+        highest bound of the time intervalle to be loaded (year)
+    filter : string, optionnal
+        string pattern to filter datafiles names
+    **kwargs :  optional
+        The keyword arguments form of open_mfdataset
+
+    Returns
+    -------
+    product : Dataset
+        New dataset containing potential temperature and practical salinity data from the product
+
+    Examples
+    --------
+    >>> data=SODA('/home/usr/lenapy/data/SODA',ymin=2005,ymax=2007,chunks={'depth':10})
+    >>> data.sel(time=slice('2005-06','2007-06')).xocean.gohc.plot()
+
+    """       
+    
+    def preproc(ds):
+        return ds.rename(deptht='depth',time_counter='time',nav_lat='lat',nav_lon='lon').isel(x=slice(1,-1),y=slice(0,-1))
+
+    def year(f):
+        return f.split('_')[-3][1:5]
+
+    fics=filtre_liste(glob(os.path.join(rep,'*grid*.nc')),year,ymin,ymax,filtre)
+
+    data=xr.open_mfdataset(fics,preprocess=preproc).resample(time=resample).mean()
+
+    mask = xr.open_dataset(domcfg)
+
+    nav_lon = mask.nav_lon.values[:-1,1:-1]
+    nav_lat = mask.nav_lat.values[:-1,1:-1]
+
+    lon_b = mask.glamu.values[0, :, :-1]
+    lat_b = mask.gphiv.values[0, :, :-1]
+
+
+    coord_in = {'lon': nav_lon, 'lat': nav_lat, 'lon_b': lon_b, 'lat_b': lat_b}
+
+    ds_out = xe.util.grid_global(dlon, dlat)
+    regridder = xe.Regridder(coord_in, ds_out, "conservative", ignore_degenerate=True,periodic=True) #bilinear
+    
+    res=xr.Dataset()
+    for f in fields:
+        res[f]=regridder(data[fields[f]])
+    return res.drop(['lon','lat']).assign_coords(x=res.lon.isel(y=0),y=res.lat.isel(x=0)).rename(x='longitude',y='latitude')

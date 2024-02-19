@@ -24,15 +24,9 @@ class estimateur:
         self.params = xr.zeros_like(self.deg)+self.beta
         
     def GLS(self):
-        eigenvalues,eigenvectors=np.linalg.eig(self.cov_matrix)
-        eigenvalues=np.where(eigenvalues<0,0.,eigenvalues)
-        C=np.linalg.inv((np.sqrt(eigenvalues)*eigenvectors).real)
-        
-        X = np.dot(C,self.X)
-        Y = np.dot(C,self.Y)
-        H = np.linalg.inv(np.dot(X.T,X))
-
-        self.beta = np.dot(H,np.dot(X.T,Y))
+        C=np.linalg.inv(self.cov_matrix)
+        H = np.linalg.inv(np.dot(self.X.T,np.dot(C,self.X)))
+        self.beta = np.dot(H,np.dot(self.X.T,np.dot(C,self.Y)))
         self.params = xr.zeros_like(self.deg)+self.beta
         
     def residus(self):

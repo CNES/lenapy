@@ -262,9 +262,9 @@ class OceanSet():
         rho = gsw.rho(self.SA, self.CT.sel(time=mean_time_period).mean('time'), self.P)
         hslh = 1.-rho/rhoref
         if above==None:
-            return proprietes(hslh.xocean.integ_depth(),'hssl','Haloosteric sea surface level anomaly','m') # [m]
+            return proprietes(hslh.xocean.integ_depth(),'hssl','Halosteric sea surface level anomaly','m') # [m]
         else:
-            return proprietes(hslh.xocean.above(above),'hssl','Haloosteric sea surface level anomaly','m') # [m]
+            return proprietes(hslh.xocean.above(above),'hssl','Halosteric sea surface level anomaly','m') # [m]
     
     # Ecart de hauteur d'eau de la colonne par rapport à une référence (0,35)
     def ssl_above(self,target):
