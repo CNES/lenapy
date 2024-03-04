@@ -42,6 +42,8 @@ def compute_plm(lmax, z, mmax=None, normalization='4pi'):
     """
     # removing singleton dimensions of x
     z = np.atleast_1d(z).flatten()
+    # update type to provide more memory for computation (np.float32 create some problems)
+    z = z.astype(np.float128)
 
     # if default mmax, set mmax to be maximal degree
     if mmax is None:
@@ -140,7 +142,8 @@ def compute_plm(lmax, z, mmax=None, normalization='4pi'):
 
         # rescale
         p[k, :] = p[k, :] * rescalem
-        p[k - lmax, :] = p[k - lmax, :] * rescalem
+        if m != lmax:
+            p[k - lmax, :] = p[k - lmax, :] * rescalem
 
     # reshape Legendre polynomials to output dimensions (lower triangle array)
     plm = np.zeros((lmax + 1, lmax + 1, len(z)))
@@ -467,9 +470,10 @@ def grid_to_sh(grid, lmax, unit='mewh', love_file=None, **kwargs):
                          dims=['m', 'longitude'], coords={'m': kwargs['used_m'], 'longitude': grid.longitude})
 
     # -- Computation of SH
+    # WARNING, will have to change dims to dim in next xarray version
     # Multiplying data and integral factor with sin/cos of m*longitude. This will sum over longitude, [m,theta]
-    dcos = c_cos.dot(grid * int_fact)
-    dsin = s_sin.dot(grid * int_fact)
+    dcos = c_cos.dot(grid * int_fact, dims=['longitude'])
+    dsin = s_sin.dot(grid * int_fact, dims=['longitude'])
 
     # WARNING, will have to change dims to dim in next xarray version
     # Multiplying plm and degree scale factors with last variable to sum over latitude, [l, m, ...]
