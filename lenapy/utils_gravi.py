@@ -154,7 +154,11 @@ def compute_plm(lmax, z, mmax=None, normalization='4pi'):
     return plm[:, :mmax + 1, :]
 
 
-def sh_to_grid(data, unit='mewh', love_file=None, **kwargs):
+def sh_to_grid(data, unit='mewh', love_file=None,
+               lmax=None, mmax=None, lmin=None, mmin=None, used_l=None, used_m=None,
+               lonmin=-180, lonmax=180, latmin=-90, latmax=90, bounds=None,
+               dlon=1, dlat=1, longitude=None, latitude=None, radians_in=False,
+               ellispoidal_earth=False, include_elastic=True, plm=None, normalization_plm='4pi'):
     """
     Transform Spherical Harmonics (SH) dataset into spatial DataArray.
     With choice for unit, love_numbers, degree/order, spatial grid latitude and longitude, Earth hypothesis.
@@ -170,12 +174,7 @@ def sh_to_grid(data, unit='mewh', love_file=None, **kwargs):
     love_file : str / path, optional
         File with Love numbers that can be read by read_love_numbers() function.
         Default Love numbers used are from Gegout97.
-    **kwargs : dict
-        Extra keyword arguments, for degree/order choice, spatial grid choice, Earth choice and plm pre-computation.
-        See below
 
-    Keywords Arguments
-    ------------------
     lmax : int, optional
         maximal degree of the SH coefficients to be used.
     mmax : int, optional
@@ -199,7 +198,7 @@ def sh_to_grid(data, unit='mewh', love_file=None, **kwargs):
         maximal latitude of the future grid.
     bounds : list, optional
         list of 4 elements with [lonmin, lonmax, latmin, latmax] (if given min/max information are not considered).
-    radians : bool, optional
+    radians_in : bool, optional
         True if the unit of the given latitude and longitude information is radians. Default is False for degree unit.
     dlon : float, optional
         spacing of the longitude values.
@@ -233,108 +232,97 @@ def sh_to_grid(data, unit='mewh', love_file=None, **kwargs):
 
     # -- set degree and order default parameters
     # it prioritizes used_l and used_m if given over lmin, lmax, mmin and mmax
-    kwargs.setdefault('lmax', int(data.l.max()))
-    kwargs.setdefault('mmax', int(data.m.max()))
-    kwargs.setdefault('lmin', 0)
-    kwargs.setdefault('mmin', 0)
-    kwargs.setdefault('used_l', np.arange(kwargs['lmin'], kwargs['lmax'] + 1))
-    kwargs.setdefault('used_m', np.arange(kwargs['mmin'], kwargs['mmax'] + 1))
+    if lmax is None:
+        lmax = int(data.l.max())
+    if mmax is None:
+        mmax = int(data.m.max())
+    if lmin is None:
+        lmin = int(data.l.min())
+    if mmin is None:
+        mmin = int(data.m.min())
+    if used_l is None:
+        used_l = np.arange(lmin, lmax + 1)
+    if used_m is None:
+        used_m = np.arange(mmin, mmax + 1)
 
     # -- set grid output latitude and longitude
     # Verify input variable to create bounds of grid information
-    kwargs.setdefault('lonmin', -180)
-    kwargs.setdefault('lonmax', 180)
-    kwargs.setdefault('latmin', -90)
-    kwargs.setdefault('latmax', 90)
-    kwargs.setdefault('bounds', [kwargs['lonmin'], kwargs['lonmax'], kwargs['latmin'], kwargs['latmax']])
+    if bounds is None:
+        bounds = [lonmin, lonmax, latmin, latmax]
 
     # verify integrity of the argument "bounds" if given
     try:
-        test_iter = iter(kwargs['bounds'])
-        if len(kwargs['bounds']) != 4:
+        test_iter = iter(bounds)
+        if len(bounds) != 4:
             raise TypeError
     except TypeError:
         raise TypeError('Given argument "bounds" has to be a list with 4 elements [lonmin, lonmax, latmin, latmax]')
 
     # Convert bounds in radians if necessary
     # work only if bounds or all lonmin, lonmax, latmin, latmax are given in the announced unit
-    kwargs.setdefault('radians', False)
-    if kwargs['radians']:
-        kwargs['bounds'] = [np.rad2deg(i) for i in kwargs['bounds']]
+    if radians_in:
+        bounds = [np.rad2deg(i) for i in bounds]
 
     # convert dlon, dlat from radians to degree if necessary
-    if 'dlon' in kwargs and kwargs['radians']:
-        kwargs['dlon'] = np.rad2deg(kwargs['dlon'])
-    if 'dlat' in kwargs and kwargs['radians']:
-        kwargs['dlat'] = np.rad2deg(kwargs['dlat'])
-    kwargs.setdefault('dlon', 1)
-    kwargs.setdefault('dlat', 1)
+    if radians_in and dlon != 1:
+        dlon = np.rad2deg(dlon)
+    if radians_in and dlat != 1:
+        dlat = np.rad2deg(dlat)
 
     # load longitude and latitude if given
     # if not : compute longitude and latitude in degrees between given or defaults bounds
-    if 'longitude' in kwargs:
-        if kwargs['radians']:
-            longitude = np.rad2deg(kwargs['longitude'])
-        else:
-            longitude = kwargs['longitude']
+    if longitude is None:
+        longitude = np.arange(bounds[0] + dlon / 2.0,
+                              bounds[1] + dlon / 2.0, dlon)
     else:
-        longitude = np.arange(kwargs['bounds'][0] + kwargs['dlon'] / 2.0,
-                              kwargs['bounds'][1] + kwargs['dlon'] / 2.0, kwargs['dlon'])
-    if 'latitude' in kwargs:
-        if kwargs['radians']:
-            latitude = np.rad2deg(kwargs['latitude'])
-        else:
-            latitude = kwargs['latitude']
+        if radians_in:
+            longitude = np.rad2deg(longitude)
+
+    if latitude is None:
+        latitude = np.arange(bounds[3] - dlat / 2.0,
+                             bounds[2] - dlat / 2.0, - dlat)
     else:
-        latitude = np.arange(kwargs['bounds'][3] - kwargs['dlat'] / 2.0,
-                             kwargs['bounds'][2] - kwargs['dlat'] / 2.0, -kwargs['dlat'])
+        if radians_in:
+            latitude = np.rad2deg(latitude)
 
     cos_latitude = np.cos(np.deg2rad(latitude))
     sin_latitude = np.sin(np.deg2rad(latitude))
     geocentric_colat = np.arctan2(cos_latitude, (1 - f_earth) ** 2 * sin_latitude)
 
-    # -- load Earth representation parameters
-    # default Earth is spherical
-    kwargs.setdefault('ellispoidal_earth', False)
-    # default Earth is elastic (only serve for particular unit)
-    kwargs.setdefault('include_elastic', True)
-
     # -- beginning of computation
     # Computing plm for converting to spatial domain
-    if 'plm' in kwargs:
-        plm = kwargs['plm']
+    if plm is None:
+        if ellispoidal_earth:
+            plm = compute_plm(lmax, np.cos(geocentric_colat),
+                              mmax=mmax, normalization=normalization_plm)
+        else:
+            plm = compute_plm(lmax, sin_latitude,
+                              mmax=mmax, normalization=normalization_plm)
+        plm = xr.DataArray(plm, dims=['l', 'm', 'latitude'],
+                           coords={'l': data.l, 'm': data.m, 'latitude': latitude})
+
+    else:
         if (isinstance(plm, xr.DataArray) or
                 'l' not in plm.coords or 'm' not in plm.coords or 'latitude' not in plm.coords):
             raise TypeError('Given argument "plm" has to be a DataArray with 3 coordinates [l, m, latitude]')
 
         if plm.l.max < data.l.max:
             raise AssertionError('Given argument "plm" maximal degree is too small ', plm.l.max, '<', data.l.max)
-    else:
-        kwargs.setdefault('normalization_plm', '4pi')
-        if kwargs['ellispoidal_earth']:
-            plm = compute_plm(kwargs['lmax'], np.cos(geocentric_colat),
-                              mmax=kwargs['mmax'], normalization=kwargs['normalization_plm'])
-        else:
-            plm = compute_plm(kwargs['lmax'], sin_latitude,
-                              mmax=kwargs['mmax'], normalization=kwargs['normalization_plm'])
-        plm = xr.DataArray(plm, dims=['l', 'm', 'latitude'],
-                           coords={'l': data.l, 'm': data.m, 'latitude': latitude})
 
     # scale factor for each degree
-    lfactor = l_factor_gravi(kwargs['used_l'], unit, kwargs['include_elastic'],
-                             kwargs['ellispoidal_earth'], geocentric_colat, love_file)
+    lfactor = l_factor_gravi(used_l, unit, include_elastic, ellispoidal_earth, geocentric_colat, love_file)
 
     # convolve unit over degree
-    plm_lfactor = plm.sel(l=kwargs['used_l'], m=kwargs['used_m']) * lfactor[:, np.newaxis, np.newaxis]
+    plm_lfactor = plm.sel(l=used_l, m=used_m) * lfactor[:, np.newaxis, np.newaxis]
 
     # summation over all spherical harmonic degrees
-    d_clm = (plm_lfactor * data.sel(l=kwargs['used_l'], m=kwargs['used_m']).clm).sum(dim='l')
-    d_slm = (plm_lfactor * data.sel(l=kwargs['used_l'], m=kwargs['used_m']).slm).sum(dim='l')
+    d_clm = (plm_lfactor * data.sel(l=used_l, m=used_m).clm).sum(dim='l')
+    d_slm = (plm_lfactor * data.sel(l=used_l, m=used_m).slm).sum(dim='l')
 
     # Calculating cos(m*phi) and sin(m*phi)
-    c_cos = xr.DataArray(np.cos(kwargs['used_m'][:, np.newaxis] @ np.deg2rad(longitude)[np.newaxis, :]),
+    c_cos = xr.DataArray(np.cos(used_m[:, np.newaxis] @ np.deg2rad(longitude)[np.newaxis, :]),
                          dims=['m', 'longitude'], coords={'m': data.m, 'longitude': longitude})
-    s_sin = xr.DataArray(np.sin(kwargs['used_m'][:, np.newaxis] @ np.deg2rad(longitude)[np.newaxis, :]),
+    s_sin = xr.DataArray(np.sin(used_m[:, np.newaxis] @ np.deg2rad(longitude)[np.newaxis, :]),
                          dims=['m', 'longitude'], coords={'m': data.m, 'longitude': longitude})
 
     # Final calcul on the grid
@@ -344,7 +332,9 @@ def sh_to_grid(data, unit='mewh', love_file=None, **kwargs):
     return xgrid
 
 
-def grid_to_sh(grid, lmax, unit='mewh', love_file=None, **kwargs):
+def grid_to_sh(grid, lmax, unit='mewh', love_file=None,
+               mmax=None, lmin=0, mmin=0, used_l=None, used_m=None,
+               ellispoidal_earth=False, include_elastic=True, plm=None, normalization_plm='4pi'):
     """
     Transform gravity field spatial representation DataArray into Spherical Harmonics (SH) dataset.
     With choice for unit of the spatial DataArray, love_numbers, degree/order, Earth hypothesis.
@@ -362,18 +352,13 @@ def grid_to_sh(grid, lmax, unit='mewh', love_file=None, **kwargs):
     love_file : str / path, optional
         File with Love numbers that can be read by read_love_numbers() function.
         Default Love numbers used are from Gegout97.
-    **kwargs : dict
-        Extra keyword arguments, for degree/order choice, Earth choice and plm pre-computation.
-        See below
 
-    Keywords Arguments
-    ------------------
     mmax : int, optional
         maximal order of the SH coefficients to be computed.
     lmin : int, optional
-        minimal degree of the SH coefficients to be computed.
+        minimal degree of the SH coefficients to be computed. Default is 0
     mmin : int, optional
-        minimal order of the SH coefficients to be computed.
+        minimal order of the SH coefficients to be computed. Default is 0
     used_l : np.ndarray, optional
         list of degree to compute for the SH Dataset (if given, lmax and lmin are not considered).
     used_m : np.ndarray, optional
@@ -400,11 +385,12 @@ def grid_to_sh(grid, lmax, unit='mewh', love_file=None, **kwargs):
     """
     # -- set degree and order default parameters
     # it prioritizes used_l and used_m if given over lmin, lmax, mmin and mmax
-    kwargs.setdefault('mmax', lmax)
-    kwargs.setdefault('lmin', 0)
-    kwargs.setdefault('mmin', 0)
-    kwargs.setdefault('used_l', np.arange(kwargs['lmin'], lmax + 1))
-    kwargs.setdefault('used_m', np.arange(kwargs['mmin'], kwargs['mmax'] + 1))
+    if mmax is None:
+        mmax = lmax
+    if used_l is None:
+        used_l = np.arange(lmin, lmax + 1)
+    if used_m is None:
+        used_m = np.arange(mmin, mmax + 1)
 
     # -- create integration factor over the grid
     # longitude degree spacing of each cell in radians
@@ -429,45 +415,38 @@ def grid_to_sh(grid, lmax, unit='mewh', love_file=None, **kwargs):
                             dims=['longitude', 'latitude'],
                             coords={'longitude': grid.longitude, 'latitude': grid.latitude})
 
-    # -- load Earth representation parameters
-    # default Earth is spherical
-    kwargs.setdefault('ellispoidal_earth', False)
-    # default Earth is elastic (only serve for particular unit)
-    kwargs.setdefault('include_elastic', True)
-
     # scale factor for each degree
-    lfactor = l_factor_gravi(kwargs['used_l'], unit, kwargs['include_elastic'],
-                             kwargs['ellispoidal_earth'], geocentric_colat, love_file)
+    lfactor = l_factor_gravi(used_l, unit, include_elastic,
+                             ellispoidal_earth, geocentric_colat, love_file)
 
     # -- prepare variables for the computation of SH
     # Computing plm for converting to spatial domain
-    if 'plm' in kwargs:
-        plm = kwargs['plm']
+    if plm is None:
+        if ellispoidal_earth:
+            plm = compute_plm(lmax, np.cos(geocentric_colat),
+                              mmax=mmax, normalization=normalization_plm)
+        else:
+            plm = compute_plm(lmax, sin_latitude,
+                              mmax=mmax, normalization=normalization_plm)
+        plm = xr.DataArray(plm, dims=['l', 'm', 'latitude'],
+                           coords={'l': np.arange(lmax + 1), 'm': np.arange(lmax + 1), 'latitude': grid.latitude})
+
+    else:
         if (isinstance(plm, xr.DataArray) or
                 'l' not in plm.coords or 'm' not in plm.coords or 'latitude' not in plm.coords):
             raise TypeError('Given argument "plm" has to be a DataArray with 3 coordinates [l, m, latitude]')
 
         if plm.l.max < lmax:
             raise AssertionError('Given argument "plm" maximal degree is too small ', plm.l.max, '<', lmax)
-    else:
-        kwargs.setdefault('normalization_plm', '4pi')
-        if kwargs['ellispoidal_earth']:
-            plm = compute_plm(lmax, np.cos(geocentric_colat),
-                              mmax=kwargs['mmax'], normalization=kwargs['normalization_plm'])
-        else:
-            plm = compute_plm(lmax, sin_latitude,
-                              mmax=kwargs['mmax'], normalization=kwargs['normalization_plm'])
-        plm = xr.DataArray(plm, dims=['l', 'm', 'latitude'],
-                           coords={'l': np.arange(lmax + 1), 'm': np.arange(lmax + 1), 'latitude': grid.latitude})
 
     # convolve unit over degree
-    plm_lfactor = plm.sel(l=kwargs['used_l'], m=kwargs['used_m']) / lfactor[:, np.newaxis, np.newaxis]
+    plm_lfactor = plm.sel(l=used_l, m=used_m) / lfactor[:, np.newaxis, np.newaxis]
 
     # Calculating cos/sin of phi arrays, [m,phi]
-    c_cos = xr.DataArray(np.cos(kwargs['used_m'][:, np.newaxis] @ np.deg2rad(grid.longitude.values)[np.newaxis, :]),
-                         dims=['m', 'longitude'], coords={'m': kwargs['used_m'], 'longitude': grid.longitude})
-    s_sin = xr.DataArray(np.sin(kwargs['used_m'][:, np.newaxis] @ np.deg2rad(grid.longitude.values)[np.newaxis, :]),
-                         dims=['m', 'longitude'], coords={'m': kwargs['used_m'], 'longitude': grid.longitude})
+    c_cos = xr.DataArray(np.cos(used_m[:, np.newaxis] @ np.deg2rad(grid.longitude.values)[np.newaxis, :]),
+                         dims=['m', 'longitude'], coords={'m': used_m, 'longitude': grid.longitude})
+    s_sin = xr.DataArray(np.sin(used_m[:, np.newaxis] @ np.deg2rad(grid.longitude.values)[np.newaxis, :]),
+                         dims=['m', 'longitude'], coords={'m': used_m, 'longitude': grid.longitude})
 
     # -- Computation of SH
     # WARNING, will have to change dims to dim in next xarray version
