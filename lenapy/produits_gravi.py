@@ -408,8 +408,9 @@ class ReadGRACEL2(BackendEntrypoint):
             file = open(filename, 'r')
 
         line = True
-        # read GRGS level 2 products
-        if 'GRGS' in os.path.basename(filename) or 'CNES' in os.path.basename(filename):
+        # read GRGS level 2 products (or GRAZ reprocessed by GRGS)
+        if ('GRGS' in os.path.basename(filename) or 'CNES' in os.path.basename(filename) or
+                'TUGRZ' in os.path.basename(filename)):
             header = {}
             while line:
                 line = file.readline()
