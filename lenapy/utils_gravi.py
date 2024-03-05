@@ -1,157 +1,9 @@
 import datetime
+import pathlib
+import inspect
 import numpy as np
 import xarray as xr
 from .constants import *
-
-
-def compute_plm(lmax, z, mmax=None, normalization='4pi'):
-    """
-    Compute all the associated Legendre functions up to a maximum degree and
-    order using the recursion relation from [Holmes2002]
-    (Adapted from SHTOOLS/pyshtools tools [Wieczorek2018])
-
-    Parameters
-    ----------
-    lmax : int
-        maximum degree of legrendre functions
-    z : np.ndarray
-        argument of the associated Legendre functions
-    mmax : int or NoneType, optional
-        maximum order of associated legrendre functions
-    normalization : str, optional, optional
-        '4pi', 'ortho', or 'schmidt' for use with geodesy 4pi normalized, orthonormalized, or Schmidt semi-normalized
-        spherical harmonic functions, respectively. Default is '4pi'.
-
-    Returns
-    -------
-    plm : np.ndarray
-        fully-normalized legendre functions
-
-    References
-    ----------
-    .. [Holmes2002] S. A. Holmes and W. E. Featherstone,
-        "A unified approach to the Clenshaw summation and the
-        recursive computation of very high degree and order
-        normalised associated Legendre functions",
-        *Journal of Geodesy*, 76, 279--299, (2002).
-        `doi: 10.1007/s00190-002-0216-2 <https://doi.org/10.1007/s00190-002-0216-2>`_
-    .. [Wieczorek2018]  M. A. Wieczorek and M. Meschede,
-        "SHTools: Tools for working with spherical harmonics",
-        *Geochemistry, Geophysics, Geosystems*, 19, 2574–2592, (2018).
-        `doi: 10.1029/2018GC007529 <https://doi.org/10.1029/2018GC007529>`_
-    """
-    # removing singleton dimensions of x
-    z = np.atleast_1d(z).flatten()
-    # update type to provide more memory for computation (np.float32 create some problems)
-    z = z.astype(np.float128)
-
-    # if default mmax, set mmax to be maximal degree
-    if mmax is None:
-        mmax = lmax
-
-    # scale factor based on Holmes2002
-    scalef = 1e-280
-
-    # create multiplicative factors and p
-    f1 = np.zeros(((lmax + 1) * (lmax + 2) // 2))
-    f2 = np.zeros(((lmax + 1) * (lmax + 2) // 2))
-    p = np.zeros(((lmax + 1) * (lmax + 2) // 2, len(z)))
-
-    k = 2
-    if normalization in ('4pi', 'ortho'):
-        norm_p10 = np.sqrt(3)
-
-        for l in range(2, lmax + 1):
-            k += 1
-            f1[k] = np.sqrt(2 * l - 1) * np.sqrt(2 * l + 1) / l
-            f2[k] = (l - 1) * np.sqrt(2 * l + 1) / (np.sqrt(2 * l - 3) * l)
-            for m in range(1, l - 1):
-                k += 1
-                f1[k] = np.sqrt(2 * l + 1) * np.sqrt(2 * l - 1) / (np.sqrt(l + m) * np.sqrt(l - m))
-                f2[k] = (np.sqrt(2 * l + 1) * np.sqrt(l - m - 1) * np.sqrt(l + m - 1) /
-                         (np.sqrt(2 * l - 3) * np.sqrt(l + m) * np.sqrt(l - m)))
-            k += 2
-
-        if normalization == '4pi':
-            norm_4pi = 1
-        else:
-            norm_4pi = 4 * np.pi
-
-    elif normalization == 'schmidt':
-        norm_p10 = 1
-        norm_4pi = 1
-
-        for l in range(2, lmax + 1):
-            k += 1
-            f1[k] = (2 * l - 1) / l
-            f2[k] = (l - 1) / l
-            for m in range(1, l - 1):
-                k += 1
-                f1[k] = (2 * l - 1) / (np.sqrt(l + m) * np.sqrt(l - m))
-                f2[k] = np.sqrt(l - m - 1) * np.sqrt(l + m - 1) / (np.sqrt(l + m) * np.sqrt(l - m))
-            k += 2
-
-    else:
-        raise AssertionError("Unknown normalization given: ", normalization, ". It should be either "
-                                                                             "'4pi', 'ortho' or 'schmidt'")
-
-    # u is sine of colatitude (cosine of latitude), for z=cos(th): u=sin(th)
-    u = np.sqrt(1 - z ** 2)
-    # update where u==0 to minimal numerical precision different from 0 to prevent invalid divisions
-    u[u == 0] = np.finfo(np.float64).eps
-
-    # Calculate P(l,0) (not scaled)
-    p[0, :] = 1 / np.sqrt(norm_4pi)
-    p[1, :] = norm_p10 * z / np.sqrt(norm_4pi)
-    k = 1
-    for l in range(2, lmax + 1):
-        k += l
-        p[k, :] = f1[k] * z * p[k - l, :] - f2[k] * p[k - 2 * l + 1, :]
-
-    # Calculate P(m,m), P(m+1,m), and P(l,m)
-    pmm = np.sqrt(2) * scalef / np.sqrt(norm_4pi)
-    rescalem = 1 / scalef
-    kstart = 0
-
-    for m in range(1, lmax + 1):
-        rescalem = rescalem * u
-        # Calculate P(m,m)
-        kstart += m + 1
-        pmm = pmm * np.sqrt(2 * m + 1) / np.sqrt(2 * m)
-        if normalization in ('4pi', 'ortho'):
-            p[kstart, :] = pmm
-        elif normalization == 'schmidt':
-            p[kstart, :] = pmm / np.sqrt(2 * m + 1)
-
-        if m != lmax:  # test if P(m+1,m) exist
-            # Calculate P(m+1,m)
-            k = kstart + m + 1
-            if normalization in ('4pi', 'ortho'):
-                p[k, :] = z * np.sqrt(2 * m + 3) * pmm
-            elif normalization == 'schmidt':
-                p[k, :] = z * pmm
-        else:
-            # set up k for rescale P(lmax,lmax)
-            k = kstart
-
-        # Calculate P(l,m)
-        for l in range(m + 2, lmax + 1):
-            k += l
-            p[k, :] = z * f1[k] * p[k - l, :] - f2[k] * p[k - 2 * l + 1, :]
-            p[k - 2 * l + 1, :] = p[k - 2 * l + 1, :] * rescalem
-
-        # rescale
-        p[k, :] = p[k, :] * rescalem
-        if m != lmax:
-            p[k - lmax, :] = p[k - lmax, :] * rescalem
-
-    # reshape Legendre polynomials to output dimensions (lower triangle array)
-    plm = np.zeros((lmax + 1, lmax + 1, len(z)))
-    ind = np.tril_indices(lmax + 1)
-    plm[ind] = p
-
-    # return the legendre polynomials and truncating orders to mmax
-    return plm[:, :mmax + 1, :]
 
 
 def sh_to_grid(data, unit='mewh', love_file=None,
@@ -217,7 +69,7 @@ def sh_to_grid(data, unit='mewh', love_file=None,
     plm : xr.DataArray, optional
         Precomputed plm values as a xr.DataArray variable. For example with the code :
         plm = xr.DataArray(compute_plm(lmax, sin_latitude), dims=['l', 'm', 'latitude'],
-                           coords={'l': data.l, 'm': data.m, 'latitude': latitude})
+        coords={'l': data.l, 'm': data.m, 'latitude': latitude})
     normalization_plm : str, optional
         If plm need to be computed, choice of the norm corresponding to the SH dataset.
         '4pi', 'ortho', or 'schmidt' for use with geodesy
@@ -287,7 +139,7 @@ def sh_to_grid(data, unit='mewh', love_file=None,
 
     cos_latitude = np.cos(np.deg2rad(latitude))
     sin_latitude = np.sin(np.deg2rad(latitude))
-    geocentric_colat = np.arctan2(cos_latitude, (1 - f_earth) ** 2 * sin_latitude)
+    geocentric_colat = np.arctan2(cos_latitude, (1 - LNPY_F_EARTH) ** 2 * sin_latitude)
 
     # -- beginning of computation
     # Computing plm for converting to spatial domain
@@ -372,7 +224,7 @@ def grid_to_sh(grid, lmax, unit='mewh', love_file=None,
     plm : xr.DataArray, optional
         Precomputed plm values as a xr.DataArray variable. For example with the code :
         plm = xr.DataArray(compute_plm(lmax, sin_latitude), dims=['l', 'm', 'latitude'],
-                           coords={'l': data.l, 'm': data.m, 'latitude': latitude})
+        coords={'l': data.l, 'm': data.m, 'latitude': latitude})
     normalization_plm : str, optional
         If plm need to be computed, choice of the norm. '4pi', 'ortho', or 'schmidt' for use with geodesy
         4pi normalized, orthonormalized, or Schmidt semi-normalized SH functions, respectively.
@@ -407,7 +259,7 @@ def grid_to_sh(grid, lmax, unit='mewh', love_file=None,
 
     cos_latitude = np.cos(np.deg2rad(grid.latitude.values))
     sin_latitude = np.sin(np.deg2rad(grid.latitude.values))
-    geocentric_colat = np.arctan2(cos_latitude, (1 - f_earth) ** 2 * sin_latitude)
+    geocentric_colat = np.arctan2(cos_latitude, (1 - LNPY_F_EARTH) ** 2 * sin_latitude)
 
     # create DataArray corresponding to the integration factor [sin(theta) * dtheta * dphi] for each cell
     # Possible test if Gt
@@ -608,6 +460,156 @@ def change_tide_system(ds, new_tide, old_tide=None, k20=None, copy=False):
     return ds_out
 
 
+def compute_plm(lmax, z, mmax=None, normalization='4pi'):
+    """
+    Compute all the associated Legendre functions up to a maximum degree and
+    order using the recursion relation from [Holmes2002]
+    (Adapted from SHTOOLS/pyshtools tools [Wieczorek2018])
+
+    Parameters
+    ----------
+    lmax : int
+        maximum degree of legrendre functions
+    z : np.ndarray
+        argument of the associated Legendre functions
+    mmax : int or NoneType, optional
+        maximum order of associated legrendre functions
+    normalization : str, optional
+        '4pi', 'ortho', or 'schmidt' for use with geodesy 4pi normalized, orthonormalized, or Schmidt semi-normalized
+        spherical harmonic functions, respectively. Default is '4pi'.
+
+    Returns
+    -------
+    plm : np.ndarray
+        fully-normalized legendre functions
+
+    References
+    ----------
+    .. [Holmes2002] S. A. Holmes and W. E. Featherstone,
+        "A unified approach to the Clenshaw summation and the
+        recursive computation of very high degree and order
+        normalised associated Legendre functions",
+        *Journal of Geodesy*, 76, 279--299, (2002).
+        `doi: 10.1007/s00190-002-0216-2 <https://doi.org/10.1007/s00190-002-0216-2>`_
+    .. [Wieczorek2018]  M. A. Wieczorek and M. Meschede,
+        "SHTools: Tools for working with spherical harmonics",
+        *Geochemistry, Geophysics, Geosystems*, 19, 2574–2592, (2018).
+        `doi: 10.1029/2018GC007529 <https://doi.org/10.1029/2018GC007529>`_
+    """
+    # removing singleton dimensions of x
+    z = np.atleast_1d(z).flatten()
+    # update type to provide more memory for computation (np.float32 create some problems)
+    z = z.astype(np.float128)
+
+    # if default mmax, set mmax to be maximal degree
+    if mmax is None:
+        mmax = lmax
+
+    # scale factor based on Holmes2002
+    scalef = 1e-280
+
+    # create multiplicative factors and p
+    f1 = np.zeros(((lmax + 1) * (lmax + 2) // 2))
+    f2 = np.zeros(((lmax + 1) * (lmax + 2) // 2))
+    p = np.zeros(((lmax + 1) * (lmax + 2) // 2, len(z)))
+
+    k = 2
+    if normalization in ('4pi', 'ortho'):
+        norm_p10 = np.sqrt(3)
+
+        for l in range(2, lmax + 1):
+            k += 1
+            f1[k] = np.sqrt(2 * l - 1) * np.sqrt(2 * l + 1) / l
+            f2[k] = (l - 1) * np.sqrt(2 * l + 1) / (np.sqrt(2 * l - 3) * l)
+            for m in range(1, l - 1):
+                k += 1
+                f1[k] = np.sqrt(2 * l + 1) * np.sqrt(2 * l - 1) / (np.sqrt(l + m) * np.sqrt(l - m))
+                f2[k] = (np.sqrt(2 * l + 1) * np.sqrt(l - m - 1) * np.sqrt(l + m - 1) /
+                         (np.sqrt(2 * l - 3) * np.sqrt(l + m) * np.sqrt(l - m)))
+            k += 2
+
+        if normalization == '4pi':
+            norm_4pi = 1
+        else:
+            norm_4pi = 4 * np.pi
+
+    elif normalization == 'schmidt':
+        norm_p10 = 1
+        norm_4pi = 1
+
+        for l in range(2, lmax + 1):
+            k += 1
+            f1[k] = (2 * l - 1) / l
+            f2[k] = (l - 1) / l
+            for m in range(1, l - 1):
+                k += 1
+                f1[k] = (2 * l - 1) / (np.sqrt(l + m) * np.sqrt(l - m))
+                f2[k] = np.sqrt(l - m - 1) * np.sqrt(l + m - 1) / (np.sqrt(l + m) * np.sqrt(l - m))
+            k += 2
+
+    else:
+        raise AssertionError("Unknown normalization given: ", normalization, ". It should be either "
+                                                                             "'4pi', 'ortho' or 'schmidt'")
+
+    # u is sine of colatitude (cosine of latitude), for z=cos(th): u=sin(th)
+    u = np.sqrt(1 - z ** 2)
+    # update where u==0 to minimal numerical precision different from 0 to prevent invalid divisions
+    u[u == 0] = np.finfo(np.float64).eps
+
+    # Calculate P(l,0) (not scaled)
+    p[0, :] = 1 / np.sqrt(norm_4pi)
+    p[1, :] = norm_p10 * z / np.sqrt(norm_4pi)
+    k = 1
+    for l in range(2, lmax + 1):
+        k += l
+        p[k, :] = f1[k] * z * p[k - l, :] - f2[k] * p[k - 2 * l + 1, :]
+
+    # Calculate P(m,m), P(m+1,m), and P(l,m)
+    pmm = np.sqrt(2) * scalef / np.sqrt(norm_4pi)
+    rescalem = 1 / scalef
+    kstart = 0
+
+    for m in range(1, lmax + 1):
+        rescalem = rescalem * u
+        # Calculate P(m,m)
+        kstart += m + 1
+        pmm = pmm * np.sqrt(2 * m + 1) / np.sqrt(2 * m)
+        if normalization in ('4pi', 'ortho'):
+            p[kstart, :] = pmm
+        elif normalization == 'schmidt':
+            p[kstart, :] = pmm / np.sqrt(2 * m + 1)
+
+        if m != lmax:  # test if P(m+1,m) exist
+            # Calculate P(m+1,m)
+            k = kstart + m + 1
+            if normalization in ('4pi', 'ortho'):
+                p[k, :] = z * np.sqrt(2 * m + 3) * pmm
+            elif normalization == 'schmidt':
+                p[k, :] = z * pmm
+        else:
+            # set up k for rescale P(lmax,lmax)
+            k = kstart
+
+        # Calculate P(l,m)
+        for l in range(m + 2, lmax + 1):
+            k += l
+            p[k, :] = z * f1[k] * p[k - l, :] - f2[k] * p[k - 2 * l + 1, :]
+            p[k - 2 * l + 1, :] = p[k - 2 * l + 1, :] * rescalem
+
+        # rescale
+        p[k, :] = p[k, :] * rescalem
+        if m != lmax:
+            p[k - lmax, :] = p[k - lmax, :] * rescalem
+
+    # reshape Legendre polynomials to output dimensions (lower triangle array)
+    plm = np.zeros((lmax + 1, lmax + 1, len(z)))
+    ind = np.tril_indices(lmax + 1)
+    plm[ind] = p
+
+    # return the legendre polynomials and truncating orders to mmax
+    return plm[:, :mmax + 1, :]
+
+
 def mid_month_grace_estimate(begin_time, end_time):
     """
     Calculate middle of the month date based on begin_time and end_time for GRACE products
@@ -629,9 +631,6 @@ def mid_month_grace_estimate(begin_time, end_time):
     # to compute mid_month, need to round begin_time to the 1st of the month
     # deal with GRACE month when the begin date is not between 16 of month before and 15 of the month
     # it includes May 2015, Dec 2011 (JPL), Mar 2017 and Oct 2018 that cover second half of month
-    if begin_time.strftime('%Y%j') == '2011351':
-        print(begin_time, end_time)
-
     if ((begin_time.day <= 15 and begin_time.strftime('%Y%j') != '2015102') or
             begin_time.strftime('%Y%j') == '2011351' or begin_time.strftime('%Y%j') == '2017076' or
             begin_time.strftime('%Y%j') == '2018295'):
@@ -649,3 +648,121 @@ def mid_month_grace_estimate(begin_time, end_time):
         tmp_end = (end_time.replace(day=1) + datetime.timedelta(days=32)).replace(day=1)
 
     return tmp_begin + (tmp_end - tmp_begin) / 2
+
+
+def read_love_numbers(love_file=None):
+    # verif love file, catch error, deal with kl or hl, kl, ll
+    # change reference
+    # test kwargs given love or not or love_file
+    # hl, ll
+
+    if love_file is None:
+        current_file = inspect.getframeinfo(inspect.currentframe()).filename
+        folderpath = pathlib.Path(current_file).absolute().parent
+        love_file = folderpath.joinpath('data', 'LoveNumbers_Gegout97.txt')
+
+    return np.genfromtxt(love_file)
+
+
+def l_factor_gravi(l, unit='mewh', include_elastic=True, ellispoidal_earth=False, geocentric_colat=None,
+                   love_file=None):
+    """
+    Compute scale factor for a transformation between spherical harmonics and grid data.
+    Spatial data over the grid are associated with a specific unit.
+    The scale factor is degree dependant and is computed for the given list of degree l.
+    The scale factor can be estimated using elastic or none elastic Earth as well as a spherical or ellipsoidal Earth.
+
+    Parameters
+    ----------
+    l : np.ndarray
+        degree for which the scale factor is estimated.
+    unit : str, optional
+        'mewh', 'geoid', 'microGal', 'pascal', 'mvcu', or 'norm'
+        Unit of the spatial data used in the transformation. Default is 'mewh' for meters of Equivalent Water Height.
+        'geoid' represents millimeters geoid height, 'microGal' represents microGal gravity perturbations,
+        'pascal' represents equivalent surface pressure in pascal and
+        'mvcu' represents meters viscoelastic crustal uplift
+    include_elastic : bool, optional
+        If True, the Earth behavior is elastic.
+    ellispoidal_earth : bool, optional
+        If True, consider the Earth as an ellispoid following [Ditmar2018] and if False as a sphere.
+    geocentric_colat : list, optional
+        List of geocentric colatitude for ellispoidal earth radius computation.
+    love_file : str / path, optional
+        File with Love numbers that can be read by read_love_numbers() function.
+        Default Love numbers used are from Gegout97.
+
+    Returns
+    -------
+    l_factor : np.ndarray
+        Degree dependant scale factor
+
+    References
+    ----------
+    .. [Ditmar2018] P. Ditmar,
+        "Conversion of time-varying Stokes coefficients into mass anomalies at the
+        Earth’s surface considering the Earth’s oblateness",
+        *Journal of Geodesy*, 92, 1401--1412, (2018).
+        `doi: 10.1007/s00190-018-1128-0 <https://doi.org/10.1007/s00190-018-1128-0>`_
+    """
+    fraction = np.ones(l.shape)
+
+    # include elastic redistribution with kl Love numbers
+    if include_elastic:
+        # verif love file, catch error, deal with kl or hl, kl, ll
+        # change reference
+        # test kwargs given love or not or love_file
+        # hl, ll
+        kl = read_love_numbers(love_file)
+        fraction += kl[l]
+
+    # test for ellispoidal_earth
+    if ellispoidal_earth and geocentric_colat is None:
+        raise ValueError("For ellipsoidal Earth, you need to set "
+                         "the parameter 'geocentric_colat' in l_factor_gravi function")
+
+    # l_factor is degree dependant
+    if unit == 'norm':
+        # norm, fully normalized spherical harmonics
+        l_factor = np.ones(l.shape)
+
+    elif unit == 'mewh':
+        # mewh, meters equivalent water height [kg.m-2]
+        l_factor = LNPY_RHO_EARTH * LNPY_A_EARTH * (2 * l + 1) / (3 * fraction * 1e3)
+        if ellispoidal_earth:
+            l_factor *= ((LNPY_RAVERAGE_EARTH/LNPY_A_EARTH)**3 *
+                         (np.sqrt(1 - LNPY_E_EARTH**2*np.sin(geocentric_colat)**2) / (1 - LNPY_F_EARTH))**(l + 2))
+
+    elif unit == 'geoid':
+        # geoid, millimeters geoid height
+        l_factor = np.ones(l.shape) * LNPY_A_EARTH * 1e3
+        if ellispoidal_earth:
+            l_factor *= (np.sqrt(1 - LNPY_E_EARTH**2*np.sin(geocentric_colat)**2) / (1 - LNPY_F_EARTH))**(l + 1)
+
+    elif unit == 'microGal':
+        # microGal, microGal gravity perturbations
+        l_factor = LNPY_GM_EARTH * (l + 1) / (LNPY_A_EARTH ** 2) * 1e8
+        if ellispoidal_earth:
+            l_factor *= (np.sqrt(1 - LNPY_E_EARTH**2*np.sin(geocentric_colat)**2) / (1 - LNPY_F_EARTH))**(l + 2)
+
+    elif unit == 'pascal':
+        # pascal, equivalent surface pressure
+        l_factor = LNPY_G_WMO * LNPY_RHO_EARTH * LNPY_A_EARTH * (2*l + 1) / (3 * fraction)
+        if ellispoidal_earth:
+            l_factor *= (np.sqrt(1 - LNPY_E_EARTH**2*np.sin(geocentric_colat)**2) / (1 - LNPY_F_EARTH))**(l + 1)
+
+    elif unit == 'mvcu':
+        # mVCU, meters viscoelastic crustal uplift
+        l_factor = LNPY_A_EARTH * (2*l + 1) / 2
+        if ellispoidal_earth:
+            l_factor *= (np.sqrt(1 - LNPY_E_EARTH**2*np.sin(geocentric_colat)**2) / (1 - LNPY_F_EARTH))**(l + 1)
+
+    # mCU, meters elastic crustal deformation (uplift)
+    # mCH, meters elastic crustal deformation (horizontal)
+    # Gt, Gigatonnes
+
+    else:
+        raise ValueError("Invalid 'unit' parameter value in l_factor_gravi function, valid values are: "
+                         "(norm, mewh, geoid, microGal, bar, mvcu)")
+
+    return l_factor
