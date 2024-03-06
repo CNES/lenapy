@@ -766,3 +766,51 @@ def l_factor_gravi(l, unit='mewh', include_elastic=True, ellispoidal_earth=False
                          "(norm, mewh, geoid, microGal, bar, mvcu)")
 
     return l_factor
+
+
+def assert_sh(ds):
+    """
+    Verify if ds have dimensions l and m as well as variables clm and slm
+    Raise Assertion error if not
+
+    Returns
+    -------
+    True : bool
+        return True is ds have dimensions l and m as well as variables clm and slm
+
+    Raises
+    ------
+    AssertionError
+        This function raise AssertionError is ds is not a xr.Dataset corresponding to spherical harmonics
+    """
+    if 'l' not in ds.coords:
+        raise AssertionError("The degree coordinates that should be named 'l' does not exist")
+    if 'm' not in ds.coords:
+        raise AssertionError("The order coordinates that should be named 'm' does not exist")
+    if 'clm' not in ds.keys():
+        raise AssertionError("The Dataset have to contain 'clm' variable")
+    if 'slm' not in ds.keys():
+        raise AssertionError("The Dataset have to contain 'slm' variable")
+    return True
+
+
+def assert_grid(ds):
+    """
+    Verify if ds have dimensions longitude and latitude
+    Raise Assertion error if not
+
+    Returns
+    -------
+    True : bool
+        return True is ds have dimensions longitude and latitude
+
+    Raises
+    ------
+    AssertionError
+        This function raise AssertionError is self._obj is not a xr.Dataset corresponding to spherical harmonics
+    """
+    if 'latitude' not in ds.coords:
+        raise AssertionError("The latitude coordinates that should be named 'latitude' does not exist")
+    if 'longitude' not in ds.coords:
+        raise AssertionError("The longitude coordinates that should be named 'longitude' does not exist")
+    return True
