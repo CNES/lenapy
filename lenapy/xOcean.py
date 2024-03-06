@@ -271,6 +271,22 @@ class OceanSet():
         return proprietes(self.slh.xocean.above(target),
                           'ssl','Steric sea surface level anomaly above targeted depth','m') # [m]
     
+
+
+    @property
+    # EEH local (en 
+    def eeh(self):
+        if NoneType(self.eeh_):
+            if 'latitude' in self._obj.coords:
+                rhoref = gsw.rho(gsw.SA_from_SP(35,self.P,self._obj.longitude, self._obj.latitude),
+                                 0, self.P)
+            else:
+                rhoref = gsw.rho(gsw.SR_from_SP(35), 0, self.P)
+            rho_SA,rho_CT,rho_P=gsw.rho_first_derivatives(self.SA.load(),self.CT.load(),self.P.load())
+            self.eeh_ = proprietes(-rho_CT/(rhoref*self.Cp*self.rho),
+                          'EEH','Local expansion efficiency oh heat','m/(J/m²)') # [m/(J/m²)]
+        return self.eeh_
+
     @property
     # IEEH de la colonne (grandeur surfacique)
     def ieeh(self):

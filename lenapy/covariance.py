@@ -91,11 +91,16 @@ class cov_element:
             
     def ajuste(self):
         if self.bias_type!=None:
-            eigenvalues,eigenvectors=np.linalg.eig(self.sigma)
-
+            
+            
+            eigenvalues,eigenvectors=np.linalg.eigh(self.sigma)
+            # Une matrice de covariance est semi déinie positive, elle a donc toutes ses valeurs propres positives. La précision de calcul peut
+            # amener des valeurs popres négatives négligeables, elles sont mises à zéro pour pouvoir prendre leur racine carrée.
+            eigenvalues=np.where(eigenvalues<0,0.,eigenvalues)
             A=xr.ones_like(self.sigma)
-            A.values=(np.sqrt(eigenvalues)*eigenvectors).real
-            if self.bias_type=='centered':
+            A.values=np.sqrt(eigenvalues)*eigenvectors
+
+            if self.bias_type[0:8]=='centered':
                 B=A.mean('time')
             elif self.bias_type=='begin' or self.bias_type=='right':
                 B=A.isel(time=0)
@@ -153,9 +158,9 @@ class covariance:
         fig, ax = plt.subplots(1,3, figsize=(18, 5))
         ax=ax.ravel()
 
-        eigenvalues,eigenvectors=np.linalg.eig(self.sigma)
+        eigenvalues,eigenvectors=np.linalg.eigh(self.sigma)
         eigenvalues=np.where(eigenvalues<0,0.,eigenvalues)
-        A=(np.sqrt(eigenvalues)*eigenvectors).real
+        A=np.sqrt(eigenvalues)*eigenvectors
 
         mu=0
         sig=1.
