@@ -180,7 +180,12 @@ def sh_to_grid(data, unit='mewh', love_file=None,
     # Final calcul on the grid
     xgrid = c_cos.dot(d_clm) + s_sin.dot(d_slm)
     xgrid = xgrid.transpose("latitude", "longitude", ...)
-    xgrid.attrs['units'] = unit
+
+    xgrid.attrs = {'units': unit, 'max_degree': data.l.max}
+    if 'radius' in data.attrs:
+        xgrid.attrs['radius'] = data.attrs['radius']
+    if 'earth_gravity_constant' in data.attrs:
+        xgrid.attrs['earth_gravity_constant'] = data.attrs['earth_gravity_constant']
 
     return xgrid
 
@@ -233,7 +238,7 @@ def grid_to_sh(grid, lmax, unit='mewh', love_file=None,
 
     Returns
     -------
-    xharmo : xr.DataArray
+    ds_out : xr.DataArray
         SH Dataset computed from the grid with the chosen unit.
     """
     # -- set degree and order default parameters
@@ -316,11 +321,12 @@ def grid_to_sh(grid, lmax, unit='mewh', love_file=None,
     clm.name = 'clm'
     slm.name = 'slm'
 
-    return xr.merge([clm, slm], join='exact')
+    ds_out = xr.merge([clm, slm], join='exact')
+    return ds_out
 
 
-def change_reference(ds, new_radius, new_earth_gravity_constant, old_radius=None, old_earth_gravity_constant=None,
-                     apply=False):
+def change_reference(ds, new_radius=LNPY_A_EARTH, new_earth_gravity_constant=LNPY_GM_EARTH,
+                     old_radius=None, old_earth_gravity_constant=None, apply=False):
     """
     Spherical Harmonics dataset are associated with an earth radius *a* and *µ* or *GM* the earth gravity constant.
     This function return the dataset updated with the new constants associated to it in input
@@ -334,9 +340,9 @@ def change_reference(ds, new_radius, new_earth_gravity_constant, old_radius=None
     ds : xr.Dataset
         xr.Dataset that corresponds to SH data associated with a current reference frame (constants whise) to update
     new_radius : float
-        New earth radius constant in meters.
+        New earth radius constant in meters. Default LNPY_A_EARTH define in constants.py
     new_earth_gravity_constant : float
-        New gravitational constant of the Earth in m^3/s^2.
+        New gravitational constant of the Earth in m^3/s^2. Default LNPY_GM_EARTH define in constants.py
     old_radius : float | None, optional
         Current earth radius constant of the dataset ds in meters. If not given, ds.attrs['radius'] is used.
     old_earth_gravity_constant : float | None, optional
