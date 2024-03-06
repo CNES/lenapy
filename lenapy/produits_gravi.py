@@ -408,8 +408,8 @@ class ReadGRACEL2(BackendEntrypoint):
             file = open(filename, 'r')
 
         line = True
-        # read GRGS level 2 products (or GRAZ reprocessed by GRGS)
-        if ('GRGS' in os.path.basename(filename) or 'CNES' in os.path.basename(filename) or
+        # read CNES level 2 products (or GRAZ reprocessed by CNES)
+        if ('CNES' in os.path.basename(filename) or 'GRGS' in os.path.basename(filename) or
                 'TUGRZ' in os.path.basename(filename)):
             header = {}
             while line:
@@ -469,7 +469,7 @@ class ReadGRACEL2(BackendEntrypoint):
             raise ValueError("Name of the file does not corresponds to GRACE L2 products (https://archive.podaac."
                              "earthdata.nasa.gov/podaac-ops-cumulus-docs/grace/open/L1B/GFZ/AOD1B/RL04/docs/"
                              "L2-UserHandbook_v4.0.pdf), it does not contains the name of center key: "
-                             "'COSTG', 'UTCSR', 'GRGS', 'JPLEM' or 'GFZOP'. Name : ", os.path.basename(filename))
+                             "'COSTG', 'UTCSR', 'CNES', 'JPLEM' or 'GFZOP'. Name : ", os.path.basename(filename))
 
         lmax = header['max_degree']
 
@@ -505,8 +505,8 @@ class ReadGRACEL2(BackendEntrypoint):
         eclm[data['degree'], data['order']] = data['eclm'][:, np.newaxis]
         eslm[data['degree'], data['order']] = data['eslm'][:, np.newaxis]
 
-        # to deal with the fact that first line with C00 = 1 is passed in GRGS files
-        if 'GRGS' in os.path.basename(filename):
+        # to deal with the fact that first line with C00 = 1 is passed in CNES files
+        if 'CNES' in os.path.basename(filename):
             clm[0, 0] = 1
 
         ds = xr.Dataset({'clm': (['l', 'm', 'time'], clm), 'slm': (['l', 'm', 'time'], slm),

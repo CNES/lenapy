@@ -72,7 +72,7 @@ def sh_to_grid(data, unit='mewh', love_file=None,
         coords={'l': data.l, 'm': data.m, 'latitude': latitude})
     normalization_plm : str, optional
         If plm need to be computed, choice of the norm corresponding to the SH dataset.
-        '4pi', 'ortho', or 'schmidt' for use with geodesy
+        '4pi', 'ortho', or 'schmidt' for use with geodesy. Default is '4pi'
         4pi normalized, orthonormalized, or Schmidt semi-normalized SH functions, respectively.
 
     Returns
@@ -180,6 +180,7 @@ def sh_to_grid(data, unit='mewh', love_file=None,
     # Final calcul on the grid
     xgrid = c_cos.dot(d_clm) + s_sin.dot(d_slm)
     xgrid = xgrid.transpose("latitude", "longitude", ...)
+    xgrid.attrs['units'] = unit
 
     return xgrid
 
