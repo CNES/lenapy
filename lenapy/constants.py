@@ -1,10 +1,6 @@
-import numpy as np
-
 """
 References
     ----------
-    .. [WMO1988] World Meteorological Organization
-        *WMO Technical Regulations*, 49, (1988).
     .. [CODATA2018] E. Tiesinga, P. Mohr, D. Newell, B. Taylor,
         "CODATA Recommended Values of the Fundamental Physical Constants: 2018",
         *Reviews of Modern Physics*, 93, (2018).
@@ -13,7 +9,10 @@ References
         "Geodetic reference system 1980",
         *Bulletin géodésique*, 54, 395-405, (1980).
         `doi: 10.1007/BF02521480 <https://doi.org/10.1007/BF02521480>`_
+    .. [WMO1988] World Meteorological Organization
+        *WMO Technical Regulations*, 49, (1988).
 """
+import numpy as np
 
 DAY_YEAR = 365.24219
 SECONDS_DAY = 86400.

@@ -184,8 +184,11 @@ def read_tn13(filename, rmmean=False):
 class ReadGFC(BackendEntrypoint):
     def open_dataset(self, filename, drop_variables=None):
         """
-        Read a .gfc ascii file (or compressed) and format it as a xr.Dataset. The header information are stored in
-        ds.attrs. The dataset contains clm and slm array with errors information in eclm and eslm if possible.
+        Read a .gfc ascii file (or compressed) and format it as a xr.Dataset.
+        The file need to follow ICGEM format: http://icgem.gfz-potsdam.de/ICGEM-Format-2023.pdf
+
+        The header information are stored in ds.attrs. The dataset contains clm and slm array
+        with errors information in eclm and eslm if possible.
         For monthly file, time variable are stored as 'begin_time', 'end_time', 'exact_time' and 'mid_month'.
         mid_month is used to be the time coordinate.
 
