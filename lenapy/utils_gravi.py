@@ -209,7 +209,7 @@ def sh_to_grid(data, unit='mewh', love_file=None,
     xgrid = c_cos.dot(d_clm) + s_sin.dot(d_slm)
     xgrid = xgrid.transpose("latitude", "longitude", ...)
 
-    xgrid.attrs = {'units': unit, 'max_degree': data.l.max}
+    xgrid.attrs = {'units': unit, 'max_degree': int(data.l.max())}
     if 'radius' in data.attrs:
         xgrid.attrs['radius'] = data.attrs['radius']
     if 'earth_gravity_constant' in data.attrs:
@@ -377,6 +377,8 @@ def grid_to_sh(grid, lmax, unit='mewh', love_file=None,
     slm.name = 'slm'
 
     ds_out = xr.merge([clm, slm], join='exact')
+    ds_out.attrs = {'max_degree': lmax, 'radius': a_earth, 'earth_gravity_constant': gm_earth,
+                    'norm': normalization_plm}
     return ds_out
 
 
