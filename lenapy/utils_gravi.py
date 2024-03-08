@@ -253,7 +253,6 @@ def grid_to_sh(grid, lmax, unit='mewh', love_file=None,
         Earth density [kg.m⁻³]. Default is LNPY_RHO_EARTH
         rho_earth is used if unit='mewh' or if unit='pascal'
 
-
     mmax : int, optional
         maximal order of the SH coefficients to be computed.
     lmin : int, optional

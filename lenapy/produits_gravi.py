@@ -275,28 +275,28 @@ class ReadGFC(BackendEntrypoint):
         # test if gfct key then have to deal with time
         if 't' not in legend_before_end_header:
             # -- Compute time
-            # For some products, time is stored as YYYY-MM in modelname
-            if any([name in header['modelname'] for name in ('ITSG', 'IGG', 'SWARM', 'Thongji', 'LUH')]):
-                yyyy_mm = re.search(r'(\d{4}-\d{2})', header['modelname']).group(0)
-                begin_time = datetime.datetime.strptime(yyyy_mm, '%Y-%m')
-                end_time = (begin_time + datetime.timedelta(days=32)).replace(day=1)
-                mid_month = begin_time + (end_time - begin_time) / 2
-                exact_time = mid_month
-
-            # For others products, time is stored as YYYYDOY-YYYYDOY in modelname
+            # For some products, time is stored as YYYYDOY-YYYYDOY in modelname
             # For GRACE products, DOY can not coincide with 1st and last day of month
-            elif any([name in header['modelname'] for name in ('COSTG', 'UTCSR', 'JPLEM', 'GFZOP', 'CNESG')]):
-                dates = re.findall(r'_(\d{7})-(\d{7})_', header['modelname'])[0]
-                begin_time = datetime.datetime.strptime(dates[0], '%Y%j')
-                end_time = datetime.datetime.strptime(dates[1], '%Y%j') + datetime.timedelta(days=1)
+            if bool(re.search(r'_(\d{7})-(\d{7})', header['modelname'])):
+                dates = re.search(r'_(\d{7})-(\d{7})', header['modelname'])
+                begin_time = datetime.datetime.strptime(dates.group(1), '%Y%j')
+                end_time = datetime.datetime.strptime(dates.group(2), '%Y%j') + datetime.timedelta(days=1)
 
                 exact_time = begin_time + (end_time - begin_time) / 2
 
                 # compute middle of the month for GRACE products
                 mid_month = mid_month_grace_estimate(begin_time, end_time)
 
+            # For other products, time is stored as YYYY-MM in modelname
+            elif bool(re.search(r'(\d{4}-\d{2})', header['modelname'])):
+                yyyy_mm = re.search(r'(\d{4}-\d{2})', header['modelname']).group(0)
+                begin_time = datetime.datetime.strptime(yyyy_mm, '%Y-%m')
+                end_time = (begin_time + datetime.timedelta(days=32)).replace(day=1)
+                mid_month = begin_time + (end_time - begin_time) / 2
+                exact_time = mid_month
+
             else:
-                raise ValueError("Could not extract date information from the header of ", filename)
+                raise ValueError("Could not extract date information from modelname in the header of ", filename)
 
             # -- Load clm and slm data
             clm, slm = np.zeros((lmax + 1, lmax + 1, 1)), np.zeros((lmax + 1, lmax + 1, 1))
