@@ -8,7 +8,7 @@ from .utils_gravi import *
 @xr.register_dataset_accessor("xharmo")
 class HarmoSet:
     """
-    This class implement an extension of any dataset to add some methods related to spherical harmonics decomposition
+    This class implement an extension of any xr.Dataset to add some methods related to spherical harmonics decomposition
     The initial dataset must contain the necessary fields to define the spherical harmonics properties
     """
 
@@ -133,7 +133,7 @@ class HarmoSet:
 @xr.register_dataarray_accessor("xharmo")
 class HarmoArray:
     """
-    This class implement an extension of any dataarray to add some methods related to spatial grid representing
+    This class implement an extension of any xr.DataArray to add some methods related to spatial grid representing
     spherical harmonics projected onto a grid.
     The initial dataset must contain the necessary fields to define the spherical harmonics properties
     """

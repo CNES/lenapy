@@ -344,7 +344,7 @@ def surface_cell(data):
     dlat=ecarts(data,'latitude')
     dlon=ecarts(data,'longitude')
     
-    return np.radians(dlat)*np.radians(dlon)*LNPY_RTER**2*np.cos(np.radians(data.latitude))/(1+LNPY_f*np.cos(2*np.radians(data.latitude)))**2
+    return np.radians(dlat)*np.radians(dlon)*A_EARTH_GRS80**2*np.cos(np.radians(data.latitude))/(1+F_EARTH_GRS80*np.cos(2*np.radians(data.latitude)))**2
 
 def ecarts(data,dim):
     """

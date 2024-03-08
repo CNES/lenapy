@@ -18,10 +18,10 @@ Examples
 import os
 import zipfile
 import tarfile
-import yaml
 import datetime
 import gzip
 import re
+import yaml
 import xarray as xr
 import numpy as np
 from xarray.backends import BackendEntrypoint
@@ -160,8 +160,8 @@ def read_tn13(filename, rmmean=False):
     eslm[0, 1] = data['eSlm'][np.where(data['m'] == 1)]
 
     # date converted to datetime from float YYYYMMDD
-    begin_time = [datetime.datetime(int(beg//10000), int(beg//100 - (beg//10000)*100), int(beg%100)) for beg in data['begin_date'][::2]]
-    end_time = [datetime.datetime(int(end//10000), int(end//100 - (end//10000)*100), int(end%100)) for end in data['end_date'][::2]]
+    begin_time = [datetime.datetime(int(beg//10000), int(beg//100 - (beg//10000)*100), int(beg % 100)) for beg in data['begin_date'][::2]]
+    end_time = [datetime.datetime(int(end//10000), int(end//100 - (end//10000)*100), int(end % 100)) for end in data['end_date'][::2]]
 
     exact_time = [begin + (end - begin) / 2 for begin, end in zip(begin_time, end_time)]
 

@@ -7,13 +7,14 @@ from .constants import *
 
 
 def sh_to_grid(data, unit='mewh', love_file=None,
+               a_earth=None, gm_earth=None, f_earth=F_EARTH_GRS80, rho_earth=LNPY_RHO_EARTH,
                lmax=None, mmax=None, lmin=None, mmin=None, used_l=None, used_m=None,
                lonmin=-180, lonmax=180, latmin=-90, latmax=90, bounds=None,
                dlon=1, dlat=1, longitude=None, latitude=None, radians_in=False,
                ellispoidal_earth=False, include_elastic=True, plm=None, normalization_plm='4pi'):
     """
     Transform Spherical Harmonics (SH) dataset into spatial DataArray.
-    With choice for unit, love_numbers, degree/order, spatial grid latitude and longitude, Earth hypothesis.
+    With choice for constants, unit, love_numbers, degree/order, spatial grid latitude and longitude, Earth hypothesis.
 
     Parameters
     ----------
@@ -26,6 +27,19 @@ def sh_to_grid(data, unit='mewh', love_file=None,
     love_file : str / path, optional
         File with Love numbers that can be read by read_love_numbers() function.
         Default Love numbers used are from Gegout97.
+
+    a_earth : float | None, optional
+        Earth semi-major axis [m]. Default is data.attrs['radius'] and if this does not exist, default is A_EARTH_GRS80
+    gm_earth : float | None, optional
+        Standard gravitational parameter for Earth [m³.s⁻²]. Default is data.attrs['earth_gravity_constant'] and
+        if this does not exist, default is LNPY_GM_EARTH
+        gm_earth is used if unit='microGal'
+    f_earth : float | None, optional
+        Earth flattening. Default is F_EARTH_GRS80
+        f_earth is used if ellispoidal_earth=True
+    rho_earth : float, optional
+        Earth density [kg.m⁻³]. Default is LNPY_RHO_EARTH
+        rho_earth is used if unit='mewh' or if unit='pascal'
 
     lmax : int, optional
         maximal degree of the SH coefficients to be used.
@@ -81,6 +95,18 @@ def sh_to_grid(data, unit='mewh', love_file=None,
         Spatial representation of the SH Dataset in the chosen unit.
     """
     # addition error propagation, add mask in output variable
+
+    # -- define constants
+    if a_earth is None:
+        if 'radius' in data.attrs:
+            a_earth = float(data.attrs['radius'])
+        else:
+            a_earth = A_EARTH_GRS80
+    if gm_earth is None:
+        if 'earth_gravity_constant' in data.attrs:
+            gm_earth = float(data.attrs['earth_gravity_constant'])
+        else:
+            gm_earth = LNPY_GM_EARTH
 
     # -- set degree and order default parameters
     # it prioritizes used_l and used_m if given over lmin, lmax, mmin and mmax
@@ -139,7 +165,7 @@ def sh_to_grid(data, unit='mewh', love_file=None,
 
     cos_latitude = np.cos(np.deg2rad(latitude))
     sin_latitude = np.sin(np.deg2rad(latitude))
-    geocentric_colat = np.arctan2(cos_latitude, (1 - LNPY_F_EARTH) ** 2 * sin_latitude)
+    geocentric_colat = np.arctan2(cos_latitude, (1 - f_earth) ** 2 * sin_latitude)
 
     # -- beginning of computation
     # Computing plm for converting to spatial domain
@@ -162,7 +188,9 @@ def sh_to_grid(data, unit='mewh', love_file=None,
             raise AssertionError('Given argument "plm" maximal degree is too small ', plm.l.max, '<', data.l.max)
 
     # scale factor for each degree
-    lfactor = l_factor_gravi(used_l, unit, include_elastic, ellispoidal_earth, geocentric_colat, love_file)
+    lfactor = l_factor_gravi(used_l, unit=unit, include_elastic=include_elastic, ellispoidal_earth=ellispoidal_earth,
+                             geocentric_colat=geocentric_colat, love_file=love_file,
+                             a_earth=a_earth, f_earth=f_earth, gm_earth=gm_earth, rho_earth=rho_earth)
 
     # convolve unit over degree
     plm_lfactor = plm.sel(l=used_l, m=used_m) * lfactor[:, np.newaxis, np.newaxis]
@@ -191,11 +219,12 @@ def sh_to_grid(data, unit='mewh', love_file=None,
 
 
 def grid_to_sh(grid, lmax, unit='mewh', love_file=None,
+               a_earth=None, gm_earth=None, f_earth=F_EARTH_GRS80, rho_earth=LNPY_RHO_EARTH,
                mmax=None, lmin=0, mmin=0, used_l=None, used_m=None,
                ellispoidal_earth=False, include_elastic=True, plm=None, normalization_plm='4pi'):
     """
     Transform gravity field spatial representation DataArray into Spherical Harmonics (SH) dataset.
-    With choice for unit of the spatial DataArray, love_numbers, degree/order, Earth hypothesis.
+    With choice for constants, unit of the spatial DataArray, love_numbers, degree/order, Earth hypothesis.
 
     Parameters
     ----------
@@ -210,6 +239,20 @@ def grid_to_sh(grid, lmax, unit='mewh', love_file=None,
     love_file : str / path, optional
         File with Love numbers that can be read by read_love_numbers() function.
         Default Love numbers used are from Gegout97.
+
+    a_earth : float | None, optional
+        Earth semi-major axis [m]. Default is grid.attrs['radius'] and if this does not exist, default is A_EARTH_GRS80
+    gm_earth : float | None, optional
+        Standard gravitational parameter for Earth [m³.s⁻²]. Default is grid.attrs['earth_gravity_constant'] and
+        if this does not exist, default is LNPY_GM_EARTH
+        gm_earth is used if unit='microGal'
+    f_earth : float | None, optional
+        Earth flattening. Default is F_EARTH_GRS80
+        f_earth is used if ellispoidal_earth=True
+    rho_earth : float, optional
+        Earth density [kg.m⁻³]. Default is LNPY_RHO_EARTH
+        rho_earth is used if unit='mewh' or if unit='pascal'
+
 
     mmax : int, optional
         maximal order of the SH coefficients to be computed.
@@ -241,6 +284,18 @@ def grid_to_sh(grid, lmax, unit='mewh', love_file=None,
     ds_out : xr.DataArray
         SH Dataset computed from the grid with the chosen unit.
     """
+    # -- define constants
+    if a_earth is None:
+        if 'radius' in grid.attrs:
+            a_earth = float(grid.attrs['radius'])
+        else:
+            a_earth = A_EARTH_GRS80
+    if gm_earth is None:
+        if 'earth_gravity_constant' in grid.attrs:
+            gm_earth = float(grid.attrs['earth_gravity_constant'])
+        else:
+            gm_earth = LNPY_GM_EARTH
+
     # -- set degree and order default parameters
     # it prioritizes used_l and used_m if given over lmin, lmax, mmin and mmax
     if mmax is None:
@@ -265,7 +320,7 @@ def grid_to_sh(grid, lmax, unit='mewh', love_file=None,
 
     cos_latitude = np.cos(np.deg2rad(grid.latitude.values))
     sin_latitude = np.sin(np.deg2rad(grid.latitude.values))
-    geocentric_colat = np.arctan2(cos_latitude, (1 - LNPY_F_EARTH) ** 2 * sin_latitude)
+    geocentric_colat = np.arctan2(cos_latitude, (1 - f_earth) ** 2 * sin_latitude)
 
     # create DataArray corresponding to the integration factor [sin(theta) * dtheta * dphi] for each cell
     # Possible test if Gt
@@ -274,8 +329,9 @@ def grid_to_sh(grid, lmax, unit='mewh', love_file=None,
                             coords={'longitude': grid.longitude, 'latitude': grid.latitude})
 
     # scale factor for each degree
-    lfactor = l_factor_gravi(used_l, unit, include_elastic,
-                             ellispoidal_earth, geocentric_colat, love_file)
+    lfactor = l_factor_gravi(used_l, unit=unit, include_elastic=include_elastic, ellispoidal_earth=ellispoidal_earth,
+                             geocentric_colat=geocentric_colat, love_file=love_file,
+                             a_earth=a_earth, f_earth=f_earth, gm_earth=gm_earth, rho_earth=rho_earth)
 
     # -- prepare variables for the computation of SH
     # Computing plm for converting to spatial domain
@@ -325,7 +381,7 @@ def grid_to_sh(grid, lmax, unit='mewh', love_file=None,
     return ds_out
 
 
-def change_reference(ds, new_radius=LNPY_A_EARTH, new_earth_gravity_constant=LNPY_GM_EARTH,
+def change_reference(ds, new_radius=A_EARTH_GRS80, new_earth_gravity_constant=LNPY_GM_EARTH,
                      old_radius=None, old_earth_gravity_constant=None, apply=False):
     """
     Spherical Harmonics dataset are associated with an earth radius *a* and *µ* or *GM* the earth gravity constant.
@@ -389,9 +445,9 @@ def change_reference(ds, new_radius=LNPY_A_EARTH, new_earth_gravity_constant=LNP
 def change_tide_system(ds, new_tide, old_tide=None, k20=None, copy=False):
     """
     Apply a C20 offset to the dataset to change of tide system.
-    Follows IERS2010 convention [IERS2010] to convert between tide system ('tide_free', 'zero_tide', 'mean_tide').
+    Follows IERS2010 convention [IERS2010]_ to convert between tide system ('tide_free', 'zero_tide', 'mean_tide').
     Warning : It should be noted that each center use his one tide offset, it may differ in terms of offset formula
-    that can come from [IERS2010] and [Smith1998]. The value of k20 can also change between centers.
+    that can come from [IERS2010]_ and [Smith1998]_. The value of k20 can also change between centers.
 
     Arguments
     ---------
@@ -402,7 +458,7 @@ def change_tide_system(ds, new_tide, old_tide=None, k20=None, copy=False):
         input tidal system, if not given use ds.attrs['tide_system'] information.
         The function can handle the tide information given by the
     k20 : float, optional
-        k20 Earth tide external potential Love numbers, default is one recommend in [IERS2010].
+        k20 Earth tide external potential Love numbers, default is one recommend in [IERS2010]_.
     copy : bool, optional
        Boolean to choose if the dataset is deep copied or if it is also updated in place.
        Default is False for no deep copy.
@@ -470,8 +526,8 @@ def change_tide_system(ds, new_tide, old_tide=None, k20=None, copy=False):
 def compute_plm(lmax, z, mmax=None, normalization='4pi'):
     """
     Compute all the associated Legendre functions up to a maximum degree and
-    order using the recursion relation from [Holmes2002]
-    (Adapted from SHTOOLS/pyshtools tools [Wieczorek2018])
+    order using the recursion relation from [Holmes2002]_
+    (Adapted from SHTOOLS/pyshtools tools [Wieczorek2018]_)
 
     Parameters
     ----------
@@ -671,8 +727,8 @@ def read_love_numbers(love_file=None):
     return np.genfromtxt(love_file)
 
 
-def l_factor_gravi(l, unit='mewh', include_elastic=True, ellispoidal_earth=False, geocentric_colat=None,
-                   love_file=None):
+def l_factor_gravi(l, unit='mewh', include_elastic=True, ellispoidal_earth=False, geocentric_colat=None, love_file=None,
+                   a_earth=A_EARTH_GRS80, f_earth=F_EARTH_GRS80, gm_earth=LNPY_GM_EARTH, rho_earth=LNPY_RHO_EARTH):
     """
     Compute scale factor for a transformation between spherical harmonics and grid data.
     Spatial data over the grid are associated with a specific unit.
@@ -692,12 +748,20 @@ def l_factor_gravi(l, unit='mewh', include_elastic=True, ellispoidal_earth=False
     include_elastic : bool, optional
         If True, the Earth behavior is elastic.
     ellispoidal_earth : bool, optional
-        If True, consider the Earth as an ellispoid following [Ditmar2018] and if False as a sphere.
+        If True, consider the Earth as an ellispoid following [Ditmar2018]_ and if False as a sphere.
     geocentric_colat : list, optional
         List of geocentric colatitude for ellispoidal earth radius computation.
     love_file : str / path, optional
         File with Love numbers that can be read by read_love_numbers() function.
         Default Love numbers used are from Gegout97.
+    a_earth : float, optional
+        Earth semi-major axis [m]. Default is A_EARTH_GRS80
+    f_earth : float, optional
+        Earth flattening. Default is F_EARTH_GRS80
+    gm_earth : float, optional
+        Standard gravitational parameter for Earth [m³.s⁻²]. Default is LNPY_GM_EARTH
+    rho_earth : float, optional
+        Earth density [kg.m⁻³]. Default is LNPY_RHO_EARTH
 
     Returns
     -------
@@ -728,6 +792,14 @@ def l_factor_gravi(l, unit='mewh', include_elastic=True, ellispoidal_earth=False
         raise ValueError("For ellipsoidal Earth, you need to set "
                          "the parameter 'geocentric_colat' in l_factor_gravi function")
 
+    # compute variable for ellispoidal_earth
+    # e = sqrt(2f - f**2)
+    e_earth = np.sqrt(2 * f_earth - f_earth**2)
+    # a_div_r_lat = a / r(theta)  with r(theta) = a(1-f)/sqrt(1 - e**2*sin(theta)**2)
+    a_div_r_lat = np.sqrt(1 - e_earth**2*np.sin(geocentric_colat)**2) / (1 - f_earth)
+    # Earth average radius = a*(1-f)**(1/3) for which spherical Earth volume = ellipsoidal Earth volume
+    raverage_radius = a_earth * (1 - f_earth)**(1 / 3)
+
     # l_factor is degree dependant
     if unit == 'norm':
         # norm, fully normalized spherical harmonics
@@ -735,34 +807,33 @@ def l_factor_gravi(l, unit='mewh', include_elastic=True, ellispoidal_earth=False
 
     elif unit == 'mewh':
         # mewh, meters equivalent water height [kg.m-2]
-        l_factor = LNPY_RHO_EARTH * LNPY_A_EARTH * (2 * l + 1) / (3 * fraction * 1e3)
+        l_factor = rho_earth * a_earth * (2 * l + 1) / (3 * fraction * 1e3)
         if ellispoidal_earth:
-            l_factor *= ((LNPY_RAVERAGE_EARTH/LNPY_A_EARTH)**3 *
-                         (np.sqrt(1 - LNPY_E_EARTH**2*np.sin(geocentric_colat)**2) / (1 - LNPY_F_EARTH))**(l + 2))
+            l_factor *= ((raverage_radius/a_earth)**3 * a_div_r_lat**(l + 2))
 
     elif unit == 'geoid':
         # geoid, millimeters geoid height
-        l_factor = np.ones(l.shape) * LNPY_A_EARTH * 1e3
+        l_factor = np.ones(l.shape) * a_earth * 1e3
         if ellispoidal_earth:
-            l_factor *= (np.sqrt(1 - LNPY_E_EARTH**2*np.sin(geocentric_colat)**2) / (1 - LNPY_F_EARTH))**(l + 1)
+            l_factor *= a_div_r_lat**(l + 1)
 
     elif unit == 'microGal':
         # microGal, microGal gravity perturbations
-        l_factor = LNPY_GM_EARTH * (l + 1) / (LNPY_A_EARTH ** 2) * 1e8
+        l_factor = gm_earth * (l + 1) / (a_earth ** 2) * 1e8
         if ellispoidal_earth:
-            l_factor *= (np.sqrt(1 - LNPY_E_EARTH**2*np.sin(geocentric_colat)**2) / (1 - LNPY_F_EARTH))**(l + 2)
+            l_factor *= a_div_r_lat**(l + 2)
 
     elif unit == 'pascal':
         # pascal, equivalent surface pressure
-        l_factor = LNPY_G_WMO * LNPY_RHO_EARTH * LNPY_A_EARTH * (2*l + 1) / (3 * fraction)
+        l_factor = LNPY_G_WMO * rho_earth * a_earth * (2*l + 1) / (3 * fraction)
         if ellispoidal_earth:
-            l_factor *= (np.sqrt(1 - LNPY_E_EARTH**2*np.sin(geocentric_colat)**2) / (1 - LNPY_F_EARTH))**(l + 1)
+            l_factor *= a_div_r_lat**(l + 1)
 
     elif unit == 'mvcu':
         # mVCU, meters viscoelastic crustal uplift
-        l_factor = LNPY_A_EARTH * (2*l + 1) / 2
+        l_factor = a_earth * (2*l + 1) / 2
         if ellispoidal_earth:
-            l_factor *= (np.sqrt(1 - LNPY_E_EARTH**2*np.sin(geocentric_colat)**2) / (1 - LNPY_F_EARTH))**(l + 1)
+            l_factor *= a_div_r_lat**(l + 1)
 
     # mCU, meters elastic crustal deformation (uplift)
     # mCH, meters elastic crustal deformation (horizontal)
