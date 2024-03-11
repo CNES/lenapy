@@ -377,7 +377,7 @@ def grid_to_sh(grid, lmax, unit='mewh', love_file=None,
     slm.name = 'slm'
 
     ds_out = xr.merge([clm, slm], join='exact')
-    ds_out.attrs = {'max_degree': lmax, 'radius': a_earth, 'earth_gravity_constant': gm_earth,
+    ds_out.attrs = {'earth_gravity_constant': gm_earth, 'radius': a_earth, 'max_degree': lmax,
                     'norm': normalization_plm}
     return ds_out
 
