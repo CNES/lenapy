@@ -4,7 +4,7 @@ import numpy as np
 import xarray as xr
 import xesmf as xe
 import os.path
-from .utils import *
+from .utils_xTime import *
 from .covariance import *
 from .plotting import *
 from .sandbox import *
@@ -255,12 +255,12 @@ class TimeArray:
         """
         return to_datetime(self._obj,input_type)        
 
-    def diff_3pts(self,dim):
+    def diff_3pts(self,dim,**kw):
         """
         Derivative formula along the selected dimension, returning on each point the linear regression on the three points
         defined by the selected point and its two neighbours
         """
-        return diff_3pts(self._obj,dim)    
+        return diff_3pts(self._obj,dim,**kw)    
 
     def diff_2pts(self,dim,**kw):
         """

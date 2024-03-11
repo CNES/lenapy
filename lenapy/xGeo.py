@@ -4,7 +4,8 @@ import numpy as np
 import xarray as xr
 import xesmf as xe
 import os.path
-from .utils import *
+from .utils_xGeo import *
+from .utils_xTime import *
 from .plotting import *
 from .sandbox import *
 from .produits import rename_data
@@ -507,7 +508,7 @@ class GeoArray:
                 w=np.cos(np.radians(self._obj.latitude ))
             if 'latitude_ellipsoide' in weights and 'latitude' in self._obj.coords:
                 # poids = cos(latitude)*earth oblatness factor
-                w=np.cos(np.radians(self._obj.latitude ))/(1+LNPY_f*np.cos(2*np.radians(self._obj.latitude )))**2
+                w=np.cos(np.radians(self._obj.latitude ))/(1+LNPY_EARTH_FLATTENING*np.cos(2*np.radians(self._obj.latitude )))**2
             if 'depth' in weights and 'depth' in self._obj.coords:
                 # poids *= épaisseur des couches (l'épaisseur de la première couche est la première profondeur)
                 w=w*xr.concat((self._obj.depth.isel(depth=0),self._obj.depth.diff(dim='depth')),dim='depth')
@@ -561,7 +562,7 @@ class GeoArray:
                 w=np.cos(np.radians(self._obj.latitude ))
             if 'latitude_ellipsoide' in weights and 'latitude' in self._obj.coords:
                 # poids = cos(latitude)*earth oblatness factor
-                w=np.cos(np.radians(self._obj.latitude ))/(1+LNPY_f*np.cos(2*np.radians(self._obj.latitude )))**2
+                w=np.cos(np.radians(self._obj.latitude ))/(1+LNPY_EARTH_FLATTENING*np.cos(2*np.radians(self._obj.latitude )))**2
             if 'depth' in weights and 'depth' in self._obj.coords:
                 # poids *= épaisseur des couches (l'épaisseur de la première couche est la première profondeur)
                 w=w*xr.concat((self._obj.depth.isel(depth=0),self._obj.depth.diff(dim='depth')),dim='depth')

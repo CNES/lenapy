@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import yaml
-from .utils import *
+from .utils_xTime import *
 
 class estimateur:
     def __init__(self,data,degree,tref=None,sigma=None,datetime_unit="s"):
@@ -87,6 +87,9 @@ class cov_element:
         elif self.type=='random':
             self.sigma=sig**2*np.diag(np.ones(len(self.time)))
 
+        elif self.type=='random_random':
+            self.sigma=np.diag(sig*np.random.rand(len(self.time)))
+            
         self.ajuste()
             
     def ajuste(self):
@@ -94,7 +97,7 @@ class cov_element:
             
             
             eigenvalues,eigenvectors=np.linalg.eigh(self.sigma)
-            # Une matrice de covariance est semi déinie positive, elle a donc toutes ses valeurs propres positives. La précision de calcul peut
+            # Une matrice de covariance est semi définie positive, elle a donc toutes ses valeurs propres positives. La précision de calcul peut
             # amener des valeurs popres négatives négligeables, elles sont mises à zéro pour pouvoir prendre leur racine carrée.
             eigenvalues=np.where(eigenvalues<0,0.,eigenvalues)
             A=xr.ones_like(self.sigma)

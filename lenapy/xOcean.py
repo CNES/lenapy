@@ -4,9 +4,6 @@ import gsw
 import numpy as np
 import xarray as xr
 
-from . import xGeo as xg
-from .utils import *
-
 def proprietes(da,nom,label,unite):
     out = da.rename(nom)
     out.attrs['long_name'] = label
