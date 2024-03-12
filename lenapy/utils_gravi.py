@@ -3,6 +3,7 @@ import pathlib
 import inspect
 import numpy as np
 import xarray as xr
+import cf_xarray as cfxr
 from .constants import *
 
 
@@ -113,7 +114,7 @@ def sh_to_grid(data, unit='mewh', love_file=None,
     if lmax is None:
         lmax = int(data.l.max())
     if mmax is None:
-        mmax = int(data.m.max())
+        mmax = int(min(lmax, data.m.max()))
     if lmin is None:
         lmin = int(data.l.min())
     if mmin is None:
@@ -177,15 +178,17 @@ def sh_to_grid(data, unit='mewh', love_file=None,
             plm = compute_plm(lmax, sin_latitude,
                               mmax=mmax, normalization=normalization_plm)
         plm = xr.DataArray(plm, dims=['l', 'm', 'latitude'],
-                           coords={'l': data.l, 'm': data.m, 'latitude': latitude})
+                           coords={'l': np.arange(lmax + 1), 'm': np.arange(mmax + 1), 'latitude': latitude})
 
     else:
-        if (isinstance(plm, xr.DataArray) or
+        if (not isinstance(plm, xr.DataArray) or
                 'l' not in plm.coords or 'm' not in plm.coords or 'latitude' not in plm.coords):
             raise TypeError('Given argument "plm" has to be a DataArray with 3 coordinates [l, m, latitude]')
+        else:
+            plm = plm.transpose("l", "m", "latitude")
 
-        if plm.l.max < data.l.max:
-            raise AssertionError('Given argument "plm" maximal degree is too small ', plm.l.max, '<', data.l.max)
+        if plm.l.max() < data.l.max():
+            raise AssertionError('Given argument "plm" maximal degree is too small ', plm.l.max(), '<', data.l.max())
 
     # scale factor for each degree
     lfactor = l_factor_gravi(used_l, unit=unit, include_elastic=include_elastic, ellispoidal_earth=ellispoidal_earth,
@@ -201,9 +204,9 @@ def sh_to_grid(data, unit='mewh', love_file=None,
 
     # Calculating cos(m*phi) and sin(m*phi)
     c_cos = xr.DataArray(np.cos(used_m[:, np.newaxis] @ np.deg2rad(longitude)[np.newaxis, :]),
-                         dims=['m', 'longitude'], coords={'m': data.m, 'longitude': longitude})
+                         dims=['m', 'longitude'], coords={'m': np.arange(mmax + 1), 'longitude': longitude})
     s_sin = xr.DataArray(np.sin(used_m[:, np.newaxis] @ np.deg2rad(longitude)[np.newaxis, :]),
-                         dims=['m', 'longitude'], coords={'m': data.m, 'longitude': longitude})
+                         dims=['m', 'longitude'], coords={'m': np.arange(mmax + 1), 'longitude': longitude})
 
     # Final calcul on the grid
     xgrid = c_cos.dot(d_clm) + s_sin.dot(d_slm)
@@ -271,8 +274,8 @@ def grid_to_sh(grid, lmax, unit='mewh', love_file=None,
 
     plm : xr.DataArray, optional
         Precomputed plm values as a xr.DataArray variable. For example with the code :
-        plm = xr.DataArray(compute_plm(lmax, sin_latitude), dims=['l', 'm', 'latitude'],
-        coords={'l': data.l, 'm': data.m, 'latitude': latitude})
+        plm = xr.DataArray(compute_plm(lmax, np.sin(np.deg2rad(latitude))), dims=['l', 'm', 'latitude'],
+        coords={'l': np.arange(lmax+1), 'm': np.arange(lmax+1), 'latitude': latitude})
     normalization_plm : str, optional
         If plm need to be computed, choice of the norm. '4pi', 'ortho', or 'schmidt' for use with geodesy
         4pi normalized, orthonormalized, or Schmidt semi-normalized SH functions, respectively.
@@ -306,26 +309,29 @@ def grid_to_sh(grid, lmax, unit='mewh', love_file=None,
 
     # -- create integration factor over the grid
     # longitude degree spacing of each cell in radians
-    diff_phi = np.abs(grid.longitude.diff(dim='longitude').values)
+    diff_phi = np.abs(grid.cf["longitude"].diff(dim='longitude').values)
     # deal with case where longitude goes from 180 to -180 in the array
     diff_phi[diff_phi > np.pi] = np.abs(2 * np.pi - diff_phi[diff_phi > np.pi])
     # size of the cell is half of the diff with both adjacent grid cell + convert to radians
     dphi = np.deg2rad(np.concatenate((diff_phi[[0]], (diff_phi[1:] + diff_phi[:-1]) / 2, diff_phi[[-1]])))
 
     # latitude degree spacing in radians
-    diff_th = np.abs(grid.latitude.diff(dim='latitude').values)
+    diff_th = np.abs(grid.cf["latitude"].diff(dim='latitude').values)
     # size of the cell is half of the diff with both adjacent grid cell + convert to radians
     dth = np.deg2rad(np.concatenate((diff_th[[0]], (diff_th[1:] + diff_th[:-1]) / 2, diff_th[[-1]])))
 
-    cos_latitude = np.cos(np.deg2rad(grid.latitude.values))
-    sin_latitude = np.sin(np.deg2rad(grid.latitude.values))
+    cos_latitude = np.cos(np.deg2rad(grid.cf["latitude"].values))
+    sin_latitude = np.sin(np.deg2rad(grid.cf["latitude"].values))
     geocentric_colat = np.arctan2(cos_latitude, (1 - f_earth) ** 2 * sin_latitude)
 
     # create DataArray corresponding to the integration factor [sin(theta) * dtheta * dphi] for each cell
     # Possible test if Gt
     int_fact = xr.DataArray(cos_latitude[np.newaxis, :] * dphi[:, np.newaxis] * dth / (4 * np.pi),
                             dims=['longitude', 'latitude'],
-                            coords={'longitude': grid.longitude, 'latitude': grid.latitude})
+                            coords={'longitude': grid.cf["longitude"], 'latitude': grid.cf["latitude"]})
+    # Create a readable cf_xarray DataArray
+    int_fact['latitude'].attrs = dict(standard_name='latitude')
+    int_fact['longitude'].attrs = dict(standard_name='longitude')
 
     # scale factor for each degree
     lfactor = l_factor_gravi(used_l, unit=unit, include_elastic=include_elastic, ellispoidal_earth=ellispoidal_earth,
@@ -342,30 +348,32 @@ def grid_to_sh(grid, lmax, unit='mewh', love_file=None,
             plm = compute_plm(lmax, sin_latitude,
                               mmax=mmax, normalization=normalization_plm)
         plm = xr.DataArray(plm, dims=['l', 'm', 'latitude'],
-                           coords={'l': np.arange(lmax + 1), 'm': np.arange(lmax + 1), 'latitude': grid.latitude})
+                           coords={'l': np.arange(lmax + 1), 'm': np.arange(lmax + 1), 'latitude': grid.cf["latitude"]})
 
     else:
-        if (isinstance(plm, xr.DataArray) or
+        if (not isinstance(plm, xr.DataArray) or
                 'l' not in plm.coords or 'm' not in plm.coords or 'latitude' not in plm.coords):
             raise TypeError('Given argument "plm" has to be a DataArray with 3 coordinates [l, m, latitude]')
+        else:
+            plm = plm.transpose("l", "m", "latitude")
 
-        if plm.l.max < lmax:
-            raise AssertionError('Given argument "plm" maximal degree is too small ', plm.l.max, '<', lmax)
+        if plm.l.max() < lmax:
+            raise AssertionError('Given argument "plm" maximal degree is too small ', plm.l.max(), '<', lmax)
 
     # convolve unit over degree
     plm_lfactor = plm.sel(l=used_l, m=used_m) / lfactor[:, np.newaxis, np.newaxis]
 
     # Calculating cos/sin of phi arrays, [m,phi]
-    c_cos = xr.DataArray(np.cos(used_m[:, np.newaxis] @ np.deg2rad(grid.longitude.values)[np.newaxis, :]),
-                         dims=['m', 'longitude'], coords={'m': used_m, 'longitude': grid.longitude})
+    c_cos = xr.DataArray(np.cos(used_m[:, np.newaxis] @ np.deg2rad(grid.cf["longitude"].values)[np.newaxis, :]),
+                         dims=['m', 'longitude'], coords={'m': used_m, 'longitude': grid.cf["longitude"]})
     s_sin = xr.DataArray(np.sin(used_m[:, np.newaxis] @ np.deg2rad(grid.longitude.values)[np.newaxis, :]),
-                         dims=['m', 'longitude'], coords={'m': used_m, 'longitude': grid.longitude})
+                         dims=['m', 'longitude'], coords={'m': used_m, 'longitude': grid.cf["longitude"]})
 
     # -- Computation of SH
     # WARNING, will have to change dims to dim in next xarray version
     # Multiplying data and integral factor with sin/cos of m*longitude. This will sum over longitude, [m,theta]
-    dcos = c_cos.dot(grid * int_fact, dims=['longitude'])
-    dsin = s_sin.dot(grid * int_fact, dims=['longitude'])
+    dcos = c_cos.dot(grid.cf.rename_like(int_fact) * int_fact, dims=['longitude'])
+    dsin = s_sin.dot(grid.cf.rename_like(int_fact) * int_fact, dims=['longitude'])
 
     # WARNING, will have to change dims to dim in next xarray version
     # Multiplying plm and degree scale factors with last variable to sum over latitude, [l, m, ...]
@@ -545,7 +553,7 @@ def compute_plm(lmax, z, mmax=None, normalization='4pi'):
     Returns
     -------
     plm : np.ndarray
-        fully-normalized legendre functions
+        fully-normalized legendre functions as a 3D array with "l", "m" and z dimensions
 
     References
     ----------
