@@ -56,39 +56,37 @@ class cov_element:
         self.time = time
         self.type = type
         self.bias_type = bias_type
+        self.sig = sig
         
+        t=self.time
+        if tmax!=None:
+            t = xr.where(t<=tmax,t,tmax)
+        if tmin!=None:
+            t = xr.where(t>=tmin,t,tmin)
+
         if self.type=='bias':
             t1 = xr.where(self.time<t0,1.,0.)
             t2 = t1.rename(time='time1')
             self.sigma = sig**2*t1*t2
 
         elif self.type=='drift':
-            t=self.time
-            if tmax!=None:
-                t = xr.where(t<=tmax,t,tmax)
-            if tmin!=None:
-                t = xr.where(t>=tmin,t,tmin)
-
             t1=t.astype('float')*1.e-9/86400.
             t2=t1.rename(time='time1')
             self.sigma = sig**2*t1*t2
 
         elif self.type=='noise':
-            t=self.time
-            if tmax!=None:
-                t=xr.where(t<=tmax,t,tmax)
-            if tmin!=None:
-                t=xr.where(t>=tmin,t,tmin)
-
             t1=t
             t2=t1.rename(time='time1')
             self.sigma = sig**2*np.exp(-0.5*((t1-t2)/dt)**2)
 
         elif self.type=='random':
-            self.sigma=sig**2*np.diag(np.ones(len(self.time)))
-
+            t1=t.astype('float')*1.e-9/86400.
+            t2=t1.rename(time='time1')
+            self.sigma = sig**2*np.exp(-((t1-t2)*1e99)**2)
+            
         elif self.type=='random_random':
-            self.sigma=np.diag(sig*np.random.rand(len(self.time)))
+            t=self.time.astype('float')       
+            self.sigma=xr.zeros_like(t-t.rename(time='time1'))+np.diag(sig*np.random.rand(len(self.time)))
             
         self.ajuste()
             
@@ -120,15 +118,18 @@ class covariance:
         self.time=data.time
         self.data=data
         self.sigma=None
+        self.errors=[]
             
             
     def add_errors(self,typ,sigma=1.,t0=None,t1=None,t2=None,dt=None,bias_type=None):
 
+        new_err=cov_element(self.time, typ, sigma, t0, t1, t2, dt, bias_type)
         if type(self.sigma)!=type(None):
-            self.sigma=self.sigma + cov_element(self.time, typ, sigma, t0, t1, t2, dt, bias_type).sigma
+            self.sigma=self.sigma + new_err.sigma
         else:
-            self.sigma=cov_element(self.time, typ, sigma, t0, t1, t2, dt, bias_type).sigma
-
+            self.sigma=new_err.sigma
+        self.errors.append(new_err)
+        
     def read_yaml(self,fic):
         
         def lit(var,label,func=lambda x:x):
@@ -157,7 +158,7 @@ class covariance:
             self.add_errors(typ,conv*sigma,t0,t1,t2,dt,bias_type)
 
             
-    def visu(self,n=100,sigmax=None,save=None):
+    def visu(self,n=100,sigmax=None,save=None,cmap='RdBu_r'):
         fig, ax = plt.subplots(1,3, figsize=(18, 5))
         ax=ax.ravel()
 
@@ -174,7 +175,7 @@ class covariance:
         ax[1].plot(self.time,np.sqrt(self.sigma.values.diagonal()))
         ax[1].set_ylim(0)
         ax[1].grid()
-        self.sigma.plot(ax=ax[2],vmax=sigmax)
+        self.sigma.plot(ax=ax[2],vmax=sigmax,cmap=cmap,cbar_kwargs={'label':""})
         if save!=None:
             fig.savefig(save)
         
