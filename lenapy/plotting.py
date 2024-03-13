@@ -345,34 +345,78 @@ def sigma_to_confidence_interval_object(min_sigma, max_sigma, number_measures):
     return interpolate.interp1d(x,y,kind='linear', bounds_error=False,fill_value=1.)
 
 
-def plot_hs(ds, lmin=1, lmax=None, reverse=False, cbar_kwargs={}, **kwargs):
+def plot_hs(ds, lmin=1, lmax=None, mmin=0, mmax=None, reverse=False, ax=None, cbar_ax=None, cbar_kwargs=None, **kwargs):
+    """
+
+    Parameters
+    ----------
+    ds : xr.DataArray
+        ds with only l and m dimensions to plot
+    lmin : int, optional
+        Minimal degree of the spherical harmonics coefficient to plot, default is 1
+    lmax : int, optional
+        Minimal degree of the spherical harmonics coefficient to plot, default is ds.l.max()
+    mmin : int, optional
+        Minimal order of the spherical harmonics coefficient to plot, default is 1
+    mmax : int, optional
+        Minimal order of the spherical harmonics coefficient to plot, default is ds.m.max()
+    reverse : bool, optional
+        Reverse y axis, default is False
+    ax : plt.Axes, optional
+        Axes on which to plot. By default, use the current axes.
+    cbar_ax : plt.Axes, optional
+        Axes in which to draw the colorbar.
+    cbar_kwargs : dict, optional
+        Dictionary of keyword arguments to pass to the colorbar
+    **kwargs : optional
+        Additional keyword arguments to plt.matshow() function.
+
+
+    Returns
+    -------
+    ax, cbar : plt.Axes, plt.Axes
+        Axes with the plot and Axes with the colorbar.
+    """
+    # -- set default param values
     if lmax is None:
         lmax = ds.l.max().values
+    if mmax is None:
+        mmax = lmax
 
-    fig, ax = plt.subplots(figsize=(10, 4), dpi=90, layout='constrained')
+    if ax is None:
+        ax = plt.gca()
+
+    if cbar_kwargs is None:
+        cbar_kwargs = {'shrink': 0.7}
+    if cbar_ax is None:
+        cbar_kwargs.setdefault("ax", ax)
+    else:
+        cbar_kwargs.setdefault("cax", cbar_ax)
+
+    # -- Creation of the array for matshow with clm and slm
     mat = np.zeros((lmax + 1, 2*lmax + 1))*np.NaN
-
     i, j = np.tril_indices(lmax + 1)
 
-    mat[i, lmax - j] = ((ds.slm.where(ds.l >= lmin, np.NaN)
-                        .isel(l=xr.DataArray(i, dims="z"), m=xr.DataArray(j, dims="z"))).values)
+    # set slm before clm to plot order 0 coefficient of clm
+    mat[i, lmax - j] = ((ds.slm.where(ds.l >= lmin, np.NaN).where(np.logical_and(ds.m >= mmin, ds.m <= mmax), np.NaN)
+                        .isel(l=xr.DataArray(i, dims="tril"), m=xr.DataArray(j, dims="tril"))).values)
+    mat[i, lmax + j] = (ds.clm.where(ds.l >= lmin, np.NaN).where(np.logical_and(ds.m >= mmin, ds.m <= mmax), np.NaN)
+                        .isel(l=xr.DataArray(i, dims="tril"), m=xr.DataArray(j, dims="tril")).values)
 
-    mat[i, lmax + j] = (ds.clm.where(ds.l >= lmin, np.NaN)
-                        .isel(l=xr.DataArray(i, dims="z"), m=xr.DataArray(j, dims="z")).values)
-
+    # -- plot
     im = ax.matshow(mat, extent=[-lmax-0.5, lmax+0.5, lmax+0.5, -0.5], **kwargs)
+
+    fig = ax.get_figure()
     cbar = fig.colorbar(im, **cbar_kwargs)
 
     if reverse:
         ax.invert_yaxis()
-
-    plt.text(-lmax/1.7, lmax/4, '$S_{l,m}$', fontsize=25, horizontalalignment='center')
-    plt.text(lmax/1.7, lmax/4, '$C_{l,m}$', fontsize=25, horizontalalignment='center')
+    ax.text(-lmax/1.7, lmax/4, '$S_{l,m}$', fontsize=25, horizontalalignment='center')
+    ax.text(lmax/1.7, lmax/4, '$C_{l,m}$', fontsize=25, horizontalalignment='center')
     ax.set_ylabel("Order", fontsize=17)
     ax.set_xlabel("Degree", fontsize=17)
     ax.xaxis.set_label_position('top')
-    plt.xticks(fontsize=13)
-    plt.yticks(fontsize=13)
+    ax.tick_params(labelsize=13)
     cbar.ax.tick_params(labelsize=15)
     
-    return fig, ax
+    return ax, cbar
