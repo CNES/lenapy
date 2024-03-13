@@ -292,3 +292,14 @@ class TimeArray:
     def covariance_analysis(self):
         
         return covariance(self._obj)
+    
+    def corr(self,other,remove_trend=False,**kwargs):
+        if remove_trend:
+            r1=detrend(interp_time(other,self._obj))
+            r2=detrend(self._obj)
+        else:
+            r1=interp_time(other,self._obj)
+            r2=self._obj
+
+        return xr.corr(r1,r2,**kwargs)
+    
