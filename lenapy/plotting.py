@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import interpolate
+import xarray as xr
 
 def plot_timeseries_uncertainty(xgeo_data, 
                                 x_dim='time',
@@ -342,3 +343,36 @@ def sigma_to_confidence_interval_object(min_sigma, max_sigma, number_measures):
         u += 0.5*(semigauss[ii-1]+semigauss[ii])*(x[ii]-x[ii-1])
         y[ii] = u/tot
     return interpolate.interp1d(x,y,kind='linear', bounds_error=False,fill_value=1.)
+
+
+def plot_hs(ds, lmin=1, lmax=None, reverse=False, cbar_kwargs={}, **kwargs):
+    if lmax is None:
+        lmax = ds.l.max().values
+
+    fig, ax = plt.subplots(figsize=(10, 4), dpi=90, layout='constrained')
+    mat = np.zeros((lmax + 1, 2*lmax + 1))*np.NaN
+
+    i, j = np.tril_indices(lmax + 1)
+
+    mat[i, lmax - j] = ((ds.slm.where(ds.l >= lmin, np.NaN)
+                        .isel(l=xr.DataArray(i, dims="z"), m=xr.DataArray(j, dims="z"))).values)
+
+    mat[i, lmax + j] = (ds.clm.where(ds.l >= lmin, np.NaN)
+                        .isel(l=xr.DataArray(i, dims="z"), m=xr.DataArray(j, dims="z")).values)
+
+    im = ax.matshow(mat, extent=[-lmax-0.5, lmax+0.5, lmax+0.5, -0.5], **kwargs)
+    cbar = fig.colorbar(im, **cbar_kwargs)
+
+    if reverse:
+        ax.invert_yaxis()
+
+    plt.text(-lmax/1.7, lmax/4, '$S_{l,m}$', fontsize=25, horizontalalignment='center')
+    plt.text(lmax/1.7, lmax/4, '$C_{l,m}$', fontsize=25, horizontalalignment='center')
+    ax.set_ylabel("Order", fontsize=17)
+    ax.set_xlabel("Degree", fontsize=17)
+    ax.xaxis.set_label_position('top')
+    plt.xticks(fontsize=13)
+    plt.yticks(fontsize=13)
+    cbar.ax.tick_params(labelsize=15)
+    
+    return fig, ax

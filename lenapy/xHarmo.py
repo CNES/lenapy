@@ -3,6 +3,7 @@ import operator
 import numbers
 import xarray as xr
 from .utils_gravi import *
+from .plotting import plot_hs
 
 
 @xr.register_dataset_accessor("xharmo")
@@ -128,6 +129,9 @@ class HarmoSet:
 
     def change_tide_system(self, new_tide, old_tide=None, k20=None):
         return change_tide_system(self._obj, new_tide, old_tide=old_tide, k20=k20)
+
+    def plot_hs(self, **kwargs):
+        return plot_hs(self._obj, **kwargs)
 
 
 @xr.register_dataarray_accessor("xharmo")

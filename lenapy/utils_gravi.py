@@ -67,6 +67,7 @@ def sh_to_grid(data, unit='mewh', love_file=None,
         list of 4 elements with [lonmin, lonmax, latmin, latmax] (if given min/max information are not considered).
     radians_in : bool, optional
         True if the unit of the given latitude and longitude information is radians. Default is False for degree unit.
+        If radians_in is True and dlat or dlon are given, they are considered as radians.
     dlon : float, optional
         spacing of the longitude values.
     dlat : float, optional
@@ -189,6 +190,8 @@ def sh_to_grid(data, unit='mewh', love_file=None,
 
         if plm.l.max() < data.l.max():
             raise AssertionError('Given argument "plm" maximal degree is too small ', plm.l.max(), '<', data.l.max())
+        if (plm.latitude.values != latitude).all():
+            raise AssertionError('Given argument "plm" latitude does not correspond to the wanted latitude ', latitude)
 
     # scale factor for each degree
     lfactor = l_factor_gravi(used_l, unit=unit, include_elastic=include_elastic, ellispoidal_earth=ellispoidal_earth,
@@ -359,6 +362,9 @@ def grid_to_sh(grid, lmax, unit='mewh', love_file=None,
 
         if plm.l.max() < lmax:
             raise AssertionError('Given argument "plm" maximal degree is too small ', plm.l.max(), '<', lmax)
+        align = xr.align(plm.latitude, grid.cf["latitude"])  # return the intersection of latitudes for each input
+        if align[0] != plm.latitude.size or align[1].size != grid.cf["latitude"].size:
+            raise AssertionError('Given argument "plm" latitude does not correspond to the grid latitude')
 
     # convolve unit over degree
     plm_lfactor = plm.sel(l=used_l, m=used_m) / lfactor[:, np.newaxis, np.newaxis]
