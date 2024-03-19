@@ -66,7 +66,7 @@ def isosurface(data, target, dim, coord=None, upper=False):
         return iso.max(dim, skipna=True)
 
 def split_duplicate_coords(data):
-    for u in data.var():
+    for u in data.data_vars:
         if (len(set(data[u].dims))!=len(data[u].dims)):
             new_coords={}
             for c in data[u].dims:
