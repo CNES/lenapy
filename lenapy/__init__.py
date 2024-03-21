@@ -1,15 +1,32 @@
 """
-LENAPY
-======
 
-LENAPY is a set of functions which are an extension of the xarray DataSet and DataArray.
-All functions can be used by adding the extension .xgeo or .xocean or xharmo after the object's name.
-Three main modules are implemented :
+Modules
+^^^^^^^
+Accessor modules
 
-xGeo : for all classical operations on lat/lon grids used in geodesy, altimetry
-xOcean : implementation of the gsw library
-xHarmo : set of operations on spherical harmonics used in gravimetry
+.. autosummary::
+    :toctree:
 
+    lenapy_geo
+    lenapy_time
+    lenapy_ocean
 
 """
-from . import xGeo, xOcean, xTime, xHarmo
+
+import warnings
+from . import constants, lenapy_geo, lenapy_time
+try:
+    from . import lenapy_ocean
+except:
+    warnings.warn("To use lenapy_ocean, please install gsw : pip install gsw>=3.6.16")
+from lenapy.readers import geo_reader, ocean
+
+import cf_xarray as cfxr
+
+criteria = {
+    "depth": {"name": 'Depth|depth_std|LEVEL|level'},
+    "longitude": {"name": 'lon|LON|Longitude|LONGITUDE'},
+    "latitude": {"name": 'lat|LAT|Latitude|LATITUDE'},
+    "time": {"name":'date|dates|TIME|Time'}
+}
+cfxr.set_options(custom_criteria=criteria)

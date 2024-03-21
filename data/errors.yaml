@@ -1,0 +1,212 @@
+errors:
+
+# erreurs à 60 jours obtenues par filtrage du GMSL avec un filtre passe-bas lanczos à 60 jours 
+# TP 1.7 mm, J1 1.2 mm, J2 1.1 mm , J3 1.0 mm
+- 
+  type: noise
+  parameters:
+    time_min:
+    time_max: 
+    value: 1.0
+    bias_type: centered
+    conversion_factor: 0.001
+    span: 60.0
+
+- 
+  type: noise
+  parameters:
+    time_min: 
+    time_max: 24262
+    value: 0.46
+    bias_type: centered_empirical
+    conversion_factor: 0.001
+    span: 60.0
+    
+- 
+  type: noise
+  parameters:
+    time_min: 
+    time_max: 21480
+    value: 0.48
+    bias_type: centered_empirical
+    conversion_factor: 0.001
+    span: 60.0
+    
+- 
+  type: noise
+  parameters:
+    time_min: 
+    time_max: 19110
+    value: 1.20
+    bias_type: centered_empirical
+    conversion_factor: 0.001
+    span: 60.0
+
+# erreurs à 1 an obtenues par filtrage du GMSL avec un filtre passe-bas lanczos à 1 an 
+# TP 1.4 mm, J1 1.2 mm, J2/J3 1.1 mm 
+- 
+  type: noise
+  parameters:
+    time_min: 
+    time_max: 
+    value: 1.1
+    bias_type: centered_empirical
+    conversion_factor: 0.001
+    span: 365.25
+    
+- 
+  type: noise
+  parameters:
+    time_min: 
+    time_max: 21480
+    value: 0.48
+    bias_type: centered_empirical
+    conversion_factor: 0.001
+    span: 365.25
+  
+- 
+  type: noise
+  parameters:
+    time_min: 
+    time_max: 19110
+    value: 0.72
+    bias_type: centered_empirical
+    conversion_factor: 0.001
+    span: 365.25
+  
+  
+# Modélisation des erreurs long-term de la tropo
+# TP/J1/J2
+# Erreur de 0.2 mm/an sur environ 10 ans
+# Modélisée ci dessous par une erreur corrélée à 5 ans  de 1.1 mm jusqu'a la fin de Jason-2
+# J3 from Guerou et al. (2022)
+# modéliséer par une erreur corrélées à 5 ans de 1.8 mm
+
+-
+  type: noise
+  parameters:
+    time_min: 
+    time_max: 
+    bias_type: centered_empirical
+    value: 1.1
+    conversion_factor: 0.001
+    span: 1826.25
+
+-
+  type: noise
+  parameters:
+    time_min: 24262
+    time_max:
+    bias_type: centered_empirical
+    value: 1.4
+    conversion_factor: 0.001
+    span: 1826.25
+
+# Modélisation des erreurs d'orbite des champs GRACE
+# Impact de 0.05 mm/an en global période récente et 0.1 période TOPEX sur environ 10 ans
+# Modélisée ci dessous par une erreur corrélée à 10 ans  de 0.5 mm sur toute la période 
+# et une une erreur corrélée supplémentaire avec  1.0  mm sur TOPEX , soit 1.1 mm en tout sur TOPEX
+
+- 
+  type: noise
+  parameters:
+    time_min: 
+    time_max: 
+    bias_type: centered_empirical
+    value: 0.5
+    conversion_factor: 0.001
+    span: 3652.5
+    
+- 
+  type: noise
+  parameters:
+    time_min: 
+    time_max: 19110
+    bias_type: centered_empirical
+    value: 1.0
+    conversion_factor: 0.001
+    span: 3652.5
+
+  
+# Erreur liée au raccordement
+- 
+  type: bias
+  parameters:
+    time: 17946
+    value: 2.0
+    bias_type: centered
+    #if value in mm and yvar in m => conversion_factor=0.001
+    conversion_factor: 0.001
+-
+  type: bias
+  parameters:
+    time: 19110
+    value: 0.3
+    bias_type: centered
+    #if value in mm and yvar in m => conversion_factor=0.001
+    conversion_factor: 0.001
+-
+  type: bias
+  parameters:
+    time: 21480
+    value: 0.1
+    bias_type: centered
+    #if value in mm and yvar in m => conversion_factor=0.001
+    conversion_factor: 0.001
+-
+  type: bias
+  parameters:
+    time: 24262
+    value: 0.2
+    bias_type: centered
+    #if value in mm and yvar in m => conversion_factor=0.001
+    conversion_factor: 0.001
+
+# Modélisation des erreurs liées à une dérive linéaire du GMSL (Orbite (ITRF),  GIA) => 0.1 mm/yr pour l'orbite (Couhert at al, 2015) et 0.05 mm/yr pour le GIA (Spada, 2017) soit un total d'environ 0.12 mm/yr 
+-
+  type: drift
+  parameters:
+    time_min: 
+    time_max: 
+    value: 0.12
+    bias_type: centered
+    #if value mm/yr and yvar/tvar in m/day => conversion_factor=1.0/(365.25*1000)=0.000002737850787
+    conversion_factor: 0.000002737850787
+    
+    
+# Prise en compte aussi des erreurs additionnelles sur TOPEX-A incertitudes de 0.7 mm/an à 1-sigma (provient de alti/TG)
+# ne prend pas compte l'erreur systématique de 1.5 mm/an
+    
+# TOPEX-A    
+- 
+  type: drift
+  parameters:
+    time_min: 
+    time_max: 17946 
+    value: 0.7
+    bias_type: centered
+    #if value mm/yr and yvar/tvar in m/day => conversion_factor=1.0/(365.25*1000)=0.000002737850787
+    conversion_factor: 0.000002737850787
+    
+# Prise en compte aussi des erreurs additionnelles sur TOPEX-A incertitudes de 0.7 mm/an à 1-sigma (provient de alti/TG)
+# ne prend pas compte l'erreur systématique de 1.5 mm/an
+    
+# TOPEX-B   : Sigma-0 pas bien calibré => incertite l'évolution du GMSL via le SSB (Ablain et al., 2012)  
+- 
+  type: drift
+  parameters:
+    time_min: 17946
+    time_max: 19110 
+    value: 0.1
+    bias_type: centered
+    #if value mm/yr and yvar/tvar in m/day => conversion_factor=1.0/(365.25*1000)=0.000002737850787
+    conversion_factor: 0.000002737850787
+-
+  type: random_random
+  parameters:
+    time_min: 
+    time_max: 
+    value: 1.e-8
+    bias_type: null
+    conversion_factor: 1.
+

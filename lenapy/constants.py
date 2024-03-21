@@ -50,14 +50,17 @@ References
 """
 import numpy as np
 
-DAY_YEAR = 365.24219
-SECONDS_DAY = 86400.
+LNPY_DAYS_YEAR = 365.24219 # d/y
+LNPY_SECONDS_DAY = 86400.  # s/d
+LNPY_MEAN_EARTH_RADIUS = 6378137. # m
+LNPY_EARTH_FLATTENING = 1/298.257222 # -
+LNPY_EARTH_SURFACE = 5.10074897e+14 # m²
 A_EARTH_GRS80 = 6378137.  # m, earth semi-major axis [GRS80]_
 F_EARTH_GRS80 = 1/298.257222101  # earth flattening [GRS80]_
-LNPY_SURFTER = 5.10074897e+14  # m²
+LNPY_SURFTER = 510065621718491.4  # m²
 # 2*np.pi*A_EARTH_GRS80**2 + np.pi*(A_EARTH_GRS80 - A_EARTH_GRS80*F_EARTH_GRS80)**2/
 # np.sqrt(2*F_EARTH_GRS80 - F_EARTH_GRS80**2)*np.log((1+np.sqrt(2*F_EARTH_GRS80 - F_EARTH_GRS80**2))/
-# (1-np.sqrt(2*F_EARTH_GRS80 - F_EARTH_GRS80**2))) = 510065621718491.4
+# (1-np.sqrt(2*F_EARTH_GRS80 - F_EARTH_GRS80**2)))
 LNPY_G = 6.67430e-11  # m3.kg-1.s-2 [CODATA2018]
 # GM value is consistent with Terrestrial Time (TT) as the time argument, TT(TAI) = TAI + 32.184 seconds
 LNPY_GM_EARTH = 3.986004415e14  # m3.s-2 IERS-2010 Standards [IERS2010]_
