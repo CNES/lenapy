@@ -14,4 +14,6 @@ entry_points={"xarray.backends": ["lenapyNetcdf = lenapy.readers.geo_reader:lena
                                   "lenapyOceanProducts = lenapy.readers.ocean:lenapyOceanProducts",
                                   "lenapyGfc    = lenapy.readers.produits_gravi:ReadGFC",
                                   "lenapyGraceL2 = lenapy.readers.produits_gravi:ReadGRACEL2"]},
+include_package_data=True,
+package_data={'lenapy.data': ['*']},
      )

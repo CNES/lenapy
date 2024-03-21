@@ -48,19 +48,21 @@ References
     .. [WMO1988] World Meteorological Organization
         *WMO Technical Regulations*, 49, (1988).
 """
-import numpy as np
+from numpy import pi
 
-LNPY_DAYS_YEAR = 365.24219 # d/y
+LNPY_DAYS_YEAR = 365.24219  # d/y
 LNPY_SECONDS_DAY = 86400.  # s/d
-LNPY_MEAN_EARTH_RADIUS = 6378137. # m
-LNPY_EARTH_FLATTENING = 1/298.257222 # -
-LNPY_EARTH_SURFACE = 5.10074897e+14 # m²
+LNPY_MEAN_EARTH_RADIUS = 6378137.  # m
+LNPY_EARTH_FLATTENING = 1/298.257222  # -
+
 A_EARTH_GRS80 = 6378137.  # m, earth semi-major axis [GRS80]_
 F_EARTH_GRS80 = 1/298.257222101  # earth flattening [GRS80]_
-LNPY_SURFTER = 510065621718491.4  # m²
+
+LNPY_EARTH_SURFACE = 510065621718491.4  # m²
 # 2*np.pi*A_EARTH_GRS80**2 + np.pi*(A_EARTH_GRS80 - A_EARTH_GRS80*F_EARTH_GRS80)**2/
 # np.sqrt(2*F_EARTH_GRS80 - F_EARTH_GRS80**2)*np.log((1+np.sqrt(2*F_EARTH_GRS80 - F_EARTH_GRS80**2))/
 # (1-np.sqrt(2*F_EARTH_GRS80 - F_EARTH_GRS80**2)))
+
 LNPY_G = 6.67430e-11  # m3.kg-1.s-2 [CODATA2018]
 # GM value is consistent with Terrestrial Time (TT) as the time argument, TT(TAI) = TAI + 32.184 seconds
 LNPY_GM_EARTH = 3.986004415e14  # m3.s-2 IERS-2010 Standards [IERS2010]_
@@ -71,4 +73,4 @@ LNPY_G_WMO = 9.80665  # standard gravitational acceleration [WMO1988]
 LNPY_RAVERAGE_EARTH = A_EARTH_GRS80*(1 - F_EARTH_GRS80)**(1/3)  # Earth average radius
 
 # Deduce from LNPY other constants with rho = 3*M / 4*pi*R**3
-LNPY_RHO_EARTH = 0.75*(LNPY_GM_EARTH - LNPY_GM_ATMO)/(LNPY_G * np.pi * LNPY_RAVERAGE_EARTH**3)  # kg.m-3 , Earth density
+LNPY_RHO_EARTH = 0.75*(LNPY_GM_EARTH - LNPY_GM_ATMO)/(LNPY_G * pi * LNPY_RAVERAGE_EARTH**3)  # kg.m-3 , Earth density

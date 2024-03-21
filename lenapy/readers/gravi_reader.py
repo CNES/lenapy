@@ -25,7 +25,7 @@ import yaml
 import xarray as xr
 import numpy as np
 from xarray.backends import BackendEntrypoint
-from .utils_gravi import mid_month_grace_estimate
+from lenapy.utils.harmo import mid_month_grace_estimate
 
 
 def read_tn14(filename, rmmean=False):

@@ -2,7 +2,6 @@ import xarray as xr
 import numpy as np
 import pandas as pd
 import netCDF4
-from .constants import *
 from . import filters
 from ..constants import *
 

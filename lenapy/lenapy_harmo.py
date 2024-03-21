@@ -2,8 +2,9 @@
 import operator
 import numbers
 import xarray as xr
-from .utils_gravi import *
-from .plotting import plot_hs
+from lenapy.utils.harmo import *
+from lenapy.utils.gravity import change_reference, change_tide_system
+from lenapy.plots.plotting import plot_hs
 
 
 @xr.register_dataset_accessor("xharmo")

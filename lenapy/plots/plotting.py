@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import interpolate
 import xarray as xr
+from lenapy.utils.harmo import l_factor_gravi
 
 def plot_timeseries_uncertainty(xgeo_data, 
                                 x_dim='time',
