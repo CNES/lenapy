@@ -7,7 +7,7 @@ from lenapy.utils.gravity import change_reference, change_tide_system
 from lenapy.plots.plotting import plot_hs
 
 
-@xr.register_dataset_accessor("xharmo")
+@xr.register_dataset_accessor("lnharmo")
 class HarmoSet:
     """
     This class implement an extension of any xr.Dataset to add some methods related to spherical harmonics decomposition
@@ -135,7 +135,7 @@ class HarmoSet:
         return plot_hs(self._obj, **kwargs)
 
 
-@xr.register_dataarray_accessor("xharmo")
+@xr.register_dataarray_accessor("lnharmo")
 class HarmoArray:
     """
     This class implement an extension of any xr.DataArray to add some methods related to spatial grid representing
