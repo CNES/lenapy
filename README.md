@@ -1,6 +1,6 @@
 # LENAPY
 
-{include} doc/gettingStarted.rst
+@@include[gettingstarted](doc/gettingStarted.md)
 
 
 ## Full documentation is comming
