@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import interpolate
 import xarray as xr
+from .utils_gravi import l_factor_gravi
 
 def plot_timeseries_uncertainty(xgeo_data, 
                                 x_dim='time',
@@ -345,8 +346,10 @@ def sigma_to_confidence_interval_object(min_sigma, max_sigma, number_measures):
     return interpolate.interp1d(x,y,kind='linear', bounds_error=False,fill_value=1.)
 
 
-def plot_hs(ds, lmin=1, lmax=None, mmin=0, mmax=None, reverse=False, ax=None, cbar_ax=None, cbar_kwargs=None, **kwargs):
+def plot_hs(ds, lmin=1, lmax=None, mmin=0, mmax=None, reverse=False,
+            ax=None, cbar_ax=None, cbar_kwargs=None, **kwargs):
     """
+    Plot spherical harmonic dataset, with only l and m dimensions, into pyramidal plot
 
     Parameters
     ----------
@@ -420,3 +423,26 @@ def plot_hs(ds, lmin=1, lmax=None, mmin=0, mmax=None, reverse=False, ax=None, cb
     cbar.ax.tick_params(labelsize=15)
     
     return ax, cbar
+
+
+def plot_power_hs(ds, lmin=0, lmax=None, mmax=None, ax=None, **kwargs):
+    # -- set default param values
+    if lmax is None:
+        lmax = ds.l.max().values
+    if mmax is None:
+        mmax = lmax
+
+    if ax is None:
+        ax = plt.gca()
+
+    l_factor = l_factor_gravi(ds.l.values, unit='mewh')
+    deg_amp = l_factor*np.sqrt((ds.clm**2).sel(m=slice(0, mmax)).sum('m') +
+                               (ds.slm**2).sel(m=slice(0, mmax)).sum('m'))
+
+    ax.plot(ds.l.sel(l=slice(lmin, lmax)), deg_amp.sel(l=slice(lmin, lmax)), **kwargs)
+
+    ax.set_ylabel("m EWH amplitude", fontsize=17)
+    ax.set_xlabel("Degree", fontsize=17)
+    ax.tick_params(labelsize=13)
+
+    return ax

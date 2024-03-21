@@ -807,13 +807,14 @@ def l_factor_gravi(l, unit='mewh', include_elastic=True, ellispoidal_earth=False
         raise ValueError("For ellipsoidal Earth, you need to set "
                          "the parameter 'geocentric_colat' in l_factor_gravi function")
 
-    # compute variable for ellispoidal_earth
-    # e = sqrt(2f - f**2)
-    e_earth = np.sqrt(2 * f_earth - f_earth**2)
-    # a_div_r_lat = a / r(theta)  with r(theta) = a(1-f)/sqrt(1 - e**2*sin(theta)**2)
-    a_div_r_lat = np.sqrt(1 - e_earth**2*np.sin(geocentric_colat)**2) / (1 - f_earth)
-    # Earth average radius = a*(1-f)**(1/3) for which spherical Earth volume = ellipsoidal Earth volume
-    raverage_radius = a_earth * (1 - f_earth)**(1 / 3)
+    if ellispoidal_earth:
+        # compute variable for ellispoidal_earth
+        # e = sqrt(2f - f**2)
+        e_earth = np.sqrt(2 * f_earth - f_earth ** 2)
+        # a_div_r_lat = a / r(theta)  with r(theta) = a(1-f)/sqrt(1 - e**2*sin(theta)**2)
+        a_div_r_lat = np.sqrt(1 - e_earth ** 2 * np.sin(geocentric_colat) ** 2) / (1 - f_earth)
+        # Earth average radius = a*(1-f)**(1/3) for which spherical Earth volume = ellipsoidal Earth volume
+        raverage_radius = a_earth * (1 - f_earth) ** (1 / 3)
 
     # l_factor is degree dependant
     if unit == 'norm':
@@ -859,6 +860,54 @@ def l_factor_gravi(l, unit='mewh', include_elastic=True, ellispoidal_earth=False
                          "(norm, mewh, geoid, microGal, bar, mvcu)")
 
     return l_factor
+
+
+def gauss_weights(radius, lmax, a_earth=A_EARTH_GRS80, cutoff=1e-10):
+    """
+    Generate a xr.DataArray with Gaussian weights as a function of degree using [Jekeli1981]_
+
+    Parameters
+    ----------
+    radius : float
+        Gaussian smoothing radius in meters
+    lmax : int
+        Maximum degree of spherical harmonic coefficients
+    a_earth : float, optional
+        Radius of the Earth in meters, default is semi-major axis of GRS80
+    cutoff : float, optional
+        minimum value for tail of Gaussian averaging function (see [Jekeli1981]_ p.18), default is 1e-10
+
+    Returns
+    -------
+    gaussian_weights : xr.DataArray
+        Degree dependent Gaussian weights xr.DataArray
+
+    References
+    ----------
+    .. [Jekeli1981] C. Jekeli, "Alternative Methods to Smooth
+        the Earth's Gravity Field", NASA Grant No. NGR 36-008-161,
+        OSURF Proj. No. 783210, 48 pp., (1981).
+    """
+    # Create weights array
+    gaussian_weights = np.zeros((lmax + 1))
+
+    # Computation using recursion from [Jekeli1981]_ p.17
+    a = np.log(2)/(1 - np.cos(radius/a_earth))
+    # Initialize weight for degree 0 and 1
+    gaussian_weights[0] = 1
+    gaussian_weights[1] = gaussian_weights[0]*((1 + np.exp(-2*a))/(1 - np.exp(-2*a)) - 1/a)
+
+    for l in range(2, lmax + 1):
+        # recursion with the two previous terms
+        gaussian_weights[l] = gaussian_weights[l - 1] * (1 - 2 * l) / a + gaussian_weights[l - 2]
+
+        # test if weight is less than cutoff
+        if gaussian_weights[l] < cutoff:
+            # set all weights after the current l to cutoff
+            gaussian_weights[l: lmax + 1] = cutoff
+            break
+
+    return xr.DataArray(gaussian_weights, dims=['l'], coords={'l': np.arange(lmax + 1)})
 
 
 def assert_sh(ds):
