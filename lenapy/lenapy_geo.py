@@ -148,7 +148,7 @@ class GeoSet:
             coord=dim
         k=list(criterion.keys())[0]
         if not(k in self._obj.data_vars):
-            raise KeyError("%s not in %s"%(criterion[0],list(data_vars)))
+            raise KeyError("%s not in %s"%(criterion[0],list(self._obj.data_vars)))
             
         r=isosurface(self._obj[k],criterion[k],dim,coord,upper=upper)
         res=xr.Dataset()
@@ -489,11 +489,6 @@ class GeoArray:
             
         """        
         return regridder(self._obj,*args,**kwargs)
-
-
-
-    def to_difgri(self,dir_out,prefix,suffix):
-        to_difgri(self._obj,dir_out,prefix,suffix)
 
 
     def surface_cell(self):

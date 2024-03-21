@@ -3,6 +3,7 @@
 
 import xarray as xr
 import os
+import xesmf as xe
 from ..utils.geo import rename_data, split_duplicate_coords, longitude_increase, reset_longitude
 from ..utils.time import to_datetime
 from xarray.backends import BackendEntrypoint
