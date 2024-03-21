@@ -1,6 +1,6 @@
 # LENAPY
 
-{include}doc/gettingStarted.rst
+{include} doc/gettingStarted.rst
 
 
 ## Full documentation is comming
