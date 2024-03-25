@@ -2,7 +2,9 @@
 """
 
 import xarray as xr
+import numpy as np
 import os
+import numbers
 import xesmf as xe
 from ..utils.geo import rename_data, split_duplicate_coords, longitude_increase, reset_longitude
 from ..utils.time import to_datetime
@@ -122,25 +124,41 @@ class lenapyMask(BackendEntrypoint):
     """        
     def open_dataset(self,filename,field=None,grid=None,drop_variables=None):
 
+        res=[]
         # Opening
-        mask=xr.open_dataset(filename)[field]
+        file=xr.open_dataset(filename)
+        if field==None:
+            field=file.data_vars
+            
+        for f in np.ravel(field):
+            mask=file[f]
+            if not(isinstance(mask.values.ravel()[0],numbers.Number) and 'latitude' in mask.coords):
+                continue
 
-        # Labels reading
-        c=[]
-        d=[]
-        for k in mask.attrs.keys():
-            if k.isnumeric():
-                d.append(int(k))
-                c.append(mask.attrs[k])
-        labels=xr.DataArray(data=d,dims='zone',coords=dict(zone=c))
+            # Labels reading
+            c=[]
+            d=[]
+            for k in mask.attrs.keys():
+                if k.isnumeric():
+                    d.append(int(k))
+                    c.append(mask.attrs[k])
+                if isinstance(mask.attrs[k],numbers.Number):
+                    d.append(mask.attrs[k])
+                    c.append(k)
+            if len(d)==0:
+                d=[False]
+                c=[f]
+                mask=mask.where(mask.notnull(),0).astype('int')==0
 
-        # Resampling
-        if type(grid)!=type(None):
-            reg=xe.Regridder(mask,grid,method='nearest_s2d')
-            mask = reg(mask)    
+            labels=xr.DataArray(data=d,dims='zone',coords=dict(zone=c))
+                    
+            # Resampling
+            if type(grid)!=type(None):
+                reg=xe.Regridder(mask,grid,method='nearest_s2d')
+                mask = reg(mask)    
 
-        # Returning
-        if len(d)>0:
-            return xr.Dataset({'mask':xr.where(mask==labels,True,False)})
-        else:
-            return xr.Dataset({'mask':xr.where(mask.where(mask.notnull(),0).astype('int')==0,False, True)})
+            # Returning
+            res.append(xr.Dataset({'mask':xr.where(mask==labels,True,False)}))
+        
+        return xr.concat(res,dim='zone')
+    
