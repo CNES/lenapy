@@ -182,7 +182,9 @@ def read_tn13(filename, rmmean=False):
 
 
 class ReadGFC(BackendEntrypoint):
-    def open_dataset(self, filename, drop_variables=None):
+    open_dataset_parameters = ["filename_or_obj", "drop_variables", "no_date"]
+
+    def open_dataset(self, filename, drop_variables=None, no_date=False):
         """
         Read a .gfc ascii file (or compressed) and format it as a xr.Dataset.
         The file need to follow ICGEM format: http://icgem.gfz-potsdam.de/ICGEM-Format-2023.pdf
@@ -198,6 +200,8 @@ class ReadGFC(BackendEntrypoint):
             Name/path of the file to open
         drop_variables : None
             Variable to align to BackendEntrypoint pattern
+        no_date : bool
+            True if the data file contains no date information
 
         Returns
         -------
@@ -275,28 +279,32 @@ class ReadGFC(BackendEntrypoint):
         # test if gfct key then have to deal with time
         if 't' not in legend_before_end_header:
             # -- Compute time
-            # For some products, time is stored as YYYYDOY-YYYYDOY in modelname
-            # For GRACE products, DOY can not coincide with 1st and last day of month
-            if bool(re.search(r'_(\d{7})-(\d{7})', header['modelname'])):
-                dates = re.search(r'_(\d{7})-(\d{7})', header['modelname'])
-                begin_time = datetime.datetime.strptime(dates.group(1), '%Y%j')
-                end_time = datetime.datetime.strptime(dates.group(2), '%Y%j') + datetime.timedelta(days=1)
+            if not no_date:
+                # For some products, time is stored as YYYYDOY-YYYYDOY in modelname
+                # For GRACE products, DOY can not coincide with 1st and last day of month
+                if bool(re.search(r'_(\d{7})-(\d{7})', header['modelname'])):
+                    dates = re.search(r'_(\d{7})-(\d{7})', header['modelname'])
+                    begin_time = datetime.datetime.strptime(dates.group(1), '%Y%j')
+                    end_time = datetime.datetime.strptime(dates.group(2), '%Y%j') + datetime.timedelta(days=1)
 
-                exact_time = begin_time + (end_time - begin_time) / 2
+                    exact_time = begin_time + (end_time - begin_time) / 2
 
-                # compute middle of the month for GRACE products
-                mid_month = mid_month_grace_estimate(begin_time, end_time)
+                    # compute middle of the month for GRACE products
+                    mid_month = mid_month_grace_estimate(begin_time, end_time)
 
-            # For other products, time is stored as YYYY-MM in modelname
-            elif bool(re.search(r'(\d{4}-\d{2})', header['modelname'])):
-                yyyy_mm = re.search(r'(\d{4}-\d{2})', header['modelname']).group(0)
-                begin_time = datetime.datetime.strptime(yyyy_mm, '%Y-%m')
-                end_time = (begin_time + datetime.timedelta(days=32)).replace(day=1)
-                mid_month = begin_time + (end_time - begin_time) / 2
-                exact_time = mid_month
+                # For other products, time is stored as YYYY-MM in modelname
+                elif bool(re.search(r'(\d{4}-\d{2})', header['modelname'])):
+                    yyyy_mm = re.search(r'(\d{4}-\d{2})', header['modelname']).group(0)
+                    begin_time = datetime.datetime.strptime(yyyy_mm, '%Y-%m')
+                    end_time = (begin_time + datetime.timedelta(days=32)).replace(day=1)
+                    mid_month = begin_time + (end_time - begin_time) / 2
+                    exact_time = mid_month
 
+                else:
+                    raise ValueError("Could not extract date information from modelname in the header of ", filename)
+            # If no time, time info will be a string with modelname
             else:
-                raise ValueError("Could not extract date information from modelname in the header of ", filename)
+                mid_month = header['modelname']
 
             # -- Load clm and slm data
             clm, slm = np.zeros((lmax + 1, lmax + 1, 1)), np.zeros((lmax + 1, lmax + 1, 1))
@@ -327,9 +335,10 @@ class ReadGFC(BackendEntrypoint):
             raise AssertionError("Reading of .gfc file with time is not implemented yet")
 
         # -- Add various time information in dataset
-        ds['begin_time'] = xr.DataArray([begin_time], dims=['time'])
-        ds['end_time'] = xr.DataArray([end_time], dims=['time'])
-        ds['exact_time'] = xr.DataArray([exact_time], dims=['time'])
+        if not no_date:
+            ds['begin_time'] = xr.DataArray([begin_time], dims=['time'])
+            ds['end_time'] = xr.DataArray([end_time], dims=['time'])
+            ds['exact_time'] = xr.DataArray([exact_time], dims=['time'])
 
         # -- Close all file pointers
         if ext in ('.zip', '.ZIP'):
