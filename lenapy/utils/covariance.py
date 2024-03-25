@@ -176,9 +176,13 @@ class cov_element:
             self.sigma = value**2*np.exp(-0.5*((t1-t2)/dt)**2)
 
         elif self.type=='random':
+            if tmax==None:
+                tmax=self.time.max()
+            if tmin==None:
+                tmin=self.time.min()                
             t1=self.time.astype('float')
             t2=t1.rename(time='time1')
-            self.sigma=xr.zeros_like(t1-t2)+np.diag(xr.where(np.logical_and(self.time>tmin,self.time<tmax),value,0))
+            self.sigma=xr.zeros_like(t1-t2)+np.diag(xr.where(np.logical_and(self.time>=tmin,self.time<=tmax),value,0))
             # Pour ce type d'erreur, l'ajustement n'est pas pertinent
             self.bias_type=None
             
