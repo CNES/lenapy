@@ -268,7 +268,7 @@ class ReadGFC(BackendEntrypoint):
         # test for mandatory keywords (http://icgem.gfz-potsdam.de/ICGEM-Format-2023.pdf)
         if not all(key in header for key in ['modelname', 'earth_gravity_constant', 'radius', 'max_degree', 'errors']):
             raise ValueError("File header does not contains mandatory keywords"
-                             " (http://icgem.gfz-potsdam.de/ICGEM-Format-2023.pdf)")
+                             " (https://icgem.gfz-potsdam.de/docs/ICGEM-Format-2023.pdf)")
 
         # convert str to numbers for adapted header info
         header['max_degree'] = int(header['max_degree'])
@@ -301,7 +301,8 @@ class ReadGFC(BackendEntrypoint):
                     exact_time = mid_month
 
                 else:
-                    raise ValueError("Could not extract date information from modelname in the header of ", filename)
+                    raise ValueError("Could not extract date information from modelname in the header of ", filename,
+                                     "\n Try with the param no_date=True")
             # If no time, time info will be a string with modelname
             else:
                 mid_month = header['modelname']
@@ -349,8 +350,6 @@ class ReadGFC(BackendEntrypoint):
 
         return ds
 
-    open_dataset_parameters = ["filename_or_obj", "drop_variables"]
-
     def guess_can_open(self, filename):
         """
         Test the readability of a file with ReadGFC. Test if it is a .gfc file.
@@ -391,6 +390,8 @@ class ReadGFC(BackendEntrypoint):
 
 
 class ReadGRACEL2(BackendEntrypoint):
+    open_dataset_parameters = ["filename_or_obj", "drop_variables"]
+
     def open_dataset(self, filename, drop_variables=None):
         """
         Read a GRACE Level-2 gravity field product ascii file (or compressed) from centers and
@@ -533,7 +534,5 @@ class ReadGRACEL2(BackendEntrypoint):
 
         file.close()
         return ds
-
-    open_dataset_parameters = ["filename_or_obj", "drop_variables"]
 
     description = "Use GRACEL2 product files in xarray"

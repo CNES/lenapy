@@ -647,11 +647,12 @@ def l_factor_gravi(l, unit='mewh', include_elastic=True, ellispoidal_earth=False
         fraction += kl[l]
 
     # test for ellispoidal_earth
-    if ellispoidal_earth and geocentric_colat is None:
-        raise ValueError("For ellipsoidal Earth, you need to set "
-                         "the parameter 'geocentric_colat' in l_factor_gravi function")
-
     if ellispoidal_earth:
+        # test if geocentric_colat is set
+        if geocentric_colat is None:
+            raise ValueError("For ellipsoidal Earth, you need to set "
+                             "the parameter 'geocentric_colat' in l_factor_gravi function")
+
         # compute variable for ellispoidal_earth
         # e = sqrt(2f - f**2)
         e_earth = np.sqrt(2 * f_earth - f_earth ** 2)

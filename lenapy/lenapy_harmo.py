@@ -4,7 +4,7 @@ import numbers
 import xarray as xr
 from lenapy.utils.harmo import *
 from lenapy.utils.gravity import change_reference, change_tide_system
-from lenapy.plots.plotting import plot_hs
+from lenapy.plots.plotting import plot_hs, plot_power_hs
 
 
 @xr.register_dataset_accessor("lnharmo")
@@ -133,6 +133,9 @@ class HarmoSet:
 
     def plot_hs(self, **kwargs):
         return plot_hs(self._obj, **kwargs)
+
+    def plot_power_hs(self, **kwargs):
+        return plot_power_hs(self._obj, **kwargs)
 
 
 @xr.register_dataarray_accessor("lnharmo")
