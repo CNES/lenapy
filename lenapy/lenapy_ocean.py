@@ -54,7 +54,7 @@ class OceanSet():
         * ssl_above : idem ssl, where heat is integrated above a given depth
         * tssl  : thermosteric sea surface level (m)
         * hssl  : halosteric sea surface level (m)
-        * ieeh  : integrated expansion efficiency oh heat (m/(J/m²)), it is (ssl/ohc)
+        * ieeh  : integrated expansion efficiency oh heat (m/(J/m²)), it is (tssl/ohc)
 
     Layer depth :
         * ocean_depth  : maximum depth with non Nan values for temperature
