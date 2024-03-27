@@ -26,6 +26,7 @@ class lenapyNetcdf(BackendEntrypoint):
     time_type : str, optional
         type used for time coordinate, used to convert to datetime64
         possible values : 'frac_year' or '360_day' or 'cftime' or 'custom'
+        
         if 'custom', "decode_times=False" and "format" must be specified
     format : str, optional
         strftime to parse time (if time_type=='custom')
@@ -89,15 +90,15 @@ class lenapyMask(BackendEntrypoint):
     The returned mask contains an extra dimension named 'zone', corresponding to the different values
     of the mask contained in the opened dataset.
     Required format for the dataset to be opened :
-    * contains several dataarrays, each one being a mask (identified as 'field')
-    * each mask is defined by values, whose signification is given in the attributes of the dataarray : {'value1' : 'label1',...}
+        * contains several dataarrays, each one being a mask (identified as 'field')
+        * each mask is defined by values, whose signification is given in the attributes of the dataarray : {'value1' : 'label1',...}
     If there is no valid attribute, the mask is returned with False where NaN, False or 0 are found, True for any other value.
 
     Parameters
     ----------
     filename : path
         path and filename of the mask file to be opened
-    field : string
+    field : string or array of strings
         name of the data to be used as a mask in the dataset
     grid : dataset, optional
         dataset to be regridded on. If None, no regridding is performed

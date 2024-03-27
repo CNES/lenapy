@@ -221,14 +221,10 @@ class OceanSet():
         return self.heat_
     
     @property
-    # Anomalie relative de densité par rapport à une référence (0,35)
+    # Anomalie relative de densité par rapport à une référence (CT=0°C,SA=35psu)
     def slh(self):
         if NoneType(self.slh_):
-            if 'latitude' in self._obj.coords:
-                rhoref = gsw.rho(gsw.SA_from_SP(35,self.P,self._obj.longitude, self._obj.latitude),
-                                 0, self.P)
-            else:
-                rhoref = gsw.rho(gsw.SR_from_SP(35), 0, self.P)
+            rhoref = gsw.rho(35.,0., self.P)
         return  proprietes(((1. - self.rho/rhoref)),
                            'slh','Steric sea layer height anomaly','-') # [-]
     
@@ -241,7 +237,7 @@ class OceanSet():
         return self.ohc_
     
     @property
-    # Ecart de hauteur d'eau de la colonne par rapport à une référence (0,35)
+    # Ecart de hauteur d'eau de la colonne par rapport à une référence (CT=0°C,SA=35psu)
     def ssl(self):
         if NoneType(self.ssl_):
             self.ssl_ = proprietes(self.slh.lnocean.integ_depth(),
@@ -249,26 +245,28 @@ class OceanSet():
         return self.ssl_
 
     @property
-    # Ecart de hauteur d'eau thermosterique de la colonne par rapport à une référence (0°C)
+    # Ecart de hauteur d'eau thermosterique de la colonne par rapport à une référence (CT=0°C)
     def tssl(self):
         if NoneType(self.tssl_):
-            rhoref = gsw.rho(self.SA, 0, self.P)
-            tslh = 1.-self.rho/rhoref
+            rho = gsw.rho(self.SA, self.CT, self.P)
+            rhoref = gsw.rho(self.SA, 0., self.P)
+            tslh = 1.-rho/rhoref
             self.tssl_ = proprietes(tslh.lnocean.integ_depth(), 
                                     'tssl','Thermosteric sea surface level anomaly','m') # [m]
         return self.tssl_
 
     @property    
-    # Ecart de hauteur d'eau halosterique de la colonne par rapport à une référence (35psu)
+    # Ecart de hauteur d'eau halosterique de la colonne par rapport à une référence (SA=35psu)
     def hssl(self):
         if NoneType(self.hssl_):
-            rhoref = gsw.rho(35, self.CT, self.P)
+            rho = gsw.rho(self.SA, self.CT, self.P)
+            rhoref = gsw.rho(35., self.CT, self.P)
             hslh = 1.-self.rho/rhoref
-            self.hssl_ = proprietes(tslh.lnocean.integ_depth(), 
+            self.hssl_ = proprietes(hslh.lnocean.integ_depth(), 
                                     'hssl','Halosteric sea surface level anomaly','m') # [m]
         return self.hssl_
 
-    # Ecart de hauteur d'eau de la colonne par rapport à une référence (0,35)
+    # Ecart de hauteur d'eau de la colonne par rapport à une référence (CT=0°C,SA=35psu)
     def ssl_above(self,target):
         return proprietes(self.slh.lnocean.above(target),
                           'ssl','Steric sea surface level anomaly above targeted depth','m') # [m]
@@ -277,13 +275,8 @@ class OceanSet():
     # EEH local (en 
     def eeh(self):
         if NoneType(self.eeh_):
-            if 'latitude' in self._obj.coords:
-                rhoref = gsw.rho(gsw.SA_from_SP(35,self.P,self._obj.longitude, self._obj.latitude),
-                                 0, self.P)
-            else:
-                rhoref = gsw.rho(gsw.SR_from_SP(35), 0, self.P)
-            rho_SA,rho_CT,rho_P=gsw.rho_first_derivatives(self.SA.load(),self.CT.load(),self.P.load())
-            self.eeh_ = proprietes(-rho_CT/(rhoref*self.Cp*self.rho),
+            rho,alpha,beta = gsw.rho_alpha_beta(self.SA.load(), self.CT.load(), self.P.load())
+            self.eeh_ = proprietes(alpha/(rho*self.Cp),
                           'EEH','Local expansion efficiency oh heat','m/(J/m²)') # [m/(J/m²)]
         return self.eeh_
 
