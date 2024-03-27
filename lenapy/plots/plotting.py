@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import interpolate
 import xarray as xr
-from matplotlib.ticker import ticker
+import matplotlib.ticker as ticker
 from lenapy.utils.harmo import l_factor_gravi
 
 
