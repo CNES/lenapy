@@ -494,7 +494,8 @@ def compute_plm(lmax, z, mmax=None, normalization='4pi'):
 
     # Calculate P(l,0) (not scaled)
     p[0, :] = 1 / np.sqrt(norm_4pi)
-    p[1, :] = norm_p10 * z / np.sqrt(norm_4pi)
+    if lmax:  # test for the case where lmax=0
+        p[1, :] = norm_p10 * z / np.sqrt(norm_4pi)
     k = 1
     for l in range(2, lmax + 1):
         k += l
