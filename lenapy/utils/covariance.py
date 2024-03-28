@@ -23,7 +23,7 @@ class estimator:
 
     def __init__(self,data,degree,tref=None,sigma=None,datetime_unit="s"):
         if type(tref)==type(None):
-            tref=data.time.isel(time=0)
+            tref=data.time.mean('time')
         if type(sigma)==type(None):
             sigma=np.diag(np.ones(len(data.time)))
         
@@ -101,11 +101,14 @@ class estimator:
         return np.dot(np.dot(H,A),H)
 
     @property
-    def estimator_stderr(self):
+    def uncertainties(self):
         """Standard error of the estimator (square root of the estimator covariance diagonal)
         """
         return xr.zeros_like(self.deg)+np.sqrt(np.diag(self.estimator_covariance))
     
+    @property
+    def coefficients(self):
+        return self.params
 
 class cov_element:
     """This class generates a covariance matrix based on a single uncertainty type. 
