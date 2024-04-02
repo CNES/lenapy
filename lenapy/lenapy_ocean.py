@@ -6,6 +6,7 @@
 import gsw
 import numpy as np
 import xarray as xr
+from .constants import *
 
 def proprietes(da,nom,label,unite):
     out = da.rename(nom)
@@ -146,7 +147,7 @@ class OceanSet():
     # Salinité pratique
     def psal(self):
         if NoneType(self.psal_):
-            if NoneType(self.SA_) or not('latitude' in self._obj.coords and 'longitude' in self._obj.coords):
+            if NoneType(self.SA_) or not('latitude' in self._obj.variables and 'longitude' in self._obj.variables):
                 self.psal_=proprietes(gsw.SP_from_SR(self.SR),
                           'psal','Practical salinity','g/kg') # [g/kg]
                                 
@@ -168,7 +169,7 @@ class OceanSet():
     @property
     def SA(self):
         if NoneType(self.SA_):
-            if 'latitude' in self._obj.coords and 'longitude' in self._obj.coords:
+            if 'latitude' in self._obj.variables and 'longitude' in self._obj.variables:
                 self.SA_ = proprietes(gsw.SA_from_SP(self.psal,self.P,self._obj.longitude, self._obj.latitude),
                           'SA','Absolute salinity','g/kg') # [g/kg]
             else:
@@ -179,7 +180,7 @@ class OceanSet():
     # Pression en fonction de la profondeur et de la latitude
     def P(self):
         if NoneType(self.P_):
-            if 'latitude' in self._obj.coords:
+            if 'latitude' in self._obj.variables:
                 self.P_ = proprietes(gsw.p_from_z(self._obj.depth*-1, self._obj.latitude),
                                   'p_db','Pressure','dbar')
             else:
@@ -221,10 +222,10 @@ class OceanSet():
         return self.heat_
     
     @property
-    # Anomalie relative de densité par rapport à une référence (CT=0°C,SA=35psu)
+    # Anomalie relative de densité par rapport à une référence (CT=0°C,SA=35.16404psu)
     def slh(self):
         if NoneType(self.slh_):
-            rhoref = gsw.rho(35.,0., self.P)
+            rhoref = gsw.rho(LNPY_SSO,0., self.P)
         return  proprietes(((1. - self.rho/rhoref)),
                            'slh','Steric sea layer height anomaly','-') # [-]
     
@@ -260,7 +261,7 @@ class OceanSet():
     def hssl(self):
         if NoneType(self.hssl_):
             rho = gsw.rho(self.SA, self.CT, self.P)
-            rhoref = gsw.rho(35., self.CT, self.P)
+            rhoref = gsw.rho(LNPY_SSO, self.CT, self.P)
             hslh = 1.-self.rho/rhoref
             self.hssl_ = proprietes(hslh.lnocean.integ_depth(), 
                                     'hssl','Halosteric sea surface level anomaly','m') # [m]
