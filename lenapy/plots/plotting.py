@@ -319,7 +319,36 @@ def plot_hs(ds, lmin=1, lmax=None, mmin=0, mmax=None, reverse=False,
     return ax
 
 
-def plot_power_hs(ds, unit=None, lmin=0, lmax=None, mmax=None, ax=None, **kwargs):
+def plot_power_hs(ds, unit=None, lmin=0, lmax=None, mmin=0, mmax=None, ax=None, **kwargs):
+    """
+    Plot degree power spectrum of a spherical harmonic dataset, with only l and m dimensions
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        ds with only l and m dimensions to plot
+    unit : str
+        'mewh', 'geoid', 'microGal', 'bar', 'mvcu', or 'norm'
+        Unit of the spatial data to use for the conversion. Default is 'mewh' for meters of Equivalent Water Height
+        See utils.harmo.l_factor_gravi() doc for details on the units
+    lmin : int, optional
+        Minimal degree of the spherical harmonics coefficient to plot, default is 1
+    lmax : int, optional
+        Minimal degree of the spherical harmonics coefficient to plot, default is ds.l.max()
+    mmin : int, optional
+        Minimal order of the spherical harmonics coefficient to plot, default is 1
+    mmax : int, optional
+        Minimal order of the spherical harmonics coefficient to plot, default is ds.m.max()
+    ax : plt.Axes, optional
+        Axes on which to plot. By default, use the current axes.
+    **kwargs : optional
+        Additional keyword arguments to plt.plot() function.
+
+    Returns
+    -------
+    ax : plt.Axes
+        Axes with the plot.
+    """
     # -- set default param values
     if unit is None and 'units' in ds.attrs:
         unit = ds.attrs['units']
@@ -335,8 +364,8 @@ def plot_power_hs(ds, unit=None, lmin=0, lmax=None, mmax=None, ax=None, **kwargs
         ax = plt.gca()
 
     l_factor = l_factor_gravi(ds.l.values, unit=unit)
-    deg_amp = l_factor * np.sqrt((ds.clm ** 2).sel(m=slice(0, mmax)).sum('m') +
-                                 (ds.slm ** 2).sel(m=slice(0, mmax)).sum('m'))
+    deg_amp = l_factor * np.sqrt((ds.clm ** 2).sel(m=slice(mmin, mmax)).sum('m') +
+                                 (ds.slm ** 2).sel(m=slice(mmin, mmax)).sum('m'))
 
     ax.plot(ds.l.sel(l=slice(lmin, lmax)), deg_amp.sel(l=slice(lmin, lmax)), **kwargs)
 

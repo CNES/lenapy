@@ -5,6 +5,7 @@ import xarray as xr
 from lenapy.utils.harmo import *
 from lenapy.utils.gravity import change_reference, change_tide_system
 from lenapy.plots.plotting import plot_hs, plot_power_hs
+from lenapy.writers.gravi_writer import dataset_to_gfc
 
 
 @xr.register_dataset_accessor("lnharmo")
@@ -136,6 +137,9 @@ class HarmoSet:
 
     def plot_power_hs(self, **kwargs):
         return plot_power_hs(self._obj, **kwargs)
+
+    def to_gfc(self, filename, **kwargs):
+        dataset_to_gfc(self._obj, filename, **kwargs)
 
 
 @xr.register_dataarray_accessor("lnharmo")

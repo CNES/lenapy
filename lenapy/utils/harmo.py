@@ -24,7 +24,7 @@ def sh_to_grid(data, unit='mewh', love_file=None,
     unit : str, optional
         'mewh', 'geoid', 'microGal', 'bar', 'mvcu', or 'norm'
         Unit of the spatial data used in the transformation. Default is 'mewh' for meters of Equivalent Water Height
-        See constants.l_factor_gravi() doc for details on the units
+        See utils.harmo.l_factor_gravi() doc for details on the units
     love_file : str / path, optional
         File with Love numbers that can be read by read_love_numbers() function.
         Default Love numbers used are from Gegout97.
@@ -159,8 +159,8 @@ def sh_to_grid(data, unit='mewh', love_file=None,
             longitude = np.rad2deg(longitude)
 
     if latitude is None:
-        latitude = np.arange(bounds[3] - dlat / 2.0,
-                             bounds[2] - dlat / 2.0, - dlat)
+        latitude = np.arange(bounds[2] + dlat / 2.0,
+                             bounds[3] + dlat / 2.0, dlat)
     else:
         if radians_in:
             latitude = np.rad2deg(latitude)
