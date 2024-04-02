@@ -1,14 +1,15 @@
 import os
+from lenapy.utils.harmo import assert_sh
 
 
-def dataset_to_gfc(ds, filename, overwrite=True, include_errors=False, fast_save=False, **kwargs):
+def dataset_to_gfc(ds, filename, overwrite=True, include_errors=False, fmt=' .12e', fast_save=False, **kwargs):
     """
     Save a xr.Dataset object to a .gfc ascii file according to the ICGEM format specifications:
     http://icgem.gfz-potsdam.de/ICGEM-Format-2023.pdf
     If the dataset contains additional dimensions beyond 'l' and 'm',
     raise error if the size of these dimensions exceed 1.
     The saving time for degree maximum of 60 is around 10 seconds. If the given l and m dimensions are continuous
-    (from 0 to lmax/mmax), this saving time can be reduced under 100ms with argument fast_save=True
+    (from 0 to lmax/mmax), this saving time can be reduced under 100ms with argument fast_save=True.
 
     Parameters
     ----------
@@ -20,6 +21,8 @@ def dataset_to_gfc(ds, filename, overwrite=True, include_errors=False, fast_save
         If True, overwrite the existing file. Default is True.
     include_errors : bool, optional
         If True, include error coefficients in the dataset. Default is False.
+    fmt : str, optional
+        The format specifier for clm, slm and errors values to save. Default is ' .12e'.
     fast_save : bool, optional
         If True, consider that l and m dimensions are continuous (from 0 to lmax/mmax) to reduce access time when saving
     **kwargs : optional
@@ -28,7 +31,23 @@ def dataset_to_gfc(ds, filename, overwrite=True, include_errors=False, fast_save
     Returns
     -------
     None
+
+    Examples
+    --------
+    Saving a basic dataset without error coefficients and without fast saving:
+        dataset_to_gfc(ds, 'output_file.gfc')
+
+    Saving a dataset with error coefficients included:
+        dataset_to_gfc(ds, 'output_file_with_errors.gfc', include_errors=True)
+
+    Using `fast_save` for a dataset with 'l' and 'm' dimensions that goes continuously from 0 to lmax/mmax:
+        dataset_to_gfc(ds, 'fast_save_file.gfc', fast_save=True)
+
+    Adding custom attributes that are not in ds.attrs to the .gfc file header:
+        dataset_to_gfc(ds, 'custom_attrs_file.gfc', modelname='My_Model_Name', tide_system='tide_free')
     """
+    assert_sh(ds)
+
     # Verify dimensions of 'clm', 'slm' and errors array
     if include_errors:
         list_var = ['clm', 'slm', 'eclm', 'eslm']
@@ -39,7 +58,8 @@ def dataset_to_gfc(ds, filename, overwrite=True, include_errors=False, fast_save
             raise ValueError(f"Variable '{var_name}' not found in dataset.")
         var_dims = ds[var_name].dims
         if not (set(var_dims) == {'l', 'm'}) and not (len(var_dims) > 2 and max(ds[var_name].shape[2:]) <= 1):
-            raise ValueError(f"Variable '{var_name}' has extra dimension with a size that exceeds 1.")
+            raise ValueError(f"Variable '{var_name}' has extra dimension with a size that exceeds 1."
+                             f"\n You can reduce this extra dimension by using .isel(dim=0) on your dataset.")
 
     # reduce the dataset to 'l' and 'm' dimensions
     extra_dims = [dim for dim in ds.dims if dim not in ['l', 'm']]
@@ -96,10 +116,10 @@ def dataset_to_gfc(ds, filename, overwrite=True, include_errors=False, fast_save
                 for m in ds['m'].values:
                     if m <= l:
                         line = (f"gfc{l:>6}{m:>5} "
-                                f"{clm[l, m]: .12e}  {slm[l, m]: .12e}")
+                                f"{clm[l, m]:{fmt}} {slm[l, m]:{fmt}}")
 
                         if include_errors and 'eclm' in ds and 'eslm' in ds:
-                            line += f" {eclm[l, m]: .12e} {eslm[l, m]: .12e}"
+                            line += f" {eclm[l, m]:{fmt}} {eslm[l, m]:{fmt}}"
 
                         file.write(line + "\n")
 
@@ -108,11 +128,11 @@ def dataset_to_gfc(ds, filename, overwrite=True, include_errors=False, fast_save
                 for m in ds['m'].values:
                     if m <= l:
                         line = (f"gfc{l:>6}{m:>5}"
-                                f" {ds['clm'].sel(l=l, m=m).values: .12e}"
-                                f" {ds['slm'].sel(l=l, m=m).values: .12e}")
+                                f" {ds['clm'].sel(l=l, m=m).values:{fmt}}"
+                                f" {ds['slm'].sel(l=l, m=m).values:{fmt}}")
 
                         if include_errors and 'eclm' in ds and 'eslm' in ds:
-                            line += (f" {ds['eclm'].sel(l=l, m=m).values: .12e}"
-                                     f" {ds['eslm'].sel(l=l, m=m).values: .12e}")
+                            line += (f" {ds['eclm'].sel(l=l, m=m).values:{fmt}}"
+                                     f" {ds['eslm'].sel(l=l, m=m).values:{fmt}}")
 
                         file.write(line + "\n")
