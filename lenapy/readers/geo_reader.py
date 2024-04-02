@@ -54,7 +54,7 @@ class lenapyNetcdf(BackendEntrypoint):
                      nan=None,
                      time_type=None,
                      format=None,
-                     duplicate_coords=True,
+                     duplicate_coords=False,
                      drop_variables=None,
                      decode_times=True,
                      set_time=None,
@@ -73,10 +73,7 @@ class lenapyNetcdf(BackendEntrypoint):
             res=to_datetime(res,time_type=time_type,format=format)
         if duplicate_coords:
             res=split_duplicate_coords(res)
-        try:
-            res = reset_longitude(res)
-        except:
-            pass
+        res = longitude_increase(res)
         if type(nan)!=type(None):
             return res.where(res!=nan)
         else:
