@@ -197,6 +197,23 @@ class TimeArray:
         """
         return climato(self._obj,**kwargs)
     
+    def generate_climato(self,coeffs,**kwargs):
+        """Returns a signal based on a given climatology (mean, trend, cycles)
+        
+        Parameters
+        ----------
+        coeffs : DataArray
+            returned by the climato method with return_climato=True
+        mean : Bool (default=True)
+            returns mean signal
+        trend : Bool (default=True)
+            returns trend
+        cycle : Bool (default=False)
+            return annual and semi-annual cycles
+        """
+        return generate_climato(self._obj.time,coeffs,**kwargs)
+
+    
     def filter(self, filter_name='lanczos',q=3, **kwargs):
         """Apply a specified filter on all the time-dependent datarray
         Boundaries are handled by operating a mirror operation on the residual data after removing a q-order polyfit from the data

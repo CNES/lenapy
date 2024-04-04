@@ -120,19 +120,21 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
 
     # Resolution du moindre carré
     (coeffs,residus,rank,eig)=da.linalg.lstsq(X.sel(time=time_period).T.data,Y.sel(time=time_period).data)
-    coeffs=xr.DataArray(coeffs,(X.deg,),attrs=dict(time_ref=tref))
     
-    if return_coeffs:
-        return coeffs
-    
-    # Sélection des composantes de la climato à retourner
-    composants=np.where([mean,trend,cycle,cycle,cycle,cycle])[0]
     
     if (dims_stack==[]):
-        res=(xr.DataArray(coeffs,(X.deg,))*X)
+        coeffs=xr.DataArray(coeffs,(X.deg,),attrs=dict(time_ref=tref))
     else:
-        res=(xr.DataArray(coeffs,(X.deg,Y.pos))*X).unstack('pos')
-    
+        coeffs=xr.DataArray(coeffs,(X.deg,Y.pos),attrs=dict(time_ref=tref)).unstack('pos')
+
+    res=coeffs*X
+
+    if return_coeffs:
+        return coeffs
+        
+    # Sélection des composantes de la climato à retourner
+    composants=np.where([mean,trend,cycle,cycle,cycle,cycle])[0]
+
     return (data-res.sum('deg'))*signal+res.isel(deg=composants).sum('deg')
 
 def generate_climato(time, coeffs, mean=True, trend=False, cycle=True):
@@ -145,7 +147,7 @@ def generate_climato(time, coeffs, mean=True, trend=False, cycle=True):
     # Sélection des composantes de la climato à retourner
     composants=np.where([mean,trend,cycle,cycle,cycle,cycle])[0]
 
-    return (xr.DataArray(coeffs,(X.deg,))*X).isel(deg=composants).sum('deg')
+    return (coeffs*X).isel(deg=composants).sum('deg')
 
    
 
