@@ -3,7 +3,7 @@ import numpy as np
 from scipy import interpolate
 import xarray as xr
 import matplotlib.ticker as ticker
-from lenapy.utils.harmo import l_factor_gravi
+from lenapy.utils.harmo import l_factor_conv
 
 
 def plot_timeseries_uncertainty(xgeo_data,
@@ -330,7 +330,7 @@ def plot_power_hs(ds, unit=None, lmin=0, lmax=None, mmin=0, mmax=None, ax=None, 
     unit : str
         'mewh', 'geoid', 'microGal', 'bar', 'mvcu', or 'norm'
         Unit of the spatial data to use for the conversion. Default is 'mewh' for meters of Equivalent Water Height
-        See utils.harmo.l_factor_gravi() doc for details on the units
+        See utils.harmo.l_factor_conv() doc for details on the units
     lmin : int, optional
         Minimal degree of the spherical harmonics coefficient to plot, default is 1
     lmax : int, optional
@@ -363,7 +363,7 @@ def plot_power_hs(ds, unit=None, lmin=0, lmax=None, mmin=0, mmax=None, ax=None, 
     if ax is None:
         ax = plt.gca()
 
-    l_factor = l_factor_gravi(ds.l.values, unit=unit)
+    l_factor = l_factor_conv(ds.l.values, unit=unit)
     deg_amp = l_factor * np.sqrt((ds.clm ** 2).sel(m=slice(mmin, mmax)).sum('m') +
                                  (ds.slm ** 2).sel(m=slice(mmin, mmax)).sum('m'))
 

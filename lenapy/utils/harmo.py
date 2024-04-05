@@ -24,7 +24,7 @@ def sh_to_grid(data, unit='mewh', love_file=None,
     unit : str, optional
         'mewh', 'geoid', 'microGal', 'bar', 'mvcu', or 'norm'
         Unit of the spatial data used in the transformation. Default is 'mewh' for meters of Equivalent Water Height
-        See utils.harmo.l_factor_gravi() doc for details on the units
+        See utils.harmo.l_factor_conv() doc for details on the units
     love_file : str / path, optional
         File with Love numbers that can be read by read_love_numbers() function.
         Default Love numbers used are from Gegout97.
@@ -194,9 +194,9 @@ def sh_to_grid(data, unit='mewh', love_file=None,
             raise AssertionError('Given argument "plm" latitude does not correspond to the wanted latitude ', latitude)
 
     # scale factor for each degree
-    lfactor = l_factor_gravi(used_l, unit=unit, include_elastic=include_elastic, ellispoidal_earth=ellispoidal_earth,
-                             geocentric_colat=geocentric_colat, love_file=love_file,
-                             a_earth=a_earth, f_earth=f_earth, gm_earth=gm_earth, rho_earth=rho_earth)
+    lfactor = l_factor_conv(used_l, unit=unit, include_elastic=include_elastic, ellispoidal_earth=ellispoidal_earth,
+                            geocentric_colat=geocentric_colat, love_file=love_file,
+                            a_earth=a_earth, f_earth=f_earth, gm_earth=gm_earth, rho_earth=rho_earth)
 
     # convolve unit over degree
     plm_lfactor = plm.sel(l=used_l, m=used_m) * lfactor[:, np.newaxis, np.newaxis]
@@ -241,7 +241,7 @@ def grid_to_sh(grid, lmax, unit='mewh', love_file=None,
     unit : str, optional
         'mewh', 'geoid', 'microGal', 'bar', 'mvcu', or 'norm'
         Unit of the spatial data used in the transformation. Default is 'mewh' for meters of Equivalent Water Height
-        See constants.l_factor_gravi() doc for details on the units
+        See constants.l_factor_conv() doc for details on the units
     love_file : str / path, optional
         File with Love numbers that can be read by read_love_numbers() function.
         Default Love numbers used are from Gegout97.
@@ -337,9 +337,9 @@ def grid_to_sh(grid, lmax, unit='mewh', love_file=None,
     int_fact['longitude'].attrs = dict(standard_name='longitude')
 
     # scale factor for each degree
-    lfactor = l_factor_gravi(used_l, unit=unit, include_elastic=include_elastic, ellispoidal_earth=ellispoidal_earth,
-                             geocentric_colat=geocentric_colat, love_file=love_file,
-                             a_earth=a_earth, f_earth=f_earth, gm_earth=gm_earth, rho_earth=rho_earth)
+    lfactor = l_factor_conv(used_l, unit=unit, include_elastic=include_elastic, ellispoidal_earth=ellispoidal_earth,
+                            geocentric_colat=geocentric_colat, love_file=love_file,
+                            a_earth=a_earth, f_earth=f_earth, gm_earth=gm_earth, rho_earth=rho_earth)
 
     # -- prepare variables for the computation of SH
     # Computing plm for converting to spatial domain
@@ -587,8 +587,8 @@ def mid_month_grace_estimate(begin_time, end_time):
     return tmp_begin + (tmp_end - tmp_begin) / 2
 
 
-def l_factor_gravi(l, unit='mewh', include_elastic=True, ellispoidal_earth=False, geocentric_colat=None, love_file=None,
-                   a_earth=A_EARTH_GRS80, f_earth=F_EARTH_GRS80, gm_earth=LNPY_GM_EARTH, rho_earth=LNPY_RHO_EARTH):
+def l_factor_conv(l, unit='mewh', include_elastic=True, ellispoidal_earth=False, geocentric_colat=None, love_file=None,
+                  a_earth=A_EARTH_GRS80, f_earth=F_EARTH_GRS80, gm_earth=LNPY_GM_EARTH, rho_earth=LNPY_RHO_EARTH):
     """
     Compute scale factor for a transformation between spherical harmonics and grid data.
     Spatial data over the grid are associated with a specific unit.
@@ -652,7 +652,7 @@ def l_factor_gravi(l, unit='mewh', include_elastic=True, ellispoidal_earth=False
         # test if geocentric_colat is set
         if geocentric_colat is None:
             raise ValueError("For ellipsoidal Earth, you need to set "
-                             "the parameter 'geocentric_colat' in l_factor_gravi function")
+                             "the parameter 'geocentric_colat' in l_factor_conv function")
 
         # compute variable for ellispoidal_earth
         # e = sqrt(2f - f**2)
@@ -702,7 +702,7 @@ def l_factor_gravi(l, unit='mewh', include_elastic=True, ellispoidal_earth=False
     # Gt, Gigatonnes
 
     else:
-        raise ValueError("Invalid 'unit' parameter value in l_factor_gravi function, valid values are: "
+        raise ValueError("Invalid 'unit' parameter value in l_factor_conv function, valid values are: "
                          "(norm, mewh, geoid, microGal, bar, mvcu)")
 
     return l_factor
@@ -717,7 +717,7 @@ def read_love_numbers(love_file=None):
     if love_file is None:
         current_file = inspect.getframeinfo(inspect.currentframe()).filename
         folderpath = pathlib.Path(current_file).absolute().parent.parent
-        love_file = folderpath.joinpath('data', 'LoveNumbers_Gegout97.txt')
+        love_file = folderpath.joinpath('resources', 'LoveNumbers_Gegout97.txt')
 
     return np.genfromtxt(love_file)
 
