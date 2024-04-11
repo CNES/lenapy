@@ -35,23 +35,20 @@ def change_reference(ds, new_radius=A_EARTH_GRS80, new_earth_gravity_constant=LN
         Updated dataset with the new constants.
     """
     try:
-        if old_radius is None:
-            old_radius = ds.attrs['radius']
-        if old_earth_gravity_constant is None:
-            old_earth_gravity_constant = ds.attrs['earth_gravity_constant']
+        old_radius = ds.attrs['radius'] if old_radius is None else old_radius
+        old_earth_gravity_constant = ds.attrs['earth_gravity_constant'] if old_earth_gravity_constant is None \
+            else old_earth_gravity_constant
+
     except KeyError:
         raise KeyError("If you provide no information about the current reference constants of your ds dataset using "
                        "'old_radius' and 'old_earth_gravity_constant' parameters, those information need to be "
                        "contained in ds.attrs dict as ds.attrs['radius'] and ds.attrs['earth_gravity_constant'].")
 
-    gravity_constant_ratio = old_earth_gravity_constant/new_earth_gravity_constant
-    update_factor = gravity_constant_ratio * (old_radius/new_radius)**ds.l
+    gravity_constant_ratio = old_earth_gravity_constant / new_earth_gravity_constant
+    update_factor = gravity_constant_ratio * (old_radius / new_radius) ** ds.l
 
-    if apply:
-        ds_out = ds
-    else:
-        # Copy the dataset to avoid modifying the input dataset
-        ds_out = ds.copy(deep=True)
+    # if apply = False : Copy the dataset to avoid modifying the input dataset
+    ds_out = ds if apply else ds.copy(deep=True)
 
     # Update the clm and slm values
     ds_out['clm'] *= update_factor
@@ -64,7 +61,7 @@ def change_reference(ds, new_radius=A_EARTH_GRS80, new_earth_gravity_constant=LN
     return ds_out
 
 
-def change_tide_system(ds, new_tide, old_tide=None, k20=None, copy=False):
+def change_tide_system(ds, new_tide, old_tide=None, k20=None, apply=False):
     """
     Apply a C20 offset to the dataset to change of tide system.
     Follows IERS2010 convention [IERS2010]_ to convert between tide system ('tide_free', 'zero_tide', 'mean_tide').
@@ -81,9 +78,8 @@ def change_tide_system(ds, new_tide, old_tide=None, k20=None, copy=False):
         The function can handle the tide information given by the
     k20 : float, optional
         k20 Earth tide external potential Love numbers, default is one recommend in [IERS2010]_.
-    copy : bool, optional
-       Boolean to choose if the dataset is deep copied or if it is also updated in place.
-       Default is False for no deep copy.
+    apply : bool, optional
+        If True, apply the update to the current dataset without making a deep copy. Default is False.
 
     Returns
     -------
@@ -132,13 +128,10 @@ def change_tide_system(ds, new_tide, old_tide=None, k20=None, copy=False):
     else:
         conv = 0
 
-    if copy:
-        # create a deep copy to not change the dataset in place
-        ds_out = ds.copy(deep=True)
-    else:
-        ds_out = ds
+    # if apply = False : Copy the dataset to avoid modifying the input dataset
+    ds_out = ds if apply else ds.copy(deep=True)
 
-    ds_out.clm[2, 0] += conv*A0*H0
+    ds_out.clm[2, 0] += conv * A0 * H0
     ds_out.attrs['tide_system'] = new_tide
 
     # -- return ds
@@ -175,10 +168,10 @@ def gauss_weights(radius, lmax, a_earth=A_EARTH_GRS80, cutoff=1e-10):
     gaussian_weights = np.zeros((lmax + 1))
 
     # Computation using recursion from [Jekeli1981]_ p.17
-    a = np.log(2)/(1 - np.cos(radius/a_earth))
+    a = np.log(2) / (1 - np.cos(radius / a_earth))
     # Initialize weight for degree 0 and 1
     gaussian_weights[0] = 1
-    gaussian_weights[1] = gaussian_weights[0]*((1 + np.exp(-2*a))/(1 - np.exp(-2*a)) - 1/a)
+    gaussian_weights[1] = gaussian_weights[0] * ((1 + np.exp(-2 * a)) / (1 - np.exp(-2 * a)) - 1 / a)
 
     for l in range(2, lmax + 1):
         # recursion with the two previous terms

@@ -100,35 +100,24 @@ def sh_to_grid(data, unit='mewh', love_file=None,
 
     # -- define constants
     if a_earth is None:
-        if 'radius' in data.attrs:
-            a_earth = float(data.attrs['radius'])
-        else:
-            a_earth = A_EARTH_GRS80
+        a_earth = float(data.attrs['radius']) if 'radius' in data.attrs \
+                  else A_EARTH_GRS80
     if gm_earth is None:
-        if 'earth_gravity_constant' in data.attrs:
-            gm_earth = float(data.attrs['earth_gravity_constant'])
-        else:
-            gm_earth = LNPY_GM_EARTH
+        gm_earth = float(data.attrs['earth_gravity_constant']) if 'earth_gravity_constant' in data.attrs \
+                   else LNPY_GM_EARTH
 
     # -- set degree and order default parameters
     # it prioritizes used_l and used_m if given over lmin, lmax, mmin and mmax
-    if lmax is None:
-        lmax = int(data.l.max())
-    if mmax is None:
-        mmax = int(min(lmax, data.m.max()))
-    if lmin is None:
-        lmin = int(data.l.min())
-    if mmin is None:
-        mmin = int(data.m.min())
-    if used_l is None:
-        used_l = np.arange(lmin, lmax + 1)
-    if used_m is None:
-        used_m = np.arange(mmin, mmax + 1)
+    lmax = int(data.l.max()) if lmax is None else lmax
+    mmax = int(min(lmax, data.m.max())) if mmax is None else mmax
+    lmin = int(data.l.min()) if lmin is None else lmin
+    mmin = int(data.m.min()) if mmin is None else mmin
+    used_l = np.arange(lmin, lmax + 1) if used_l is None else used_l
+    used_m = np.arange(mmin, mmax + 1) if used_m is None else used_m
 
     # -- set grid output latitude and longitude
     # Verify input variable to create bounds of grid information
-    if bounds is None:
-        bounds = [lonmin, lonmax, latmin, latmax]
+    bounds = [lonmin, lonmax, latmin, latmax] if bounds is None else bounds
 
     # verify integrity of the argument "bounds" if given
     try:
@@ -291,24 +280,17 @@ def grid_to_sh(grid, lmax, unit='mewh', love_file=None,
     """
     # -- define constants
     if a_earth is None:
-        if 'radius' in grid.attrs:
-            a_earth = float(grid.attrs['radius'])
-        else:
-            a_earth = A_EARTH_GRS80
-    if gm_earth is None:
-        if 'earth_gravity_constant' in grid.attrs:
-            gm_earth = float(grid.attrs['earth_gravity_constant'])
-        else:
-            gm_earth = LNPY_GM_EARTH
+        a_earth = float(grid.attrs['radius']) if 'radius' in grid.attrs \
+                  else A_EARTH_GRS80
+        if gm_earth is None:
+            gm_earth = float(grid.attrs['earth_gravity_constant']) if 'earth_gravity_constant' in grid.attrs \
+                       else LNPY_GM_EARTH
 
     # -- set degree and order default parameters
     # it prioritizes used_l and used_m if given over lmin, lmax, mmin and mmax
-    if mmax is None:
-        mmax = lmax
-    if used_l is None:
-        used_l = np.arange(lmin, lmax + 1)
-    if used_m is None:
-        used_m = np.arange(mmin, mmax + 1)
+    mmax = lmax if mmax is None else mmax
+    used_l = np.arange(lmin, lmax + 1) if used_l is None else used_l
+    used_m = np.arange(mmin, mmax + 1) if used_m is None else used_m
 
     # -- create integration factor over the grid
     # longitude degree spacing of each cell in radians
@@ -438,8 +420,7 @@ def compute_plm(lmax, z, mmax=None, normalization='4pi'):
     z = z.astype(np.float128)
 
     # if default mmax, set mmax to be maximal degree
-    if mmax is None:
-        mmax = lmax
+    mmax = lmax if mmax is None else mmax
 
     # scale factor based on Holmes2002
     scalef = 1e-280

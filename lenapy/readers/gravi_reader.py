@@ -256,14 +256,11 @@ class ReadGFC(BackendEntrypoint):
             legend_before_end_header = line
 
         # case for COSTG header where 'modelname' is created as 'product_name'
-        if 'product_name' in header:
-            header['modelname'] = header['product_name']
+        header['modelname'] = header['product_name'] if 'product_name' in header else header['modelname']
 
         # default norm is fully_normalized
-        if 'norm' not in header:
-            header['norm'] = 'fully_normalized'
-        if 'tide_system' not in header:
-            header['tide_system'] = 'missing'
+        header['norm'] = 'fully_normalized' if 'norm' not in header else header['norm']
+        header['tide_system'] = 'missing' if 'tide_system' not in header else header['tide_system']
 
         # test for mandatory keywords (http://icgem.gfz-potsdam.de/ICGEM-Format-2023.pdf)
         if not all(key in header for key in ['modelname', 'earth_gravity_constant', 'radius', 'max_degree', 'errors']):
