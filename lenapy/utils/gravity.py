@@ -75,7 +75,7 @@ def change_tide_system(ds, new_tide, old_tide=None, k20=None, apply=False):
         output tidal system, either 'tide_free', 'zero_tide' or 'mean_tide'.
     old_tide : str, optional
         input tidal system, if not given use ds.attrs['tide_system'] information.
-        The function can handle the tide information given by the
+        The function can handle the tide information given by the dataset
     k20 : float, optional
         k20 Earth tide external potential Love numbers, default is one recommend in [IERS2010]_.
     apply : bool, optional
@@ -136,6 +136,98 @@ def change_tide_system(ds, new_tide, old_tide=None, k20=None, apply=False):
 
     # -- return ds
     return ds_out
+
+
+def change_love_reference_frame(ds, new_frame, old_frame, apply=False):
+    """
+    Modify degree 1 love numbers of the dataset to change of reference frame.
+    The input dataset need to contain 'hl', 'll', 'kl' variables that are potential love numbers with a degree dimension
+    named 'l' with at least coordinate l=1.
+
+    Follows [Blewitt2003]_ to convert between reference frames.
+    Reference frames can be :
+        - 'CM' for Center of Mass of the Earth System
+        - 'CE' for Center of Mass of the Solid Earth
+        - 'CF' for Center of Surface Figure
+        - 'CL' for Center of Surface Lateral Figure
+        - 'CH' for Center of Surface Height Figure
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        Dataset with 'hl', 'll', 'kl' variables and 'l' dimension.
+    new_frame : str
+        Reference frame of the output dataset. Either 'CM', 'CE', 'CF', 'CL' or 'CH'
+    old_frame : str
+        Reference frame of the input dataset. Either 'CM', 'CE', 'CF', 'CL' or 'CH'
+    apply : bool
+        If True, apply the update to the current dataset without making a deep copy. Default is False.
+
+    Returns
+    -------
+    ds_out : xr.Dataset
+        Dataset with the updated degree 1 love numbers.
+        Warning, the dataset is also updated in place if copy=False (default)
+
+    References
+    ----------
+    .. [Blewitt2003] G. Blewitt, "Self-consistency in reference frames, geocenter definition,
+        and surface loading of the solid Earth",
+        *Journal of Geophysical Research: Solid Earth*, 108, 2103, (2003).
+        doi: 10.1029/2002JB002082 <https://doi.org/10.1029/2002JB002082>`_
+    """
+    # if apply = False : Copy the dataset to avoid modifying the input dataset
+    ds_love = ds if apply else ds.copy(deep=True)
+
+    # compute k1, h1 and l1 into CE
+    if old_frame == 'CE':
+        k1 = ds_love.kl.sel(l=1).values
+        h1 = ds_love.hl.sel(l=1).values
+        l1 = ds_love.ll.sel(l=1).values
+    elif old_frame == 'CM':
+        k1 = ds_love.kl.sel(l=1).values + 1
+        h1 = ds_love.hl.sel(l=1).values + 1
+        l1 = ds_love.ll.sel(l=1).values + 1
+    elif old_frame == 'CF':
+        k1 = 0
+        h1 = ds_love.hl.sel(l=1).values + ds_love.kl.sel(l=1).values
+        l1 = -ds_love.hl.sel(l=1).values/2 - ds_love.kl.sel(l=1).values
+    elif old_frame == 'CL':
+        k1 = 0
+        h1 = ds_love.hl.sel(l=1).values - ds_love.kl.sel(l=1).values
+        l1 = -ds_love.kl.sel(l=1).values
+    elif old_frame == 'CH':
+        k1 = 0
+        h1 = -ds_love.kl.sel(l=1).values
+        l1 = ds_love.ll.sel(l=1).values - ds_love.kl.sel(l=1).values
+    else:
+        raise ValueError
+
+    # compute new_frame degree 1 love numbers from CE
+    if new_frame == 'CE':
+        ds_love.kl.loc[{'l': 1}] = k1
+        ds_love.hl.loc[{'l': 1}] = h1
+        ds_love.ll.loc[{'l': 1}] = l1
+    elif new_frame == 'CM':
+        ds_love.kl.loc[{'l': 1}] = k1 + 1
+        ds_love.hl.loc[{'l': 1}] = h1 + 1
+        ds_love.ll.loc[{'l': 1}] = l1 + 1
+    elif new_frame == 'CF':
+        ds_love.kl.loc[{'l': 1}] = -h1/3 - 2*l1/3
+        ds_love.hl.loc[{'l': 1}] = 2*(h1 - l1)/3
+        ds_love.ll.loc[{'l': 1}] = (l1 - h1)/3
+    elif new_frame == 'CL':
+        ds_love.kl.loc[{'l': 1}] = -l1
+        ds_love.hl.loc[{'l': 1}] = h1 - l1
+        ds_love.ll.loc[{'l': 1}] = 0
+    elif new_frame == 'CH':
+        ds_love.kl.loc[{'l': 1}] = -h1
+        ds_love.hl.loc[{'l': 1}] = 0
+        ds_love.ll.loc[{'l': 1}] = l1 - h1
+    else:
+        raise ValueError
+
+    return ds_love
 
 
 def gauss_weights(radius, lmax, a_earth=A_EARTH_GRS80, cutoff=1e-10):

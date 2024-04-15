@@ -122,6 +122,15 @@ class HarmoSet:
         return self.ds
 
     def to_grid(self, **kwargs):
+        """
+        For details the function, see :func:`sh_to_grid` documentation.
+
+        Parameters
+        ----------
+        **kwargs :
+            Supplementary parameters used by the function sh_to_grid for conversion between Spherical Harmonics and grid
+            (see :func:`sh_to_grid` documentation for more details)
+        """
         return sh_to_grid(self._obj, **kwargs)
 
     def change_reference(self, new_radius, new_earth_gravity_constant, old_radius=None, old_earth_gravity_constant=None,
@@ -139,6 +148,15 @@ class HarmoSet:
         return plot_power_hs(self._obj, **kwargs)
 
     def to_gfc(self, filename, **kwargs):
+        """
+        For details the function, see :func:`dataset_to_gfc` documentation.
+
+        Parameters
+        ----------
+        **kwargs :
+            Supplementary parameters used by the function dataset_to_gfc for the writing
+            (see :func:`dataset_to_gfc` documentation for more details)
+        """
         dataset_to_gfc(self._obj, filename, **kwargs)
 
 
@@ -163,4 +181,15 @@ class HarmoArray:
         self._obj = xarray_obj
 
     def to_sh(self, lmax, **kwargs):
+        """
+        For details the function, see :func:`grid_to_sh` documentation.
+
+        Parameters
+        ----------
+        lmax : int
+            maximal degree of the SH coefficients to be computed.
+        **kwargs :
+            Supplementary parameters used by the function grid_to_sh for conversion between grid and Spherical Harmonics
+            (see :func:`grid_to_sh` documentation for more details)
+        """
         return grid_to_sh(self._obj, lmax, **kwargs)

@@ -220,11 +220,13 @@ class ReadGFC(BackendEntrypoint):
                 file = gzip.open(filename, 'rb')
             elif ext in ('.zip', '.ZIP'):
                 zip_file = zipfile.ZipFile(filename, 'r')
-                filenamezip = [file for file in zip_file.namelist() if file.endswith('.gfc')][0]
+                filenamezip = [file for file in zip_file.namelist()
+                               if file.endswith('.gfc') or file.endswith('.GFC')][0]
                 file = zip_file.open(filenamezip, 'r')
             elif ext == '.tar':
                 tar_file = tarfile.open(filename, 'r')
-                filenametar = [file for file in tar_file.getnames() if file.endswith('.gfc')][0]
+                filenametar = [file for file in tar_file.getnames()
+                               if file.endswith('.gfc') or file.endswith('.GFC')][0]
                 file = tar_file.extractfile(filenametar)
 
         else:
@@ -376,10 +378,12 @@ class ReadGFC(BackendEntrypoint):
                         or filename.endswith('.GFC.gz') or filename.endswith('.GFC.gzip'))
             elif ext in ('.zip', '.ZIP'):
                 with zipfile.ZipFile(filename, 'r') as zip_file:
-                    return any(file.endswith('.gfc') for file in zip_file.namelist())
+                    return (any(file.endswith('.gfc') for file in zip_file.namelist()) or
+                            any(file.endswith('.GFC') for file in zip_file.namelist()))
             elif ext == '.tar':
                 with tarfile.open(filename, 'r') as tar_file:
-                    return any(file.endswith('.gfc') for file in tar_file.getnames())
+                    return (any(file.endswith('.gfc') for file in tar_file.getnames()) or
+                            any(file.endswith('.GFC') for file in tar_file.getnames()))
 
         return False
 
