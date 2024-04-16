@@ -528,3 +528,6 @@ class GeoArray:
             surface = data.lngeo.surface_cell()
         """
         return reset_longitude(self._obj,origin)
+
+    def geomean(self):
+        return self.mean(['latitude','longitude'],weights='latitude')

@@ -116,7 +116,7 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
     if (dims_stack==[]):
         Y=data
     else:
-        Y=data.stack(pos=dims_stack).dropna('pos',thresh=6).chunk(time=-1,pos=1000)
+        Y=data.stack(pos=dims_stack).dropna('pos',thresh=6).chunk(time=-1,pos=10000)
 
     # Resolution du moindre carré
     (coeffs,residus,rank,eig)=da.linalg.lstsq(X.sel(time=time_period).T.data,Y.sel(time=time_period).data)
@@ -151,7 +151,7 @@ def generate_climato(time, coeffs, mean=True, trend=False, cycle=True):
 
    
 
-def trend(data,time_unit='s'):
+def trend(data,time_unit='1s'):
     return data.polyfit(dim='time',deg=1).polyfit_coefficients[0]*pd.to_timedelta(time_unit).asm8.astype('int')
 
 def detrend(data):

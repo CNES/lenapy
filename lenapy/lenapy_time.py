@@ -291,7 +291,7 @@ class TimeArray:
         """
         return diff_2pts(self._obj,dim,**kw)    
     
-    def trend(self,time_unit='s'):
+    def trend(self,time_unit='1s'):
         """
         Perform a linear regression on the data, and returns the slope coefficient
         """
