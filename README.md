@@ -44,4 +44,6 @@ You can now use all the functionnalities of lenapy by adding the right suffixe a
   ds = lenapy.utils.geo.rename_data(xr.tutorial.open_dataset('air_temperature'))
   ds.air.lngeo.mean(['latitude','longitude'],weights=['latitude']).lntime.climato().plot()
   ```
+  
+  
 
