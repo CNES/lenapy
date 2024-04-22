@@ -8,7 +8,7 @@ To install Lenapy, follow the steps :
 * Download lenapy code ::
 
     ```
-    git clone lenapy
+    git clone git@github.com:CNES/lenapy.git
     ```
 
 * Create a conda environment and activate it ::
