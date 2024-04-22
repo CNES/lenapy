@@ -1,7 +1,7 @@
 from setuptools import setup
 setup(name='lenapy',
-version='0.7.3',
-description='First release of new lenapy architecture',
+version='0.8',
+description='First release of lenapy on github',
 url='#',
 author='Sebastien Fourest & EMC2 team',
 author_email='sebastien.fourest@cnes.fr',
