@@ -207,16 +207,17 @@ class lenapyOceanProducts(BackendEntrypoint):
                    |-ArgoData_year_month.nc (ex: ArgoData_2020_01.nc)
             """
 
-            def set_time(file_basename):
+            def set_time(ds):
+                file_basename=os.path.basename(os.path.splitext(ds.encoding["source"])[0])
                 date=file_basename.split('_')
-                return np.datetime64('%s-%s-15'%(date[1],date[2]),'ns')
-
+                ts=np.datetime64('%s-%s-15'%(date[1],date[2]),'ns')
+                return ds.assign_coords(time=ts).expand_dims(dim='time')
 
             def year(f):
                 return f.split('_')[1]
 
             fics=filtered_list(glob(os.path.join(directory,'**','ArgoData*.nc')),year,ymin,ymax,filter)
-            data=xr.open_mfdataset(fics,engine='lenapyNetcdf',set_time=set_time,**open_dataset_kwargs)
+            data=xr.open_mfdataset(fics,engine='lenapyNetcdf',preprocess=set_time,**open_dataset_kwargs)
 
             return xr.Dataset({'temp':data.TEMP,
                                'psal':data.SALT
@@ -257,16 +258,18 @@ class lenapyOceanProducts(BackendEntrypoint):
                |-temp
                    |-CZ16_depth_range_data_year_yyyy_month_mm.year_month.nc (ex: CZ16_1_2000m_temperature_year_2020_month_01.nc)
             """     
-            def set_time(file_basename):
+            def set_time(ds):
+                file_basename=os.path.basename(os.path.splitext(ds.encoding["source"])[0])
                 date=file_basename.split('_')
-                return np.datetime64('%s-%s-15'%(date[-3],date[-1]),'ns')
+                ts=np.datetime64('%s-%s-15'%(date[-3],date[-1]),'ns')
+                return ds.assign_coords(time=ts).expand_dims(dim='time')
             
             def year(f):
                 return f.split('_')[-3]
 
             fics=filtered_list(glob(os.path.join(directory,'**','CZ16*.nc')),year,ymin,ymax,filter)
 
-            data=xr.open_mfdataset(fics,engine='lenapyNetcdf',set_time=set_time,**open_dataset_kwargs)
+            data=xr.open_mfdataset(fics,engine='lenapyNetcdf',preprocess=set_time,**open_dataset_kwargs)
 
             return xr.Dataset({'temp':data.temp,
                                 'SA':data.salinity
@@ -307,16 +310,18 @@ class lenapyOceanProducts(BackendEntrypoint):
                |-monthly
                    |-TS_timestamp_xxx.nc (ex: TS_202105_GLB.nc)
             """       
-            def set_time(file_basename):
+            def set_time(ds):
+                file_basename=os.path.basename(os.path.splitext(ds.encoding["source"])[0])
                 date=file_basename.split('_')[1]
-                return np.datetime64('%s-%s-15'%(date[0:4],date[4:6]),'ns')
+                ts=np.datetime64('%s-%s-15'%(date[0:4],date[4:6]),'ns')
+                return ds.assign_coords(time=ts).expand_dims(dim='time')
 
             def year(f):
                 return f.split('_')[1][0:4]
 
             fics=filtered_list(glob(os.path.join(directory,'**','*GLB.nc')),year,ymin,ymax,filter)
 
-            data=xr.open_mfdataset(fics,engine='lenapyNetcdf',set_time=set_time,**open_dataset_kwargs)
+            data=xr.open_mfdataset(fics,engine='lenapyNetcdf',preprocess=set_time,**open_dataset_kwargs)
 
             depth=-gsw.z_from_p(data.PRES,90)
             pressure=gsw.p_from_z(-depth,data.latitude)
