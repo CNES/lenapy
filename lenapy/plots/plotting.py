@@ -270,16 +270,12 @@ def plot_hs(ds, lmin=1, lmax=None, mmin=0, mmax=None, reverse=False,
         Axes with the plot.
     """
     # -- set default param values
-    if lmax is None:
-        lmax = ds.l.max().values
-    if mmax is None:
-        mmax = lmax
+    lmax = ds.l.max().values if lmax is None else lmax
+    mmax = lmax if mmax is None else mmax
 
-    if ax is None:
-        ax = plt.gca()
+    ax = plt.gca() if ax is None else ax
 
-    if cbar_kwargs is None:
-        cbar_kwargs = {'shrink': 0.7}
+    cbar_kwargs = {'shrink': 0.7} if cbar_kwargs is None else cbar_kwargs
     if cbar_ax is None:
         cbar_kwargs.setdefault("ax", ax)
     else:
@@ -319,7 +315,7 @@ def plot_hs(ds, lmin=1, lmax=None, mmin=0, mmax=None, reverse=False,
     return ax
 
 
-def plot_power_hs(ds, unit=None, lmin=0, lmax=None, mmin=0, mmax=None, ax=None, **kwargs):
+def plot_power_hs(ds, unit=None, lmin=0, lmax=None, mmin=0, mmax=None, unit_kwargs=None, ax=None, **kwargs):
     """
     Plot degree power spectrum of a spherical harmonic dataset, with only l and m dimensions
 
@@ -339,6 +335,8 @@ def plot_power_hs(ds, unit=None, lmin=0, lmax=None, mmin=0, mmax=None, ax=None, 
         Minimal order of the spherical harmonics coefficient to plot, default is 1
     mmax : int, optional
         Minimal order of the spherical harmonics coefficient to plot, default is ds.m.max()
+    unit_kwargs : dict | None, optional
+        Dictionary of keyword arguments to pass to the l_factor_conv() function.
     ax : plt.Axes, optional
         Axes on which to plot. By default, use the current axes.
     **kwargs : optional
@@ -355,15 +353,13 @@ def plot_power_hs(ds, unit=None, lmin=0, lmax=None, mmin=0, mmax=None, ax=None, 
     elif unit is None:
         unit = 'mewh'
 
-    if lmax is None:
-        lmax = ds.l.max().values
-    if mmax is None:
-        mmax = lmax
+    lmax = ds.l.max().values if lmax is None else lmax
+    mmax = lmax if mmax is None else mmax
 
-    if ax is None:
-        ax = plt.gca()
+    ax = plt.gca() if ax is None else ax
+    unit_kwargs = {} if unit_kwargs is None else unit_kwargs
 
-    l_factor = l_factor_conv(ds.l.values, unit=unit)
+    l_factor = l_factor_conv(ds.l.values, unit=unit, **unit_kwargs)[0]
     deg_amp = l_factor * np.sqrt((ds.clm ** 2).sel(m=slice(mmin, mmax)).sum('m') +
                                  (ds.slm ** 2).sel(m=slice(mmin, mmax)).sum('m'))
 

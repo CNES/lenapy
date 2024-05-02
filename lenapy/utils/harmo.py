@@ -8,7 +8,7 @@ import cf_xarray as cfxr
 from lenapy.constants import *
 
 
-def sh_to_grid(data, unit='mewh', radius=None,
+def sh_to_grid(data, unit='mewh',
                lmax=None, mmax=None, lmin=None, mmin=None, used_l=None, used_m=None,
                lonmin=-180, lonmax=180, latmin=-90, latmax=90, bounds=None,
                dlon=1, dlat=1, longitude=None, latitude=None, radians_in=False,
@@ -27,9 +27,6 @@ def sh_to_grid(data, unit='mewh', radius=None,
         'mewh', 'geoid', 'microGal', 'bar', 'mvcu', or 'norm'
         Unit of the spatial data used in the transformation. Default is 'mewh' for meters of Equivalent Water Height
         See utils.harmo.l_factor_conv() doc for details on the units
-    radius : float | np.array | None
-        ... default is R, peut etre un array de radius
-
     lmax : int, optional
         maximal degree of the SH coefficients to be used.
     mmax : int, optional
@@ -163,13 +160,13 @@ def sh_to_grid(data, unit='mewh', radius=None,
         else:
             plm = plm.transpose("l", "m", "latitude")
 
-        if plm.l.max() < data.l.max():
-            raise AssertionError('Given argument "plm" maximal degree is too small ', plm.l.max(), '<', data.l.max())
+        if plm.l.max() < lmax:
+            raise AssertionError('Given argument "plm" maximal degree is too small ', plm.l.max(), '<', lmax)
         if (plm.latitude.values != latitude).all():
             raise AssertionError('Given argument "plm" latitude does not correspond to the wanted latitude ', latitude)
 
     # scale factor for each degree
-    lfactor, cst = l_factor_conv(used_l, unit=unit, radius=radius, include_elastic=include_elastic,
+    lfactor, cst = l_factor_conv(used_l, unit=unit, include_elastic=include_elastic,
                                  ellispoidal_earth=ellispoidal_earth, geocentric_colat=geocentric_colat,
                                  attrs=data.attrs, **kwargs)
 
@@ -190,7 +187,7 @@ def sh_to_grid(data, unit='mewh', radius=None,
     xgrid = c_cos.dot(d_clm) + s_sin.dot(d_slm)
     xgrid = xgrid.transpose("latitude", "longitude", ...)
 
-    xgrid.attrs = {'units': unit, 'max_degree': int(data.l.max())}
+    xgrid.attrs = {'units': unit, 'max_degree': int(lmax)}
     if 'radius' in data.attrs:
         xgrid.attrs['radius'] = data.attrs['radius']
     if 'earth_gravity_constant' in data.attrs:
@@ -537,7 +534,7 @@ def mid_month_grace_estimate(begin_time, end_time):
     return tmp_begin + (tmp_end - tmp_begin) / 2
 
 
-def l_factor_conv(l, unit='mewh', radius=None, include_elastic=True, ellispoidal_earth=False, geocentric_colat=None,
+def l_factor_conv(l, unit='mewh', include_elastic=True, ellispoidal_earth=False, geocentric_colat=None,
                   ds_love=None, a_earth=None, gm_earth=None, f_earth=F_EARTH_GRS80, rho_earth=LNPY_RHO_EARTH,
                   attrs=None):
     """
@@ -556,8 +553,6 @@ def l_factor_conv(l, unit='mewh', radius=None, include_elastic=True, ellispoidal
         'geoid' represents millimeters geoid height, 'microGal' represents microGal gravity perturbations,
         'pascal' represents equivalent surface pressure in pascal and
         'mvcu' represents meters viscoelastic crustal uplift
-    radius :
-        ...
     include_elastic : bool, optional
         If True, the Earth behavior is elastic.
     ellispoidal_earth : bool, optional
@@ -610,7 +605,7 @@ def l_factor_conv(l, unit='mewh', radius=None, include_elastic=True, ellispoidal
         if ds_love is None:
             current_file = inspect.getframeinfo(inspect.currentframe()).filename
             folderpath = pathlib.Path(current_file).absolute().parent.parent
-            default_love_file = folderpath.joinpath('data', 'LoveNumbers_Gegout97.txt')
+            default_love_file = folderpath.joinpath('resources', 'LoveNumbers_Gegout97.txt')
             ds_love = xr.Dataset.from_dataframe(pd.read_csv(default_love_file, names=['kl']))
             ds_love = ds_love.rename({'index': 'l'})
 
@@ -677,6 +672,18 @@ def l_factor_conv(l, unit='mewh', radius=None, include_elastic=True, ellispoidal
         l_factor = a_earth * ds_love.hl / fraction
         if ellispoidal_earth:
             l_factor = l_factor * a_div_r_lat**(l - 1)
+
+    elif unit == 'mag_radial_i':
+        # internal radial magnetic field in nT
+        l_factor = l + 1
+        if ellispoidal_earth:
+            pass
+
+    elif unit == 'mag_radial_e':
+        # external radial magnetic field in nT
+        l_factor = -l
+        if ellispoidal_earth:
+            pass
 
     # Gt, Gigatonnes ?
 

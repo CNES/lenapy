@@ -153,6 +153,8 @@ class HarmoSet:
 
         Parameters
         ----------
+        filename : str | os.PathLike
+            The file path where to save the dataset.
         **kwargs :
             Supplementary parameters used by the function dataset_to_gfc for the writing
             (see :func:`dataset_to_gfc` documentation for more details)

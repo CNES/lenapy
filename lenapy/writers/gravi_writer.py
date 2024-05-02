@@ -5,7 +5,7 @@ from lenapy.utils.harmo import assert_sh
 def dataset_to_gfc(ds, filename, overwrite=True, include_errors=False, fmt=' .12e', fast_save=False, **kwargs):
     """
     Save a xr.Dataset object to a .gfc ascii file according to the ICGEM format specifications:
-    http://icgem.gfz-potsdam.de/ICGEM-Format-2023.pdf
+    https://icgem.gfz-potsdam.de/docs/ICGEM-Format-2023.pdf
     If the dataset contains additional dimensions beyond 'l' and 'm',
     raise error if the size of these dimensions exceed 1.
     The saving time for degree maximum of 60 is around 10 seconds. If the given l and m dimensions are continuous

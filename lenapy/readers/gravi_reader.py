@@ -47,7 +47,7 @@ def read_tn14(filename, rmmean=False):
         ds with C20 and C30
     """
     # Based on TN14 header (file from 13 Jul 2023)
-    infos_tn14 = {'modelname': 'TN-14', 'earth_gravity_constant': 0.3986004415e6, 'radius': 6378136.3,
+    infos_tn14 = {'modelname': 'TN-14', 'earth_gravity_constant': 0.3986004415e15, 'radius': 6378136.3,
                   'norm': 'fully_normalized', 'tide_system': 'zero_tide'}
 
     file = open(filename, 'r')
@@ -104,7 +104,7 @@ def read_tn14(filename, rmmean=False):
     return ds
 
 
-def read_tn13(filename, rmmean=False):
+def read_tn13(filename):
     """
     Read TN13 data to produce dataset with C10, C11 and S11 information.
     Deal with date the same way as others GRACE products
@@ -114,8 +114,6 @@ def read_tn13(filename, rmmean=False):
     ----------
     filename : str | os.PathLike[Any]
         path to the TN13 file
-    rmmean : bool, optional
-        Boolean to use information without mean or with ir, default is False for with mean.
 
     Returns
     -------
@@ -149,19 +147,15 @@ def read_tn13(filename, rmmean=False):
     clm[0, 1] = data['Clm'][np.where(data['m'] == 1)]
     slm[0, 1] = data['Slm'][np.where(data['m'] == 1)]
 
-    # choose between data with mean value or without
-    if rmmean:
-        clm[0, 0] -= np.mean(clm[0, 0])
-        clm[0, 0] -= np.mean(clm[0, 1])
-        slm[0, 0] -= np.mean(slm[0, 1])
-
     eclm[0, 0] = data['eClm'][np.where(data['m'] == 0)]
     eclm[0, 1] = data['eClm'][np.where(data['m'] == 1)]
     eslm[0, 1] = data['eSlm'][np.where(data['m'] == 1)]
 
     # date converted to datetime from float YYYYMMDD
-    begin_time = [datetime.datetime(int(beg//10000), int(beg//100 - (beg//10000)*100), int(beg % 100)) for beg in data['begin_date'][::2]]
-    end_time = [datetime.datetime(int(end//10000), int(end//100 - (end//10000)*100), int(end % 100)) for end in data['end_date'][::2]]
+    begin_time = [datetime.datetime(int(beg//10000), int(beg//100 - (beg//10000)*100), int(beg % 100))
+                  for beg in data['begin_date'][::2]]
+    end_time = [datetime.datetime(int(end//10000), int(end//100 - (end//10000)*100), int(end % 100))
+                for end in data['end_date'][::2]]
 
     exact_time = [begin + (end - begin) / 2 for begin, end in zip(begin_time, end_time)]
 
@@ -187,7 +181,7 @@ class ReadGFC(BackendEntrypoint):
     def open_dataset(self, filename, drop_variables=None, no_date=False):
         """
         Read a .gfc ascii file (or compressed) and format it as a xr.Dataset.
-        The file need to follow ICGEM format: http://icgem.gfz-potsdam.de/ICGEM-Format-2023.pdf
+        The file need to follow ICGEM format: https://icgem.gfz-potsdam.de/docs/ICGEM-Format-2023.pdf
 
         The header information are stored in ds.attrs. The dataset contains clm and slm array
         with errors information in eclm and eslm if possible.
@@ -264,7 +258,7 @@ class ReadGFC(BackendEntrypoint):
         header['norm'] = 'fully_normalized' if 'norm' not in header else header['norm']
         header['tide_system'] = 'missing' if 'tide_system' not in header else header['tide_system']
 
-        # test for mandatory keywords (http://icgem.gfz-potsdam.de/ICGEM-Format-2023.pdf)
+        # test for mandatory keywords (https://icgem.gfz-potsdam.de/docs/ICGEM-Format-2023.pdf)
         if not all(key in header for key in ['modelname', 'earth_gravity_constant', 'radius', 'max_degree', 'errors']):
             raise ValueError("File header does not contains mandatory keywords"
                              " (https://icgem.gfz-potsdam.de/docs/ICGEM-Format-2023.pdf)")

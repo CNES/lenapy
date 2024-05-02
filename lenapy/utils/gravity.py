@@ -209,9 +209,9 @@ def change_love_reference_frame(ds, new_frame, old_frame, apply=False):
         ds_love.hl.loc[{'l': 1}] = h1
         ds_love.ll.loc[{'l': 1}] = l1
     elif new_frame == 'CM':
-        ds_love.kl.loc[{'l': 1}] = k1 + 1
-        ds_love.hl.loc[{'l': 1}] = h1 + 1
-        ds_love.ll.loc[{'l': 1}] = l1 + 1
+        ds_love.kl.loc[{'l': 1}] = k1 - 1
+        ds_love.hl.loc[{'l': 1}] = h1 - 1
+        ds_love.ll.loc[{'l': 1}] = l1 - 1
     elif new_frame == 'CF':
         ds_love.kl.loc[{'l': 1}] = -h1/3 - 2*l1/3
         ds_love.hl.loc[{'l': 1}] = 2*(h1 - l1)/3
