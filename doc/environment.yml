@@ -3,4 +3,5 @@ channels:
   - conda-forge
   - defaults
 dependencies:
+  - python=3.11
   - esmpy>=8.4.0
