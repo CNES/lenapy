@@ -1,0 +1,6 @@
+name: lenapy
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - esmpy>=8.4.0
