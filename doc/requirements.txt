@@ -1,0 +1,4 @@
+# Defining the exact version will make sure things don't break
+sphinx_rtd_theme
+sphinx-mdinclude
+nbsphinx          
