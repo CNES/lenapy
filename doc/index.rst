@@ -17,7 +17,7 @@ This library is based on the principle of class extension, i.e. functions can be
 Reading interfaces are implemented, enabling netcdf files to be opened with a compatible formalism from the **lenapy** library.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 4
    :caption: Contents:
    
    changelog
