@@ -10,7 +10,7 @@ Accessor modules
     lenapy_geo
     lenapy_time
     lenapy_ocean
-
+    lenapy_harmo
 """
 
 import warnings

@@ -238,7 +238,7 @@ class TaylorDiagram(object):
 def plot_hs(ds, lmin=1, lmax=None, mmin=0, mmax=None, reverse=False,
             ax=None, cbar_ax=None, cbar_kwargs=None, **kwargs):
     """
-    Plot spherical harmonic dataset, with only l and m dimensions, into pyramidal plot
+    Plot time series of spherical harmonic dataset, with only l and m dimensions, into pyramidal plot
 
     Parameters
     ----------
@@ -324,7 +324,7 @@ def plot_power_hs(ds, unit=None, lmin=0, lmax=None, mmin=0, mmax=None, unit_kwar
     ds : xr.Dataset
         ds with only l and m dimensions to plot
     unit : str
-        'mewh', 'geoid', 'microGal', 'bar', 'mvcu', or 'norm'
+        'mewh', 'mmgeoid', 'microGal', 'bar', 'mvcu', or 'norm'
         Unit of the spatial data to use for the conversion. Default is 'mewh' for meters of Equivalent Water Height
         See utils.harmo.l_factor_conv() doc for details on the units
     lmin : int, optional

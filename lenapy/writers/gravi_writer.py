@@ -1,10 +1,14 @@
+"""
+The gravi_writer.py provides writer functions to save Spherical Harmonics dataset in text file.
+"""
+
 import os
 from lenapy.utils.harmo import assert_sh
 
 
 def dataset_to_gfc(ds, filename, overwrite=True, include_errors=False, fmt=' .12e', fast_save=False, **kwargs):
     """
-    Save a xr.Dataset object to a .gfc ascii file according to the ICGEM format specifications:
+    Save a Spherical Harmonics xr.Dataset to a .gfc ASCII file according to the ICGEM format specifications:
     https://icgem.gfz-potsdam.de/docs/ICGEM-Format-2023.pdf
     If the dataset contains additional dimensions beyond 'l' and 'm',
     raise error if the size of these dimensions exceed 1.
@@ -24,9 +28,10 @@ def dataset_to_gfc(ds, filename, overwrite=True, include_errors=False, fmt=' .12
     fmt : str, optional
         The format specifier for clm, slm and errors values to save. Default is ' .12e'.
     fast_save : bool, optional
-        If True, consider that l and m dimensions are continuous (from 0 to lmax/mmax) to reduce access time when saving
+        If True, assume that 'l' and 'm' dimensions are continuous (from 0 to lmax/mmax) to reduce saving time.
+        Default is False.
     **kwargs : optional
-        Additional .gfc attributes with their default values.
+        Additional .gfc attributes to be included in the .gfc file header.
 
     Returns
     -------
@@ -34,17 +39,15 @@ def dataset_to_gfc(ds, filename, overwrite=True, include_errors=False, fmt=' .12
 
     Examples
     --------
-    Saving a basic dataset without error coefficients and without fast saving:
-        dataset_to_gfc(ds, 'output_file.gfc')
-
-    Saving a dataset with error coefficients included:
-        dataset_to_gfc(ds, 'output_file_with_errors.gfc', include_errors=True)
-
-    Using `fast_save` for a dataset with 'l' and 'm' dimensions that goes continuously from 0 to lmax/mmax:
-        dataset_to_gfc(ds, 'fast_save_file.gfc', fast_save=True)
-
-    Adding custom attributes that are not in ds.attrs to the .gfc file header:
-        dataset_to_gfc(ds, 'custom_attrs_file.gfc', modelname='My_Model_Name', tide_system='tide_free')
+    >>> ds = xr.open_dataset('example_file.nc')
+    # Saving a basic dataset without error coefficients and without fast saving:
+    >>> dataset_to_gfc(ds, 'output_file.gfc')
+    # Saving a dataset with error coefficients included:
+    >>> dataset_to_gfc(ds, 'output_file_with_errors.gfc', include_errors=True)
+    # Using `fast_save` for a dataset with 'l' and 'm' dimensions that goes continuously from 0 to lmax/mmax:
+    >>> dataset_to_gfc(ds, 'fast_save_file.gfc', fast_save=True)
+    # Adding custom attributes that are not in ds.attrs to the .gfc file header:
+    >>> dataset_to_gfc(ds, 'custom_attrs_file.gfc', modelname='My_Model_Name', tide_system='tide_free')
     """
     assert_sh(ds)
 
@@ -85,7 +88,7 @@ def dataset_to_gfc(ds, filename, overwrite=True, include_errors=False, fmt=' .12
     # ensure the directory exists
     os.makedirs(os.path.dirname(filename), exist_ok=True)
 
-    # stop if file exist and not overwrite
+    # stop if file exists and not overwrite
     if not overwrite and os.path.isfile(filename):
         return None
 

@@ -1,3 +1,30 @@
+"""
+The gravity module provides functions for manipulating spherical harmonics datasets with respect to different
+reference frames, tide systems and smoothing techniques.
+
+This module includes functions to:
+  * Change the reference frame of spherical harmonics datasets.
+  * Change the tide system of spherical harmonics datasets.
+  * Modify degree 1 Love numbers for different reference frames.
+  * Generate Gaussian weights for smoothing spherical harmonics datasets.
+
+Examples
+--------
+>>> import xarray as xr
+>>> from lenapy.utils.gravity import *
+# Load a dataset
+>>> ds = xr.open_dataset('example_file.nc')
+# Change the reference frame of the dataset
+>>> ds_new_ref = change_reference(ds, new_radius=6378137.0, new_earth_gravity_constant=3.986004418e14)
+# Change the tide system of the dataset
+>>> ds_new_tide_system = change_tide_system(ds, new_tide='tide_free')
+# Generate Gaussian weights for smoothing spherical harmonics datasets.
+>>> ds_gauss_weights = gauss_weights(radius=100000, lmax=60)
+# Filter the dataset with Gaussian weights
+>>> ds['clm'] *= ds_gauss_weights
+>>> ds['slm'] *= ds_gauss_weights
+"""
+
 import numpy as np
 import xarray as xr
 from lenapy.constants import *
@@ -16,16 +43,16 @@ def change_reference(ds, new_radius=A_EARTH_GRS80, new_earth_gravity_constant=LN
     Parameters
     ----------
     ds : xr.Dataset
-        xr.Dataset that corresponds to SH data associated with a current reference frame (constants whise) to update
+        xr.Dataset that corresponds to SH data associated with a current reference frame (constants whise) to update.
     new_radius : float
-        New earth radius constant in meters. Default LNPY_A_EARTH define in constants.py
+        New Earth radius constant in meters. Default is A_EARTH_GRS80 define in constants.py
     new_earth_gravity_constant : float
-        New gravitational constant of the Earth in m^3/s^2. Default LNPY_GM_EARTH define in constants.py
+        New gravitational constant of the Earth in m³/s². Default is LNPY_GM_EARTH define in constants.py
     old_radius : float | None, optional
-        Current earth radius constant of the dataset ds in meters. If not given, ds.attrs['radius'] is used.
+        Current Earth radius constant of the dataset ds in meters. If not provided, uses `ds.attrs['radius']`.
     old_earth_gravity_constant : float | None, optional
-        Current gravitational constant of the Earth of the dataset ds in m^3/s^2.
-        If not given, ds.attrs['earth_gravity_constant'] is used.
+        Current gravitational constant of the Earth of the dataset ds in m³/s².
+        If not provided, uses `ds.attrs['earth_gravity_constant']`.
     apply : bool, optional
         If True, apply the update to the current dataset without making a deep copy. Default is False.
 
@@ -33,6 +60,15 @@ def change_reference(ds, new_radius=A_EARTH_GRS80, new_earth_gravity_constant=LN
     -------
     ds_out : xr.Dataset
         Updated dataset with the new constants.
+
+    Raises
+    ------
+    KeyError
+        If the current reference frame constants are not provided and not found in the dataset attributes.
+
+    Examples
+    --------
+    >>> ds_new_ref = change_reference(ds, new_radius=6378137.0, new_earth_gravity_constant=3.986004418e14)
     """
     try:
         old_radius = ds.attrs['radius'] if old_radius is None else old_radius
@@ -63,28 +99,37 @@ def change_reference(ds, new_radius=A_EARTH_GRS80, new_earth_gravity_constant=LN
 
 def change_tide_system(ds, new_tide, old_tide=None, k20=None, apply=False):
     """
-    Apply a C20 offset to the dataset to change of tide system.
+    Apply a C20 offset to the dataset to change the tide system.
     Follows IERS2010 convention [IERS2010]_ to convert between tide system ('tide_free', 'zero_tide', 'mean_tide').
     Warning : It should be noted that each center use his one tide offset, it may differ in terms of offset formula
     that can come from [IERS2010]_ and [Smith1998]_. The value of k20 can also change between centers.
 
-    Arguments
+    Parameters
     ---------
     ds : xr.Dataset
+        xr.Dataset that corresponds to SH data associated with a current tide system to update.
     new_tide : str
-        output tidal system, either 'tide_free', 'zero_tide' or 'mean_tide'.
-    old_tide : str, optional
-        input tidal system, if not given use ds.attrs['tide_system'] information.
-        The function can handle the tide information given by the dataset
-    k20 : float, optional
-        k20 Earth tide external potential Love numbers, default is one recommend in [IERS2010]_.
+        Output tidal system, either 'tide_free', 'zero_tide' or 'mean_tide'.
+    old_tide : str | None, optional
+        Input tidal system. If not provided, uses `ds.attrs['tide_system']`.
+    k20 : float | None, optional
+        k20 Earth tide external potential Love numbers. If not provided, the default value from [IERS2010]_ is used.
     apply : bool, optional
         If True, apply the update to the current dataset without making a deep copy. Default is False.
 
     Returns
     -------
     ds_out : xr.Dataset
-        Updated dataset with the new constants. Warning, the dataset is also updated in place if copy=False (default)
+        Updated dataset with the new tidal system. Warning, the dataset is also updated in place if copy=False (default)
+
+    Raises
+    ------
+    ValueError
+        If the input tidal system is not provided and not found in the dataset attributes.
+
+    Examples
+    --------
+    >>> ds_new_tide_system = change_tide_system(ds, new_tide='tide_free')
 
     References
     ----------
@@ -140,26 +185,26 @@ def change_tide_system(ds, new_tide, old_tide=None, k20=None, apply=False):
 
 def change_love_reference_frame(ds, new_frame, old_frame, apply=False):
     """
-    Modify degree 1 love numbers of the dataset to change of reference frame.
+    Modify degree 1 love numbers of the dataset to change the reference frame.
     The input dataset need to contain 'hl', 'll', 'kl' variables that are potential love numbers with a degree dimension
     named 'l' with at least coordinate l=1.
 
-    Follows [Blewitt2003]_ to convert between reference frames.
+    This function follows [Blewitt2003]_ to convert between reference frames.
     Reference frames can be :
-        - 'CM' for Center of Mass of the Earth System
-        - 'CE' for Center of Mass of the Solid Earth
-        - 'CF' for Center of Surface Figure
-        - 'CL' for Center of Surface Lateral Figure
-        - 'CH' for Center of Surface Height Figure
+    * 'CM' for Center of Mass of the Earth System
+    * 'CE' for Center of Mass of the Solid Earth
+    * 'CF' for Center of Surface Figure
+    * 'CL' for Center of Surface Lateral Figure
+    * 'CH' for Center of Surface Height Figure
 
     Parameters
     ----------
     ds : xr.Dataset
         Dataset with 'hl', 'll', 'kl' variables and 'l' dimension.
     new_frame : str
-        Reference frame of the output dataset. Either 'CM', 'CE', 'CF', 'CL' or 'CH'
+        Reference frame of the output dataset. Either 'CM', 'CE', 'CF', 'CL' or 'CH'.
     old_frame : str
-        Reference frame of the input dataset. Either 'CM', 'CE', 'CF', 'CL' or 'CH'
+        Reference frame of the input dataset. Either 'CM', 'CE', 'CF', 'CL' or 'CH'.
     apply : bool
         If True, apply the update to the current dataset without making a deep copy. Default is False.
 
@@ -232,23 +277,30 @@ def change_love_reference_frame(ds, new_frame, old_frame, apply=False):
 
 def gauss_weights(radius, lmax, a_earth=A_EARTH_GRS80, cutoff=1e-10):
     """
-    Generate a xr.DataArray with Gaussian weights as a function of degree using [Jekeli1981]_
+    Generate a xr.DataArray with Gaussian weights as a function of degree.
+
+    This function uses the method described in [Jekeli1981]_ to generate Gaussian weights for spherical harmonics
+    coefficients.
 
     Parameters
     ----------
     radius : float
-        Gaussian smoothing radius in meters
+        Gaussian smoothing radius in meters.
     lmax : int
-        Maximum degree of spherical harmonic coefficients
+        Maximum degree of spherical harmonic coefficients.
     a_earth : float, optional
-        Radius of the Earth in meters, default is semi-major axis of GRS80
+        Radius of the Earth in meters, default is the semi-major axis of GRS80.
     cutoff : float, optional
-        minimum value for tail of Gaussian averaging function (see [Jekeli1981]_ p.18), default is 1e-10
+        Minimum value for the tail of the Gaussian averaging function (see [Jekeli1981]_ p.18), default is 1e-10.
 
     Returns
     -------
     gaussian_weights : xr.DataArray
-        Degree dependent Gaussian weights xr.DataArray
+        Degree-dependent Gaussian weights xr.DataArray.
+
+    Examples
+    --------
+    >>> ds_gauss_weights = gauss_weights(radius=100000, lmax=60)
 
     References
     ----------

@@ -1,20 +1,31 @@
 """
-This module allows to load SH time-variable gravity field data from different products and format the data with unified
-definition for variables and coordinates (output dataset are compatible with the use of xHarmo) :
-standardized coordinates names : l, m, time
-standardized variables names : clm, slm, begin_time, end_time, exact_time and if possible eclm and eslm
-GRACE level 2 products from SDS centers can be open with the engine='gracel2' in xr.open_mfdataset()
-Gravity field products organised as a .gfc files can be open with the engine='gfc' in xr.open_mfdataset()
-Dask is implicitely used when using these interface methods.
+The gravi_reader module provides functions to load time-variable gravity field data from different products and format
+the data with unified definitions for variables and coordinates.
+
+Standardized coordinates names:
+  * l, m, time
+
+Standardized variables names:
+  * clm, slm, begin_time, end_time, exact_time (and eclm, eslm if available)
+
+Supported Formats:
+  * GRACE Level-2 products from SDS centers (use `engine='gracel2'` in `xr.open_mfdataset()`)
+  * Gravity field products organized as .gfc files (use `engine='gfc'` in `xr.open_mfdataset()`)
+
+Dask is implicitly used when using these interface methods.
 
 Examples
 --------
+>>> import os
+>>> import xarray as xr
+# Load GRACE Level-2 data
 >>> files_csr = [os.path.join(csr_data_dir, f) for f in os.listdir(csr_data_dir)]
 >>> ds_csr = xr.open_mfdataset(files_csr, engine='gracel2', combine_attrs="drop_conflicts")
-
+# Load gravity field data from .gfc files
 >>> files_graz = [os.path.join(graz_data_dir, f) for f in os.listdir(graz_data_dir)]
 >>> ds_graz = xr.open_mfdataset(files_graz, engine='gfc', combine_attrs="drop_conflicts")
 """
+
 import os
 import zipfile
 import tarfile
@@ -30,41 +41,39 @@ from lenapy.utils.harmo import mid_month_grace_estimate
 
 def read_tn14(filename, rmmean=False):
     """
-    Read TN14 data to produce dataset with C20 and C30 information.
-    Deal with date the same way as others GRACE products.
-    TN14 can be downloaded on https://podaac.jpl.nasa.gov/gravity/grace-documentation.
+    Read TN14 data to produce a dataset with C20 and C30 information.
+    Handles dates in the same way as others GRACE products.
+    TN14 data can be downloaded from https://podaac.jpl.nasa.gov/gravity/grace-documentation.
 
     Parameters
     ----------
     filename : str | os.PathLike[Any]
-        path to the TN14 file
+        Path to the TN14 file.
     rmmean : bool, optional
-        Boolean to use information without mean or with ir, default is False for with mean.
+        If True, use data without mean values. Default is False (use data with mean values).
 
     Returns
     -------
     ds : xr.Dataset
-        ds with C20 and C30
+        Dataset with C20 and C30 information.
     """
     # Based on TN14 header (file from 13 Jul 2023)
     infos_tn14 = {'modelname': 'TN-14', 'earth_gravity_constant': 0.3986004415e15, 'radius': 6378136.3,
                   'norm': 'fully_normalized', 'tide_system': 'zero_tide'}
 
-    file = open(filename, 'r')
+    with open(filename, 'r') as file:
+        line = True
+        # goes while up to end of header or end of file (corresponding to line "Product:\n")
+        while line:
+            line = file.readline()
+            # test to break when end of header
+            if 'product:' in line.lower():
+                break
 
-    line = True
-    # goes while up to end of header or end of file (corresponding to line "Product:\n")
-    while line:
-        line = file.readline()
-        # test to break when end of header
-        if 'product:' in line.lower():
-            break
-
-    # Read file according to header columns (file from 13 Jul 2023)
-    data = np.genfromtxt(file, dtype=[('begin_MJD', float), ('begin_date', float), ('C20', float),
-                                      ('C20_rmmean', float), ('eC20', float), ('C30', float), ('C30_rmmean', float),
-                                      ('eC30', float), ('end_MJD', float), ('end_date', float)])
-    file.close()
+        # Read file according to header columns (file from 13 Jul 2023)
+        data = np.genfromtxt(file, dtype=[('begin_MJD', float), ('begin_date', float), ('C20', float),
+                                          ('C20_rmmean', float), ('eC20', float), ('C30', float), ('C30_rmmean', float),
+                                          ('eC30', float), ('end_MJD', float), ('end_date', float)])
 
     clm, slm = np.zeros((2, 1, data.shape[0])), np.zeros((2, 1, data.shape[0]))
     eclm, eslm = np.zeros((2, 1, data.shape[0])), np.zeros((2, 1, data.shape[0]))
@@ -106,39 +115,37 @@ def read_tn14(filename, rmmean=False):
 
 def read_tn13(filename):
     """
-    Read TN13 data to produce dataset with C10, C11 and S11 information.
-    Deal with date the same way as others GRACE products
-    TN13 can be downloaded on https://podaac.jpl.nasa.gov/gravity/grace-documentation.
+    Read TN13 data to produce a dataset with C10, C11 and S11 information.
+    Handles dates in the same way as other GRACE products.
+    TN13 data can be downloaded from https://podaac.jpl.nasa.gov/gravity/grace-documentation.
 
     Parameters
     ----------
     filename : str | os.PathLike[Any]
-        path to the TN13 file
+        Path to the TN13 file.
 
     Returns
     -------
     ds : xr.Dataset
-        ds with C10, C11 and S11
+        Dataset with C10, C11, and S11 information.
     """
     infos_tn13 = {'modelname': 'TN-13', 'norm': 'fully_normalized'}
 
-    file = open(filename, 'r')
+    with open(filename, 'r') as file:
+        line = True
+        # goes while up to end of header
+        while line:
+            line = file.readline()
 
-    line = True
-    # goes while up to end of header
-    while line:
-        line = file.readline()
+            # test to break when end of header
+            if 'end of header' in line.lower():
+                break
+            if 'GRCOF2   ' in line:
+                raise ValueError("No 'end_of_head' line in file ", filename)
 
-        # test to break when end of header
-        if 'end of header' in line.lower():
-            break
-        if 'GRCOF2   ' in line:
-            raise ValueError("No 'end_of_head' line in file ", filename)
-
-    # Read file according to header columns (file from 13 Jul 2023)
-    data = np.genfromtxt(file, dtype=[('flag', str), ('l', int), ('m', int), ('Clm', float), ('Slm', float),
-                                      ('eClm', float), ('eSlm', float), ('begin_date', float), ('end_date', float)])
-    file.close()
+        # Read file according to header columns (file from 13 Jul 2023)
+        data = np.genfromtxt(file, dtype=[('flag', str), ('l', int), ('m', int), ('Clm', float), ('Slm', float),
+                                          ('eClm', float), ('eSlm', float), ('begin_date', float), ('end_date', float)])
 
     clm, slm = np.zeros((1, 2, data.shape[0]//2)), np.zeros((1, 2, data.shape[0]//2))
     eclm, eslm = np.zeros((1, 2, data.shape[0]//2)), np.zeros((1, 2, data.shape[0]//2))
@@ -180,27 +187,27 @@ class ReadGFC(BackendEntrypoint):
 
     def open_dataset(self, filename, drop_variables=None, no_date=False):
         """
-        Read a .gfc ascii file (or compressed) and format it as a xr.Dataset.
-        The file need to follow ICGEM format: https://icgem.gfz-potsdam.de/docs/ICGEM-Format-2023.pdf
+        Read a .gfc ASCII file (or compressed) and format it as a xr.Dataset.
+        The file needs to follow the ICGEM format: https://icgem.gfz-potsdam.de/docs/ICGEM-Format-2023.pdf
 
-        The header information are stored in ds.attrs. The dataset contains clm and slm array
-        with errors information in eclm and eslm if possible.
-        For monthly file, time variable are stored as 'begin_time', 'end_time', 'exact_time' and 'mid_month'.
-        mid_month is used to be the time coordinate.
+        The header information are stored in ds.attrs. The dataset contains clm and slm arrays
+        with error information in eclm and eslm if available.
+        For monthly files, time variables are stored as 'begin_time', 'end_time', 'exact_time' and 'mid_month'.
+        'mid_month' is used as the time coordinate.
 
         Parameters
         ----------
         filename : str | os.PathLike[Any]
-            Name/path of the file to open
+            Name/path of the file to open.
         drop_variables : None
-            Variable to align to BackendEntrypoint pattern
-        no_date : bool
-            True if the data file contains no date information
+            Variable to align to BackendEntrypoint pattern.
+        no_date : bool, optional
+            True if the data file contains no date information. Default is False.
 
         Returns
         -------
         ds : xr.Dataset
-            Information of the file stored in xr.Dataset format
+            Information from the file stored in xr.Dataset format.
         """
         # -- Create a pointer to the '.gfc' file
         ext = os.path.splitext(filename)[-1]
@@ -294,8 +301,8 @@ class ReadGFC(BackendEntrypoint):
                     exact_time = mid_month
 
                 else:
-                    raise ValueError("Could not extract date information from modelname in the header of ", filename,
-                                     "\n Try with the param no_date=True")
+                    raise ValueError(f"Could not extract date information from modelname in the header of {filename}"
+                                     "\n Try with the parameter no_date=True")
             # If no time, time info will be a string with modelname
             else:
                 mid_month = header['modelname']
@@ -350,12 +357,12 @@ class ReadGFC(BackendEntrypoint):
         Parameters
         ----------
         filename : str | os.PathLike[Any]
-            Object to try to open
+            Path to the file to test.
 
         Returns
         -------
         can_open : bool
-            True is the file can be opened with ReadGFC, False otherwise
+            True if the file can be opened with ReadGFC, False otherwise.
         """
         try:
             ext = os.path.splitext(filename)[-1]
@@ -389,23 +396,23 @@ class ReadGRACEL2(BackendEntrypoint):
 
     def open_dataset(self, filename, drop_variables=None):
         """
-        Read a GRACE Level-2 gravity field product ascii file (or compressed) from centers and
+        Read a GRACE Level-2 gravity field product ASCII file (or compressed) from processing centers and
         format it as a xr.Dataset. The header information are stored in ds.attrs.
         The dataset contains clm and slm array with errors information in eclm and eslm if possible.
-        For monthly file, time variable are stored as 'begin_time', 'end_time', 'exact_time' and 'mid_month'.
-        mid_month is used to be the time coordinate.
+        For monthly files, time variables are stored as 'begin_time', 'end_time', 'exact_time' and 'mid_month'.
+        'mid_month' is used as the time coordinate.
 
         Parameters
         ----------
         filename : str | os.PathLike[Any]
-            Name/path of the file to open
+            Name/path of the file to open.
         drop_variables : None
-            Variable to align to BackendEntrypoint pattern
+            Variable to align to BackendEntrypoint pattern.
 
         Returns
         -------
         ds : xr.Dataset
-            Information of the file stored in xr.Dataset format
+            Information from the file stored in xr.Dataset format.
         """
         # -- Create a pointer to the file
         ext = os.path.splitext(filename)[-1]
@@ -451,7 +458,7 @@ class ReadGRACEL2(BackendEntrypoint):
 
                 # try to intercept case where no end_of_head (starting with degree and order 0)
                 elif 'GRCOF2  ' in line:
-                    raise ValueError("No 'End of YAML header' line in file ", filename)
+                    raise ValueError(f"No 'End of YAML header' line in file {filename}")
 
                 # deal with case where file is weirdly filled with 'date_issued:0000-00-00T00:00:00' to avoid yaml crash
                 # deal also with acknowledgement line from GFZ on GRACE-FO periods that crash the yaml parser
@@ -477,7 +484,7 @@ class ReadGRACEL2(BackendEntrypoint):
             raise ValueError("Name of the file does not corresponds to GRACE L2 products (https://archive.podaac."
                              "earthdata.nasa.gov/podaac-ops-cumulus-docs/grace/open/L1B/GFZ/AOD1B/RL04/docs/"
                              "L2-UserHandbook_v4.0.pdf), it does not contains the name of center key: "
-                             "'COSTG', 'UTCSR', 'CNES', 'JPLEM' or 'GFZOP'. Name : ", os.path.basename(filename))
+                             f"'COSTG', 'UTCSR', 'CNES', 'JPLEM' or 'GFZOP'. Name : {os.path.basename(filename)}")
 
         lmax = header['max_degree']
 
@@ -490,7 +497,7 @@ class ReadGRACEL2(BackendEntrypoint):
             raise ValueError("Name of the file does not corresponds to GRACE L2 products (https://archive.podaac."
                              "earthdata.nasa.gov/podaac-ops-cumulus-docs/grace/open/L1B/GFZ/AOD1B/RL04/docs/"
                              "L2-UserHandbook_v4.0.pdf), it does not contains date YYYYDOY-YYYYDOY information. "
-                             "Name : ", os.path.basename(filename))
+                             f"Name : {os.path.basename(filename)}")
 
         begin_time = datetime.datetime.strptime(dates[0], '%Y%j')
         end_time = datetime.datetime.strptime(dates[1], '%Y%j') + datetime.timedelta(days=1)

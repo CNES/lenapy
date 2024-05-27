@@ -1,3 +1,18 @@
+"""
+The harmo module provides functions for transforming spherical harmonics datasets into spatial grid representations
+and vice versa.
+
+This module includes functions to:
+  * Convert spherical harmonics datasets into spatial grid dataarray.
+  * Convert spatial grid dataarray into spherical harmonics datasets.
+  * Compute associated Legendre functions.
+  * Calculate mid-month estimates for GRACE data products.
+  * Compute scaling factors for unit conversions between spherical harmonics and grid data.
+  * Validate spherical harmonics and grid datasets.
+
+"""
+
+
 import datetime
 import pathlib
 import inspect
@@ -15,55 +30,55 @@ def sh_to_grid(data, unit='mewh',
                ellispoidal_earth=False, include_elastic=True, plm=None, normalization_plm='4pi', **kwargs):
     """
     Transform Spherical Harmonics (SH) dataset into spatial DataArray.
-    With choice for constants, unit, love_numbers, degree/order, spatial grid latitude and longitude, Earth hypothesis.
+    With choice for constants, unit, love numbers, degree/order, spatial grid latitude and longitude, Earth hypothesis.
 
     For details on unit transformations, see :func:`l_factor_conv`.
 
     Parameters
     ----------
     data : xr.Dataset
-        xr.Dataset that corresponds to SH data to convert into spatial representation
+        xr.Dataset that corresponds to SH data to convert into spatial representation.
     unit : str, optional
-        'mewh', 'geoid', 'microGal', 'bar', 'mvcu', or 'norm'
-        Unit of the spatial data used in the transformation. Default is 'mewh' for meters of Equivalent Water Height
-        See utils.harmo.l_factor_conv() doc for details on the units
+        'mewh', 'mmgeoid', 'microGal', 'bar', 'mvcu', or 'norm'
+        Unit of the spatial data used in the transformation. Default is 'mewh' for meters of Equivalent Water Height.
+        See utils.harmo.l_factor_conv() doc for details on the units.
     lmax : int, optional
-        maximal degree of the SH coefficients to be used.
+        Maximal degree of the SH coefficients to be used.
     mmax : int, optional
-        maximal order of the SH coefficients to be used.
+        Maximal order of the SH coefficients to be used.
     lmin : int, optional
-        minimal degree of the SH coefficients to be used.
+        Minimal degree of the SH coefficients to be used.
     mmin : int, optional
-        minimal order of the SH coefficients to be used.
+        Minimal order of the SH coefficients to be used.
     used_l : np.ndarray, optional
-        list of degree to use for the grid computation (if given, lmax and lmin are not considered).
+        List of degree to use for the grid computation (if given, lmax and lmin are not considered).
     used_m : np.ndarray, optional
-        list of order to use for the grid computation (if given, mmax and mmin are not considered).
+        List of order to use for the grid computation (if given, mmax and mmin are not considered).
 
     lonmin : float, optional
-        minimal longitude of the future grid.
+        Minimal longitude of the future grid.
     lonmax : float, optional
-        maximal longitude of the future grid.
+        Maximal longitude of the future grid.
     latmin : float, optional
-        minimal latitude of the future grid.
+        Minimal latitude of the future grid.
     latmax : float, optional
-        maximal latitude of the future grid.
+        Maximal latitude of the future grid.
     bounds : list, optional
-        list of 4 elements with [lonmin, lonmax, latmin, latmax] (if given min/max information are not considered).
+        List of 4 elements with [lonmin, lonmax, latmin, latmax] (if given min/max information are not considered).
     radians_in : bool, optional
         True if the unit of the given latitude and longitude information is radians. Default is False for degree unit.
         If radians_in is True and dlat or dlon are given, they are considered as radians.
     dlon : float, optional
-        spacing of the longitude values.
+        Spacing of the longitude values.
     dlat : float, optional
-        spacing of the latitude values.
+        Spacing of the latitude values.
     longitude : np.ndarray, optional
-        list of longitude to use for the grid computation (if given, others longitude information are not considered).
+        List of longitude to use for the grid computation (if given, others longitude information are not considered).
     latitude : np.ndarray, optional
-        list of latitude to use for the grid computation (if given, others latitude information are not considered).
+        List of latitude to use for the grid computation (if given, others latitude information are not considered).
 
     ellispoidal_earth : bool, optional
-        If True, consider the Earth as an ellispoid following [Ditmar2018] and if False as a sphere. Default is False
+        If True, consider the Earth as an ellipsoid following [Ditmar2018]. Default is False for a spherical Earth.
     include_elastic : bool, optional
         If True, the Earth behavior is elastic. Default is True
 
@@ -73,7 +88,7 @@ def sh_to_grid(data, unit='mewh',
         coords={'l': data.l, 'm': data.m, 'latitude': latitude})
     normalization_plm : str, optional
         If plm need to be computed, choice of the norm corresponding to the SH dataset.
-        '4pi', 'ortho', or 'schmidt' for use with geodesy. Default is '4pi'
+        '4pi', 'ortho', or 'schmidt' for use with geodesy. Default is '4pi'.
         4pi normalized, orthonormalized, or Schmidt semi-normalized SH functions, respectively.
 
     **kwargs :
@@ -208,29 +223,29 @@ def grid_to_sh(grid, lmax, unit='mewh',
     Parameters
     ----------
     grid : xr.DataArray
-        xr.Dataset that corresponds a gravity field spatial representation in a unit to convert into SH
+        xr.Dataset that corresponds a gravity field spatial representation in a unit to convert into SH.
     lmax : int
-        maximal degree of the SH coefficients to be computed.
+        Maximal degree of the SH coefficients to be computed.
     unit : str, optional
-        'mewh', 'geoid', 'microGal', 'bar', 'mvcu', or 'norm'
-        Unit of the spatial data used in the transformation. Default is 'mewh' for meters of Equivalent Water Height
-        See constants.l_factor_conv() doc for details on the units
+        'mewh', 'mmgeoid', 'microGal', 'bar', 'mvcu', or 'norm'
+        Unit of the spatial data used in the transformation. Default is 'mewh' for meters of Equivalent Water Height.
+        See constants.l_factor_conv() doc for details on the units.
 
     mmax : int, optional
-        maximal order of the SH coefficients to be computed.
+        Maximal order of the SH coefficients to be computed.
     lmin : int, optional
-        minimal degree of the SH coefficients to be computed. Default is 0
+        Minimal degree of the SH coefficients to be computed. Default is 0.
     mmin : int, optional
-        minimal order of the SH coefficients to be computed. Default is 0
+        Minimal order of the SH coefficients to be computed. Default is 0.
     used_l : np.ndarray, optional
-        list of degree to compute for the SH Dataset (if given, lmax and lmin are not considered).
+        List of degree to compute for the SH Dataset (if given, lmax and lmin are not considered).
     used_m : np.ndarray, optional
-        list of order to compute for the SH Dataset (if given, mmax and mmin are not considered).
+        List of order to compute for the SH Dataset (if given, mmax and mmin are not considered).
 
     ellispoidal_earth : bool, optional
-        If True, consider the Earth as an ellispoid following [Ditmar2018] and if False as a sphere. Default is False
+        If True, consider the Earth as an ellipsoid following [Ditmar2018]. Default is False for a spherical Earth.
     include_elastic : bool, optional
-        If True, the Earth behavior is elastic. Default is True
+        If True, the Earth behavior is elastic. Default is True.
 
     plm : xr.DataArray, optional
         Precomputed plm values as a xr.DataArray variable. For example with the code :
@@ -324,15 +339,13 @@ def grid_to_sh(grid, lmax, unit='mewh',
                          dims=['m', 'longitude'], coords={'m': used_m, 'longitude': grid.cf["longitude"]})
 
     # -- Computation of SH
-    # WARNING, will have to change dims to dim in next xarray version
     # Multiplying data and integral factor with sin/cos of m*longitude. This will sum over longitude, [m,theta]
-    dcos = c_cos.dot(grid.cf.rename_like(int_fact) * int_fact, dims=['longitude'])
-    dsin = s_sin.dot(grid.cf.rename_like(int_fact) * int_fact, dims=['longitude'])
+    dcos = c_cos.dot(grid.cf.rename_like(int_fact) * int_fact, dim=['longitude'])
+    dsin = s_sin.dot(grid.cf.rename_like(int_fact) * int_fact, dim=['longitude'])
 
-    # WARNING, will have to change dims to dim in next xarray version
     # Multiplying plm and degree scale factors with last variable to sum over latitude, [l, m, ...]
-    clm = plm_lfactor.dot(dcos, dims=['latitude'])
-    slm = plm_lfactor.dot(dsin, dims=['latitude'])
+    clm = plm_lfactor.dot(dcos, dim=['latitude'])
+    slm = plm_lfactor.dot(dsin, dim=['latitude'])
 
     # add name for the merge into xr.Dataset
     clm.name = 'clm'
@@ -353,11 +366,11 @@ def compute_plm(lmax, z, mmax=None, normalization='4pi'):
     Parameters
     ----------
     lmax : int
-        maximum degree of legrendre functions
+        Maximum degree of legrendre functions.
     z : np.ndarray
-        argument of the associated Legendre functions
+        Argument of the associated Legendre functions.
     mmax : int or NoneType, optional
-        maximum order of associated legrendre functions
+        Maximum order of associated legrendre functions.
     normalization : str, optional
         '4pi', 'ortho', or 'schmidt' for use with geodesy 4pi normalized, orthonormalized, or Schmidt semi-normalized
         spherical harmonic functions, respectively. Default is '4pi'.
@@ -365,7 +378,7 @@ def compute_plm(lmax, z, mmax=None, normalization='4pi'):
     Returns
     -------
     plm : np.ndarray
-        fully-normalized legendre functions as a 3D array with "l", "m" and z dimensions
+        Fully-normalized Legendre functions as a 3D array with "l", "m" and z dimensions.
 
     References
     ----------
@@ -496,21 +509,21 @@ def compute_plm(lmax, z, mmax=None, normalization='4pi'):
 
 def mid_month_grace_estimate(begin_time, end_time):
     """
-    Calculate middle of the month date based on begin_time and end_time for GRACE products
-    begin_time is round to equal to the first day of the month and
-    end_time is round to equal to the first day of the month after.
+    Calculate middle of the month date based on begin_time and end_time for GRACE products.
+    begin_time is rounded to equal to the first day of the month and
+    end_time is rounded to equal to the first day of the month after.
 
     Parameters
     ----------
     begin_time : datetime.datetime
-        Date of the beginning of the month
+        Date of the beginning of the month.
     end_time : datetime.datetime
-        Date of the end of the month + 1 day
+        Date of the end of the month + 1 day.
 
     Returns
     -------
     mid_month : datetime.datetime
-        Date of the middle of the month
+        Date of the middle of the month.
     """
     # to compute mid_month, need to round begin_time to the 1st of the month
     # deal with GRACE month when the begin date is not between 16 of month before and 15 of the month
@@ -540,44 +553,44 @@ def l_factor_conv(l, unit='mewh', include_elastic=True, ellispoidal_earth=False,
     """
     Compute scale factor for a transformation between spherical harmonics and grid data.
     Spatial data over the grid are associated with a specific unit.
-    The scale factor is degree dependant and is computed for the given list of degree l.
-    The scale factor can be estimated using elastic or none elastic Earth as well as a spherical or ellipsoidal Earth.
+    The scale factor is degree-dependent and is computed for the given list of degree l.
+    The scale factor can be estimated using elastic or non-elastic Earth as well as a spherical or ellipsoidal Earth.
 
     Parameters
     ----------
     l : np.ndarray
-        degree for which the scale factor is estimated.
+        Degree for which the scale factor is estimated.
     unit : str, optional
-        'mewh', 'geoid', 'microGal', 'pascal', 'mvcu', or 'norm'
+        'mewh', 'mmgeoid', 'microGal', 'pascal', 'mvcu', or 'norm'
         Unit of the spatial data used in the transformation. Default is 'mewh' for meters of Equivalent Water Height.
-        'geoid' represents millimeters geoid height, 'microGal' represents microGal gravity perturbations,
+        'mmgeoid' represents millimeters mmgeoid height, 'microGal' represents microGal gravity perturbations,
         'pascal' represents equivalent surface pressure in pascal and
         'mvcu' represents meters viscoelastic crustal uplift
     include_elastic : bool, optional
         If True, the Earth behavior is elastic.
     ellispoidal_earth : bool, optional
-        If True, consider the Earth as an ellispoid following [Ditmar2018]_ and if False as a sphere.
+        If True, consider the Earth as an ellipsoid following [Ditmar2018]_ and if False as a sphere.
     geocentric_colat : list, optional
-        List of geocentric colatitude for ellispoidal earth radius computation.
+        List of geocentric colatitude for ellipsoidal Earth radius computation.
     ds_love : xr.Dataset | None, optional
         Dataset with a l dimension corresponding to degree and with l (and possibly h and k) variables that
-        are Love numbers
+        are Love numbers.
         Default Love numbers used are from Gegout97.
     a_earth : float, optional
-        Earth semi-major axis [m]. Default is A_EARTH_GRS80
+        Earth semi-major axis [m]. Default is A_EARTH_GRS80.
     f_earth : float, optional
-        Earth flattening. Default is F_EARTH_GRS80
+        Earth flattening. Default is F_EARTH_GRS80.
     gm_earth : float, optional
-        Standard gravitational parameter for Earth [m³.s⁻²]. Default is LNPY_GM_EARTH
+        Standard gravitational parameter for Earth [m³.s⁻²]. Default is LNPY_GM_EARTH.
     rho_earth : float, optional
-        Earth density [kg.m⁻³]. Default is LNPY_RHO_EARTH
+        Earth density [kg.m⁻³]. Default is LNPY_RHO_EARTH.
     attrs : dict | None, optional
-        ds.attrs information that might help to estimate l_factor if no parameters are given
+        ds.attrs information that might help to estimate l_factor if no parameters are given.
 
     Returns
     -------
     l_factor : np.ndarray
-        Degree dependant scale factor
+        Degree-dependent scale factor.
 
     References
     ----------
@@ -637,8 +650,8 @@ def l_factor_conv(l, unit='mewh', include_elastic=True, ellispoidal_earth=False,
         if ellispoidal_earth:
             l_factor = l_factor * ((raverage_radius/a_earth)**3 * a_div_r_lat**(l + 2))
 
-    elif unit == 'geoid':
-        # geoid, millimeters geoid height
+    elif unit == 'mmgeoid':
+        # mmgeoid, millimeters geoid height
         l_factor = xr.ones_like(l) * a_earth * 1e3
         if ellispoidal_earth:
             l_factor = l_factor * a_div_r_lat**(l + 1)
@@ -673,13 +686,13 @@ def l_factor_conv(l, unit='mewh', include_elastic=True, ellispoidal_earth=False,
         if ellispoidal_earth:
             l_factor = l_factor * a_div_r_lat**(l - 1)
 
-    elif unit == 'mag_radial_i':
+    elif unit == 'int_radial_mag':
         # internal radial magnetic field in nT
         l_factor = l + 1
         if ellispoidal_earth:
             pass
 
-    elif unit == 'mag_radial_e':
+    elif unit == 'ext_radial_mag':
         # external radial magnetic field in nT
         l_factor = -l
         if ellispoidal_earth:
@@ -689,7 +702,7 @@ def l_factor_conv(l, unit='mewh', include_elastic=True, ellispoidal_earth=False,
 
     else:
         raise ValueError("Invalid 'unit' parameter value in l_factor_conv function, valid values are: "
-                         "(norm, mewh, geoid, microGal, bar, mvcu)")
+                         "(norm, mewh, mmgeoid, microGal, bar, mvcu)")
 
     cst = {'gm_earth': gm_earth, 'a_earth': a_earth}
     return l_factor, cst
@@ -697,13 +710,18 @@ def l_factor_conv(l, unit='mewh', include_elastic=True, ellispoidal_earth=False,
 
 def assert_sh(ds):
     """
-    Verify if ds have dimensions l and m as well as variables clm and slm
-    Raise Assertion error if not
+    Verify if the dataset ds has dimensions 'l' and 'm' as well as variables 'clm' and 'slm'
+    Raise Assertion error if not.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        Dataset to verify.
 
     Returns
     -------
     True : bool
-        return True is ds have dimensions l and m as well as variables clm and slm
+        Returns True if the dataset ds has dimensions 'l' and 'm' as well as variables 'clm' and 'slm'.
 
     Raises
     ------
@@ -723,13 +741,18 @@ def assert_sh(ds):
 
 def assert_grid(ds):
     """
-    Verify if ds have dimensions longitude and latitude
-    Raise Assertion error if not
+    Verify if the dataset ds have dimensions 'longitude' and 'latitude'.
+    Raise Assertion error if not.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        Dataset to verify.
 
     Returns
     -------
     True : bool
-        return True is ds have dimensions longitude and latitude
+        Returns True if the dataset has dimensions 'longitude' and 'latitude'.
 
     Raises
     ------

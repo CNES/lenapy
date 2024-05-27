@@ -1,3 +1,8 @@
+import numpy as np
+import xarray as xr
+import matplotlib.pyplot as plt
+import pandas as pd
+
 def plot_trend(data,sigma,out='OLS',freq='1M',save=None,**kwargs):
     # Periode centrale sur toute l'emprise des donnees
     tmin=data.time.min().values
