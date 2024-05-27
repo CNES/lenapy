@@ -6,6 +6,7 @@
 import gsw
 import numpy as np
 import xarray as xr
+from .constants import *
 
 def proprietes(da,nom,label,unite):
     out = da.rename(nom)
@@ -52,9 +53,9 @@ class OceanSet():
         * slh   : steric sea layer height anomaly (-), equal to (1. - rho/rhoref)
         * ssl   : steric sea surface level anomaly (m), it is slh integrated over the whole ocean depth
         * ssl_above : idem ssl, where heat is integrated above a given depth
-        * tssl  : thermosteric sea surface level anomaly above given depth (parameter 'above'), averaging period for salinty given by parameter 'mean_time_period'
-        * hssl  : halosteric sea surface level anomaly above given depth (parameter 'above'), averaging period for temperature given by parameter 'mean_time_period'
-        * ieeh  : integrated expansion efficiency oh heat (m/(J/m²)), it is (ssl/ohc)
+        * tssl  : thermosteric sea surface level (m)
+        * hssl  : halosteric sea surface level (m)
+        * ieeh  : integrated expansion efficiency oh heat (m/(J/m²)), it is (tssl/ohc)
 
     Layer depth :
         * ocean_depth  : maximum depth with non Nan values for temperature
@@ -146,7 +147,7 @@ class OceanSet():
     # Salinité pratique
     def psal(self):
         if NoneType(self.psal_):
-            if NoneType(self.SA_) or not('latitude' in self._obj.coords and 'longitude' in self._obj.coords):
+            if NoneType(self.SA_) or not('latitude' in self._obj.variables and 'longitude' in self._obj.variables):
                 self.psal_=proprietes(gsw.SP_from_SR(self.SR),
                           'psal','Practical salinity','g/kg') # [g/kg]
                                 
@@ -168,7 +169,7 @@ class OceanSet():
     @property
     def SA(self):
         if NoneType(self.SA_):
-            if 'latitude' in self._obj.coords and 'longitude' in self._obj.coords:
+            if 'latitude' in self._obj.variables and 'longitude' in self._obj.variables:
                 self.SA_ = proprietes(gsw.SA_from_SP(self.psal,self.P,self._obj.longitude, self._obj.latitude),
                           'SA','Absolute salinity','g/kg') # [g/kg]
             else:
@@ -179,7 +180,7 @@ class OceanSet():
     # Pression en fonction de la profondeur et de la latitude
     def P(self):
         if NoneType(self.P_):
-            if 'latitude' in self._obj.coords:
+            if 'latitude' in self._obj.variables:
                 self.P_ = proprietes(gsw.p_from_z(self._obj.depth*-1, self._obj.latitude),
                                   'p_db','Pressure','dbar')
             else:
@@ -221,14 +222,10 @@ class OceanSet():
         return self.heat_
     
     @property
-    # Anomalie relative de densité par rapport à une référence (0,35)
+    # Anomalie relative de densité par rapport à une référence (CT=0°C,SA=35.16404psu)
     def slh(self):
         if NoneType(self.slh_):
-            if 'latitude' in self._obj.coords:
-                rhoref = gsw.rho(gsw.SA_from_SP(35,self.P,self._obj.longitude, self._obj.latitude),
-                                 0, self.P)
-            else:
-                rhoref = gsw.rho(gsw.SR_from_SP(35), 0, self.P)
+            rhoref = gsw.rho(LNPY_SSO,0., self.P)
         return  proprietes(((1. - self.rho/rhoref)),
                            'slh','Steric sea layer height anomaly','-') # [-]
     
@@ -241,68 +238,46 @@ class OceanSet():
         return self.ohc_
     
     @property
-    # Ecart de hauteur d'eau de la colonne par rapport à une référence (0,35)
+    # Ecart de hauteur d'eau de la colonne par rapport à une référence (CT=0°C,SA=35psu)
     def ssl(self):
         if NoneType(self.ssl_):
             self.ssl_ = proprietes(self.slh.lnocean.integ_depth(),
                           'ssl','Steric sea surface level anomaly','m') # [m]
         return self.ssl_
 
-    """
-    # Ecart de hauteur d'eau thermosterique de la colonne par rapport à une référence (0,35)
-    def tssl(self,mean_time_period=slice('2005','2015'),above=None):
-        rhoref = gsw.rho(gsw.SR_from_SP(35), 0, self.P)
-        rho = gsw.rho(self.SA.sel(time=mean_time_period).mean('time'), self.CT, self.P)
-        tslh = 1.-rho/rhoref
-        if above==None:
-            return proprietes(tslh.lnocean.integ_depth(), 'tssl','Thermosteric sea surface level anomaly','m') # [m]
-        else:
-            return proprietes(tslh.lnocean.above(above), 'tssl','Thermosteric sea surface level anomaly','m') # [m]            
-
-    
-    # Ecart de hauteur d'eau halosterique de la colonne par rapport à une référence (0,35)
-    def hssl(self,mean_time_period=slice('2005','2015'),above=None):
-        rhoref = gsw.rho(gsw.SR_from_SP(35), 0, self.P)
-        rho = gsw.rho(self.SA, self.CT.sel(time=mean_time_period).mean('time'), self.P)
-        hslh = 1.-rho/rhoref
-        if above==None:
-            return proprietes(hslh.lnocean.integ_depth(),'hssl','Halosteric sea surface level anomaly','m') # [m]
-        else:
-            return proprietes(hslh.lnocean.above(above),'hssl','Halosteric sea surface level anomaly','m') # [m]
-    
-    """
     @property
-    # Ecart de hauteur d'eau thermosterique de la colonne par rapport à une référence (0,35)
+    # Ecart de hauteur d'eau thermosterique de la colonne par rapport à une référence (CT=0°C)
     def tssl(self):
-        return proprietes(self.ssl-self.hssl,'hssl','Thermosteric sea surface level anomaly','m') # [m]
-    
-    @property
-    # Ecart de hauteur d'eau thermosterique de la colonne par rapport à une référence (0,35)
-    def hssl(self):
-        rhoref = gsw.rho(gsw.SR_from_SP(35), 0, self.P)
-        rho = gsw.rho(self.SA, 0., self.P)
-        hslh = 1.-rho/rhoref
-        return proprietes(hslh.lnocean.integ_depth(), 'hssl','Halosteric sea surface level anomaly','m') # [m]
+        if NoneType(self.tssl_):
+            rho = gsw.rho(self.SA, self.CT, self.P)
+            rhoref = gsw.rho(self.SA, 0., self.P)
+            tslh = 1.-rho/rhoref
+            self.tssl_ = proprietes(tslh.lnocean.integ_depth(), 
+                                    'tssl','Thermosteric sea surface level anomaly','m') # [m]
+        return self.tssl_
 
-        
-    # Ecart de hauteur d'eau de la colonne par rapport à une référence (0,35)
+    @property    
+    # Ecart de hauteur d'eau halosterique de la colonne par rapport à une référence (SA=35psu)
+    def hssl(self):
+        if NoneType(self.hssl_):
+            rho = gsw.rho(self.SA, self.CT, self.P)
+            rhoref = gsw.rho(LNPY_SSO, self.CT, self.P)
+            hslh = 1.-self.rho/rhoref
+            self.hssl_ = proprietes(hslh.lnocean.integ_depth(), 
+                                    'hssl','Halosteric sea surface level anomaly','m') # [m]
+        return self.hssl_
+
+    # Ecart de hauteur d'eau de la colonne par rapport à une référence (CT=0°C,SA=35psu)
     def ssl_above(self,target):
         return proprietes(self.slh.lnocean.above(target),
                           'ssl','Steric sea surface level anomaly above targeted depth','m') # [m]
-        
-
-
+     
     @property
     # EEH local (en 
     def eeh(self):
         if NoneType(self.eeh_):
-            if 'latitude' in self._obj.coords:
-                rhoref = gsw.rho(gsw.SA_from_SP(35,self.P,self._obj.longitude, self._obj.latitude),
-                                 0, self.P)
-            else:
-                rhoref = gsw.rho(gsw.SR_from_SP(35), 0, self.P)
-            rho_SA,rho_CT,rho_P=gsw.rho_first_derivatives(self.SA.load(),self.CT.load(),self.P.load())
-            self.eeh_ = proprietes(-rho_CT/(rhoref*self.Cp*self.rho),
+            rho,alpha,beta = gsw.rho_alpha_beta(self.SA.load(), self.CT.load(), self.P.load())
+            self.eeh_ = proprietes(alpha/(rho*self.Cp),
                           'EEH','Local expansion efficiency oh heat','m/(J/m²)') # [m/(J/m²)]
         return self.eeh_
 
@@ -310,7 +285,7 @@ class OceanSet():
     # IEEH de la colonne (grandeur surfacique)
     def ieeh(self):
         if NoneType(self.ieeh_):
-            self.ieeh_ = proprietes(self.ssl/self.ohc,
+            self.ieeh_ = proprietes(self.tssl/self.ohc,
                           'IEEH','Integrated expansion efficiency oh heat','m/(J/m²)') # [m/(J/m²)]
         return self.ieeh_
 

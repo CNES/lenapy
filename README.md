@@ -8,7 +8,7 @@ To install Lenapy, follow the steps :
 * Download lenapy code ::
 
     ```
-    git clone lenapy
+    git clone git@github.com:CNES/lenapy.git
     ```
 
 * Create a conda environment and activate it ::
@@ -44,4 +44,6 @@ You can now use all the functionnalities of lenapy by adding the right suffixe a
   ds = lenapy.utils.geo.rename_data(xr.tutorial.open_dataset('air_temperature'))
   ds.air.lngeo.mean(['latitude','longitude'],weights=['latitude']).lntime.climato().plot()
   ```
+  
+  
 

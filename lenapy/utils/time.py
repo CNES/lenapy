@@ -1,5 +1,6 @@
 import xarray as xr
 import numpy as np
+import dask.array as da
 import pandas as pd
 import netCDF4
 from . import filters
@@ -66,10 +67,6 @@ def filter(data,filter_name='lanczos',time_coord='time',annual_cycle=False,q=3,*
     return v0+v4
 
 
-def function_climato(t,a,b,c,d,e,f):
-        l=2.*np.pi/(LNPY_DAYS_YEAR*LNPY_SECONDS_DAY*1.e9)
-        return a*np.cos(l*t)+b*np.sin(l*t)+c*np.cos(2.*l*t)+d*np.sin(2.*l*t)+e+f*t
-
 def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs=False,time_period=slice(None,None)):
     """
     Analyse du cycle annuel, bi-annuel et de la tendance
@@ -99,61 +96,62 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
     """
 
     if not 'time' in data.coords: raise AssertionError('The time coordinates does not exist')
+    
+    # Toutes les dimensions differentes de time sont regroupees en une seule
+    # Pour cela on récupère le nom des dimensions, et on enlève 'time'
+    dims_stack=list(data.dims)
+    dims_stack.remove('time')
 
-    # Donnees de la periode de reference
-    data_ref=data.sel(time=time_period)
+    # Reference temporelle = milieu de la période
+    tmin=data.time.sel(time=time_period).min()
+    tmax=data.time.sel(time=time_period).max()
+    tref=tmin+(tmax-tmin)/2.
     
-    # Mise à l'échelle pour éviter les pb de précision machine
-    d_mean  = data_ref.mean(['time'])
-    d_sig = data_ref.std('time')
-    
-    # Eliminer les séries où il y a moins de 6 points (pas de climato possible)
-    data_valid=(data_ref-d_mean).where(data_ref.count(dim='time')>5,0)/d_sig
-    
-    fit=data_valid.chunk(dict(time=-1)).curvefit('time',function_climato).curvefit_coefficients*d_sig
-    [a,b,c,d,e,f] = [fit.sel(param=u).drop('param') for u in ['a','b','c','d','e','f']]
-    
-    time=data.time.astype('float')
+    # Construction de la matrice des mesures
+    t1=(data.time-tref)/pd.to_timedelta("1D").asm8
+    omega=2*np.pi/LNPY_DAYS_YEAR
+    X=xr.concat((t1**0,t1,np.cos(omega*t1),np.sin(omega*t1),np.cos(2*omega*t1),np.sin(2*omega*t1)),dim='deg').chunk(time=-1)
 
-    d_cycle = function_climato(time,a,b,c,d,0,0)
-    d_trend = function_climato(time,0,0,0,0,e,f)
-    d_signal= data - d_cycle - d_trend - d_mean
-
-    res=0
-    if cycle:
-        res+=d_cycle
-    if trend:
-        res+=d_trend
-    if signal:
-        res+=d_signal
-    if mean:
-        res+=d_mean
-    if return_coeffs:
-        return res,xr.Dataset({'Year_amplitude':np.sqrt(a**2+b**2),
-                       'Day0_YearCycle':np.mod(np.arctan2(b,a)/2./np.pi*LNPY_DAYS_YEAR,LNPY_DAYS_YEAR),
-                       'HalfYear_Amplitude':np.sqrt(c**2+d**2),
-                       'Day0_HalfYearCycle':np.mod(np.arctan2(d,c)/2./np.pi*LNPY_DAYS_YEAR,LNPY_DAYS_YEAR/2.),
-                       'Origin':e+d_mean,
-                       'Trend':f*LNPY_DAYS_YEAR*LNPY_SECONDS_DAY*1.e9
-                      })
+    # Construction du vecteur des observations
+    if (dims_stack==[]):
+        Y=data
     else:
-        return res
+        Y=data.stack(pos=dims_stack).dropna('pos',thresh=6).chunk(time=-1,pos=10000)
 
-def generate_climato(time, coefficients, mean=True, trend=False, cycle=True):
-    a=b=c=d=e=f=0.
-    if mean:
-        e=coefficients.Origin
-    if trend:
-        f=coefficients.Trend/(LNPY_DAYS_YEAR*LNPY_SECONDS_DAY*1.e9)
-    if cycle:
-        a=coefficients.Year_amplitude*np.cos(coefficients.Day0_YearCycle/LNPY_DAYS_YEAR*2*np.pi)
-        b=coefficients.Year_amplitude*np.sin(coefficients.Day0_YearCycle/LNPY_DAYS_YEAR*2*np.pi)
-        c=coefficients.HalfYear_Amplitude*np.cos(coefficients.Day0_HalfYearCycle/LNPY_DAYS_YEAR*2*np.pi)
-        d=coefficients.HalfYear_Amplitude*np.sin(coefficients.Day0_HalfYearCycle/LNPY_DAYS_YEAR*2*np.pi)
+    # Resolution du moindre carré
+    (coeffs,residus,rank,eig)=da.linalg.lstsq(X.sel(time=time_period).T.data,Y.sel(time=time_period).data)
     
-    return function_climato(time,a,b,c,d,e,f)
+    
+    if (dims_stack==[]):
+        coeffs=xr.DataArray(coeffs,(X.deg,),attrs=dict(time_ref=tref))
+    else:
+        coeffs=xr.DataArray(coeffs,(X.deg,Y.pos),attrs=dict(time_ref=tref)).unstack('pos')
 
-def trend(data,time_unit='s'):
+    res=coeffs*X
+
+    if return_coeffs:
+        return coeffs
+        
+    # Sélection des composantes de la climato à retourner
+    composants=np.where([mean,trend,cycle,cycle,cycle,cycle])[0]
+
+    return (data-res.sum('deg'))*signal+res.isel(deg=composants).sum('deg')
+
+def generate_climato(time, coeffs, mean=True, trend=False, cycle=True):
+
+    tref=coeffs.time_ref
+    t1=(time-tref)/pd.to_timedelta("1D").asm8
+    omega=2*np.pi/LNPY_DAYS_YEAR
+    X=xr.concat((t1**0,t1,np.cos(omega*t1),np.sin(omega*t1),np.cos(2*omega*t1),np.sin(2*omega*t1)),dim='deg').chunk(time=-1)
+
+    # Sélection des composantes de la climato à retourner
+    composants=np.where([mean,trend,cycle,cycle,cycle,cycle])[0]
+
+    return (coeffs*X).isel(deg=composants).sum('deg')
+
+   
+
+def trend(data,time_unit='1s'):
     return data.polyfit(dim='time',deg=1).polyfit_coefficients[0]*pd.to_timedelta(time_unit).asm8.astype('int')
 
 def detrend(data):

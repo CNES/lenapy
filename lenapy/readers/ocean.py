@@ -3,6 +3,7 @@
 
 """
 import os.path
+import sys
 from glob import glob
 import numpy as np
 import xarray as xr
@@ -59,13 +60,14 @@ class lenapyOceanProducts(BackendEntrypoint):
     """Open netcdf ocean product
     
     This module allows to load temperature and salinity data from different products and format the data with unified definition for variables and coordinates, compatible with the use of lenapy_ocean :
-    * standardized coordinates names : latitude, longitude, depth, time
-    * standardized variables names : temp or PT or CT for temperature, psal, SA, SR for salinity
+        * standardized coordinates names : latitude, longitude, depth, time
+        * standardized variables names : temp or PT or CT for temperature, psal, SA, SR for salinity
     When loading a product, all the files present in the product directory are parsed. To gain computing time, a first filter on the years to load can be applied, as well as a text filter.
     A second date filter can be apply afterwards with the .sel(time=slice('begin_date','end_date') method.
-    All keyword arguments associated with xr.open_mfdataset can be passed.
+    All keyword arguments associated with xr.open_dataset can be passed.
     Dask is implicitely used when using these interface methods.
-    It is strongly recommanded to chunk the dataset along depth dimension (chunks=dict(depth=10))
+    
+    It is imperative to chunk the dataset along time dimension (chunks=dict(depth=10)), and recommanded to chunk the dataset along depth dimension (chunks=dict(depth=10))
 
     Parameters
     ----------
@@ -83,8 +85,8 @@ class lenapyOceanProducts(BackendEntrypoint):
         highest bound of the time intervalle to be loaded (year)
     filter : string, optionnal
         string pattern to filter datafiles names
-    chunk : dict, optionnal
-        dictionnary {dim:chunk}
+    chunks : dict, optionnal
+        dictionnary {dim:chunks}
     open_dataset_kwargs : dict, optional
         The keyword arguments form of open_mfdataset
 
@@ -98,10 +100,10 @@ class lenapyOceanProducts(BackendEntrypoint):
 
     .. code-block:: python
 
-     data=xr.open_dataset('/home/usr/lenapy/data/ISAS20',engine='lenapyOceanProduct',product='ISAS",ymin=2005,ymax=2007,filter='ARGO',chunks={'depth':10})
+     data=xr.open_dataset('/home/usr/lenapy/data/ISAS20',engine='lenapyOceanProduct',product='ISAS",ymin=2005,ymax=2007,filter='ARGO',chunks={'time':1,'depth':10})
 
     """    
-    def open_dataset(self, directory,product=None,corr=None,ymin=0,ymax=9999,filter='',drop_variables=None,chunk=None,open_dataset_kwargs={}):
+    def open_dataset(self, directory,product=None,corr=None,ymin=0,ymax=9999,filter='',drop_variables=None,open_dataset_kwargs={}):
         
 
 
@@ -119,7 +121,7 @@ class lenapyOceanProducts(BackendEntrypoint):
 
             fics=filtered_list(glob(os.path.join(directory,'**','*.nc')),year,ymin,ymax,filter)
 
-            data=xr.open_mfdataset(fics,chunk=chunk,**open_dataset_kwargs)
+            data=xr.open_mfdataset(fics,**open_dataset_kwargs)
 
             return xr.Dataset({
                 'temp':data.TEMP,
@@ -146,15 +148,15 @@ class lenapyOceanProducts(BackendEntrypoint):
 
             #Salinite
             fics_sal=filtered_list(glob(os.path.join(directory,'**','sanom*.nc')),year,ymin,ymax,filter)
-            sal=xr.open_mfdataset(fics_sal,engine='lenapyNetcdf',decode_times=False,time_type="360_day",chunk=chunk,**open_dataset_kwargs).s_an
+            sal=xr.open_mfdataset(fics_sal,engine='lenapyNetcdf',decode_times=False,time_type="360_day",**open_dataset_kwargs).s_an
             fics_climsal=glob(os.path.join(directory,'climato','*s1[3-6]_01.nc'))
-            climsal=xr.open_mfdataset(fics_climsal,engine='lenapyNetcdf',decode_times=False,time_type="360_day",chunk=chunk,**open_dataset_kwargs).s_an
+            climsal=xr.open_mfdataset(fics_climsal,engine='lenapyNetcdf',decode_times=False,time_type="360_day",**open_dataset_kwargs).s_an
 
             #Temperature
             fics_temp=filtered_list(glob(os.path.join(directory,'**','tanom*.nc')),year,ymin,ymax,filter)
-            temp=xr.open_mfdataset(fics_temp,engine='lenapyNetcdf',decode_times=False,time_type="360_day",chunk=chunk,**open_dataset_kwargs).t_an
+            temp=xr.open_mfdataset(fics_temp,engine='lenapyNetcdf',decode_times=False,time_type="360_day",**open_dataset_kwargs).t_an
             fics_climtemp=glob(os.path.join(directory,'climato','*t1[3-6]_01.nc'))
-            climtemp=xr.open_mfdataset(fics_climtemp,engine='lenapyNetcdf',decode_times=False,time_type="360_day",chunk=chunk,**open_dataset_kwargs).t_an
+            climtemp=xr.open_mfdataset(fics_climtemp,engine='lenapyNetcdf',decode_times=False,time_type="360_day",**open_dataset_kwargs).t_an
        
             return xr.Dataset({\
                                'temp':(temp.groupby('time.month')+climtemp.groupby('time.month').mean('time')).drop('month'),
@@ -180,8 +182,8 @@ class lenapyOceanProducts(BackendEntrypoint):
             fics_anom=filtered_list(glob(os.path.join(directory,'**','RG_ArgoClim_20*.nc')),year,ymin,ymax,filter)
             fics_clim=glob(os.path.join(directory,'**','RG_ArgoClim_cl*.nc'))
 
-            anom=xr.open_mfdataset(fics_anom,engine='lenapyNetcdf',decode_times=False,time_type="360_day",chunk=chunk,**open_dataset_kwargs)
-            clim=xr.open_mfdataset(fics_clim,engine='lenapyNetcdf',chunk=chunk,**open_dataset_kwargs)
+            anom=xr.open_mfdataset(fics_anom,engine='lenapyNetcdf',decode_times=False,time_type="360_day",**open_dataset_kwargs)
+            clim=xr.open_mfdataset(fics_clim,engine='lenapyNetcdf',**open_dataset_kwargs)
 
             temp = anom.ARGO_TEMPERATURE_ANOMALY + clim.ARGO_TEMPERATURE_MEAN
             psal = anom.ARGO_SALINITY_ANOMALY + clim.ARGO_SALINITY_MEAN
@@ -205,16 +207,17 @@ class lenapyOceanProducts(BackendEntrypoint):
                    |-ArgoData_year_month.nc (ex: ArgoData_2020_01.nc)
             """
 
-            def set_time(file_basename):
+            def set_time(ds):
+                file_basename=os.path.basename(os.path.splitext(ds.encoding["source"])[0])
                 date=file_basename.split('_')
-                return np.datetime64('%s-%s-15'%(date[1],date[2]),'ns')
-
+                ts=np.datetime64('%s-%s-15'%(date[1],date[2]),'ns')
+                return ds.assign_coords(time=ts).expand_dims(dim='time')
 
             def year(f):
                 return f.split('_')[1]
 
             fics=filtered_list(glob(os.path.join(directory,'**','ArgoData*.nc')),year,ymin,ymax,filter)
-            data=xr.open_mfdataset(fics,engine='lenapyNetcdf',set_time=set_time,chunk=chunk,**open_dataset_kwargs)
+            data=xr.open_mfdataset(fics,engine='lenapyNetcdf',preprocess=set_time,**open_dataset_kwargs)
 
             return xr.Dataset({'temp':data.TEMP,
                                'psal':data.SALT
@@ -255,16 +258,18 @@ class lenapyOceanProducts(BackendEntrypoint):
                |-temp
                    |-CZ16_depth_range_data_year_yyyy_month_mm.year_month.nc (ex: CZ16_1_2000m_temperature_year_2020_month_01.nc)
             """     
-            def set_time(file_basename):
+            def set_time(ds):
+                file_basename=os.path.basename(os.path.splitext(ds.encoding["source"])[0])
                 date=file_basename.split('_')
-                return np.datetime64('%s-%s-15'%(date[-3],date[-1]),'ns')
+                ts=np.datetime64('%s-%s-15'%(date[-3],date[-1]),'ns')
+                return ds.assign_coords(time=ts).expand_dims(dim='time')
             
             def year(f):
                 return f.split('_')[-3]
 
             fics=filtered_list(glob(os.path.join(directory,'**','CZ16*.nc')),year,ymin,ymax,filter)
 
-            data=xr.open_mfdataset(fics,engine='lenapyNetcdf',set_time=set_time,chunk=chunk,**open_dataset_kwargs)
+            data=xr.open_mfdataset(fics,engine='lenapyNetcdf',preprocess=set_time,**open_dataset_kwargs)
 
             return xr.Dataset({'temp':data.temp,
                                 'SA':data.salinity
@@ -288,7 +293,7 @@ class lenapyOceanProducts(BackendEntrypoint):
 
             fics=filtered_list(glob(os.path.join(directory,"4.2.2.%s"%corr,'EN.4.2.2*.nc')),year,ymin,ymax,filter)
 
-            data=xr.open_mfdataset(fics,engine='lenapyNetcdf',chunk=chunk,**open_dataset_kwargs)
+            data=xr.open_mfdataset(fics,engine='lenapyNetcdf',**open_dataset_kwargs)
 
             return xr.Dataset({'PT':data.temperature - 273.15,
                                'psal':data.salinity
@@ -305,16 +310,18 @@ class lenapyOceanProducts(BackendEntrypoint):
                |-monthly
                    |-TS_timestamp_xxx.nc (ex: TS_202105_GLB.nc)
             """       
-            def set_time(file_basename):
+            def set_time(ds):
+                file_basename=os.path.basename(os.path.splitext(ds.encoding["source"])[0])
                 date=file_basename.split('_')[1]
-                return np.datetime64('%s-%s-15'%(date[0:4],date[4:6]),'ns')
+                ts=np.datetime64('%s-%s-15'%(date[0:4],date[4:6]),'ns')
+                return ds.assign_coords(time=ts).expand_dims(dim='time')
 
             def year(f):
                 return f.split('_')[1][0:4]
 
             fics=filtered_list(glob(os.path.join(directory,'**','*GLB.nc')),year,ymin,ymax,filter)
 
-            data=xr.open_mfdataset(fics,engine='lenapyNetcdf',set_time=set_time,chunk=chunk,**open_dataset_kwargs)
+            data=xr.open_mfdataset(fics,engine='lenapyNetcdf',preprocess=set_time,**open_dataset_kwargs)
 
             depth=-gsw.z_from_p(data.PRES,90)
             pressure=gsw.p_from_z(-depth,data.latitude)
@@ -348,7 +355,7 @@ class lenapyOceanProducts(BackendEntrypoint):
 
             fics=filtered_list(glob(os.path.join(directory,'**','*.nc')),year,ymin,ymax,filter)
 
-            data=xr.open_mfdataset(fics,preprocess=preproc,chunk=chunk,**open_dataset_kwargs)
+            data=xr.open_mfdataset(fics,preprocess=preproc,**open_dataset_kwargs)
             data=data.where(data!=0.)
 
             return xr.Dataset({'PT':data.THETA,
@@ -367,7 +374,7 @@ class lenapyOceanProducts(BackendEntrypoint):
 
             fics=glob(os.path.join(directory,'*.nc'))
 
-            data=xr.open_mfdataset(fics,engine='lenapyNetcdf',preprocess=preproc,chunk=chunk,**open_dataset_kwargs).sel(time=slice(str(ymin),str(ymax)))
+            data=xr.open_mfdataset(fics,engine='lenapyNetcdf',preprocess=preproc,**open_dataset_kwargs).sel(time=slice(str(ymin),str(ymax)))
 
             depth=-gsw.z_from_p(data.pressure,0)
             pressure=gsw.p_from_z(-depth,data.latitude)
@@ -390,7 +397,7 @@ class lenapyOceanProducts(BackendEntrypoint):
 
             fics=filtered_list(glob(os.path.join(directory,'*.nc')),year,ymin,ymax,filter)
             print(fics)
-            data=xr.open_mfdataset(fics,preprocess=preproc,chunk=chunk,**open_dataset_kwargs)
+            data=xr.open_mfdataset(fics,preprocess=preproc,**open_dataset_kwargs)
 
             return xr.Dataset({'PT':data.temp,
                                 'psal':data.salt

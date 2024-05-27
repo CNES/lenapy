@@ -1,5 +1,11 @@
 """This module implements some usuals functions to be applied on gridded data (lat/lon)
 
+.. autosummary::
+    :toctree:
+
+    GeoSet
+    GeoArray
+    
 """
 
 # -*- coding: utf-8 -*-
@@ -16,6 +22,7 @@ from .plots import *
 @xr.register_dataset_accessor("lngeo")
 class GeoSet:
     """This class implements an extension of any dataset to add some usefull methods often used on gridded data in earth science data handling
+                
     """
     def __init__(self, xarray_obj):
         self._obj = xarray_obj
@@ -528,3 +535,6 @@ class GeoArray:
             surface = data.lngeo.surface_cell()
         """
         return reset_longitude(self._obj,origin)
+
+    def geomean(self):
+        return self.mean(['latitude','longitude'],weights='latitude')

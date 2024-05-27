@@ -105,16 +105,19 @@ def isosurface(data, target, dim, coord=None, upper=False):
     else:
         return iso.max(dim, skipna=True)
 
+
 def split_duplicate_coords(data):
-    for u in data.data_vars:
-        if (len(set(data[u].dims))!=len(data[u].dims)):
-            new_coords={}
-            for c in data[u].dims:
-                if (c in new_coords.keys()):
-                    new_coords[c+"_"]=data[u].coords[c].values
-                else:
-                    new_coords[c]=data[u].coords[c].values
-            data[u]=xr.DataArray(data=data[u].values,dims=new_coords.keys(),coords=new_coords)
+
+    for v in data.data_vars:
+            dims=data[v].dims
+            dup = {x+'_' for x in dims if dims.count(x) > 1}
+            for d in dup:
+                data=data.assign_coords({d:data[d[:-1]].data})
+
+            new_dims=tuple(list(set(dims))+list(dup))
+
+            if len(dup)>0:
+                data[v]=(new_dims,data[v].data)
     return data
 
 def longitude_increase(data):
@@ -161,7 +164,6 @@ def surface_cell(data):
     dlon=ecarts(data,'longitude')
     
     return np.abs(np.radians(dlat)*np.radians(dlon))*LNPY_MEAN_EARTH_RADIUS**2*np.cos(np.radians(data.latitude))/(1+LNPY_EARTH_FLATTENING*np.cos(2*np.radians(data.latitude)))**2
-
 
 def ecarts(data,dim):
     """

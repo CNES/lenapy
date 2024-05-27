@@ -2,7 +2,9 @@
 """
 
 import xarray as xr
+import numpy as np
 import os
+import numbers
 import xesmf as xe
 from ..utils.geo import rename_data, split_duplicate_coords, longitude_increase, reset_longitude
 from ..utils.time import to_datetime
@@ -24,6 +26,7 @@ class lenapyNetcdf(BackendEntrypoint):
     time_type : str, optional
         type used for time coordinate, used to convert to datetime64
         possible values : 'frac_year' or '360_day' or 'cftime' or 'custom'
+        
         if 'custom', "decode_times=False" and "format" must be specified
     format : str, optional
         strftime to parse time (if time_type=='custom')
@@ -51,7 +54,7 @@ class lenapyNetcdf(BackendEntrypoint):
                      nan=None,
                      time_type=None,
                      format=None,
-                     duplicate_coords=True,
+                     duplicate_coords=False,
                      drop_variables=None,
                      decode_times=True,
                      set_time=None,
@@ -70,10 +73,7 @@ class lenapyNetcdf(BackendEntrypoint):
             res=to_datetime(res,time_type=time_type,format=format)
         if duplicate_coords:
             res=split_duplicate_coords(res)
-        try:
-            res = reset_longitude(res)
-        except:
-            pass
+        res = longitude_increase(res)
         if type(nan)!=type(None):
             return res.where(res!=nan)
         else:
@@ -87,15 +87,15 @@ class lenapyMask(BackendEntrypoint):
     The returned mask contains an extra dimension named 'zone', corresponding to the different values
     of the mask contained in the opened dataset.
     Required format for the dataset to be opened :
-    * contains several dataarrays, each one being a mask (identified as 'field')
-    * each mask is defined by values, whose signification is given in the attributes of the dataarray : {'value1' : 'label1',...}
+        * contains several dataarrays, each one being a mask (identified as 'field')
+        * each mask is defined by values, whose signification is given in the attributes of the dataarray : {'value1' : 'label1',...}
     If there is no valid attribute, the mask is returned with False where NaN, False or 0 are found, True for any other value.
 
     Parameters
     ----------
     filename : path
         path and filename of the mask file to be opened
-    field : string
+    field : string or array of strings
         name of the data to be used as a mask in the dataset
     grid : dataset, optional
         dataset to be regridded on. If None, no regridding is performed
@@ -122,25 +122,41 @@ class lenapyMask(BackendEntrypoint):
     """        
     def open_dataset(self,filename,field=None,grid=None,drop_variables=None):
 
+        res=[]
         # Opening
-        mask=xr.open_dataset(filename)[field]
+        file=xr.open_dataset(filename)
+        if field==None:
+            field=file.data_vars
+            
+        for f in np.ravel(field):
+            mask=file[f]
+            if not(isinstance(mask.values.ravel()[0],numbers.Number) and 'latitude' in mask.coords):
+                continue
 
-        # Labels reading
-        c=[]
-        d=[]
-        for k in mask.attrs.keys():
-            if k.isnumeric():
-                d.append(int(k))
-                c.append(mask.attrs[k])
-        labels=xr.DataArray(data=d,dims='zone',coords=dict(zone=c))
+            # Labels reading
+            c=[]
+            d=[]
+            for k in mask.attrs.keys():
+                if k.isnumeric():
+                    d.append(int(k))
+                    c.append(mask.attrs[k])
+                if isinstance(mask.attrs[k],numbers.Number):
+                    d.append(mask.attrs[k])
+                    c.append(k)
+            if len(d)==0:
+                d=[False]
+                c=[f]
+                mask=mask.where(mask.notnull(),0).astype('int')==0
 
-        # Resampling
-        if type(grid)!=type(None):
-            reg=xe.Regridder(mask,grid,method='nearest_s2d')
-            mask = reg(mask)    
+            labels=xr.DataArray(data=d,dims='zone',coords=dict(zone=c))
+                    
+            # Resampling
+            if type(grid)!=type(None):
+                reg=xe.Regridder(mask,grid,method='nearest_s2d')
+                mask = reg(mask)    
 
-        # Returning
-        if len(d)>0:
-            return xr.Dataset({'mask':xr.where(mask==labels,True,False)})
-        else:
-            return xr.Dataset({'mask':xr.where(mask.where(mask.notnull(),0).astype('int')==0,False, True)})
+            # Returning
+            res.append(xr.Dataset({'mask':xr.where(mask==labels,True,False)}))
+        
+        return xr.concat(res,dim='zone')
+    
