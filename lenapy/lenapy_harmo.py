@@ -4,7 +4,7 @@ projections on latitude/longitude grids.
 
 This module includes two classes:
   * HarmoSet: Provides methods for handling spherical harmonics decompositions, converting them to grid representations
-and performing operations such as changing reference frames and tide systems.
+  and performing operations such as changing reference frames and tide systems.
   * HarmoArray: Converts grid representation of a spherical harmonics dataset back to spherical harmonics.
 
 The module is designed to work seamlessly with xarray datasets, enabling efficient manipulation and visualization.

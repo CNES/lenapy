@@ -7,13 +7,6 @@ Accessor modules
 .. autosummary::
     :toctree:
 
-    .. automodule:: lenapy_geo
-       :members:
-    .. automodule:: lenapy_time
-       :members:
-    .. automodule:: lenapy_ocean
-       :members:
-    
     lenapy_geo
     lenapy_time
     lenapy_ocean
