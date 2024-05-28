@@ -77,7 +77,7 @@ LNPY_G_WMO = 9.80665  # m.s², standard gravitational acceleration from [WMO1988
 # Radius of the Earth for which spherical Earth volume equals the ellipsoidal Earth volume
 LNPY_RAVERAGE_EARTH = A_EARTH_GRS80*(1 - F_EARTH_GRS80)**(1/3)  # m, Average radius of the Earth
 
-# Deduced from LNPY other constants with rho = 3*M_Earth / 4*pi*R**3
+# Deduced from LNPY other constants with rho = 3*M_Earth / 4*pi*R**3 approx equals to 5513.4
 LNPY_RHO_EARTH = 0.75*(LNPY_GM_EARTH - LNPY_GM_ATMO)/(LNPY_G * pi * LNPY_RAVERAGE_EARTH**3)  # kg.m-3 , Earth density
 
 LNPY_SSO = 35.16404  # psu - ref TEOS10 seawater equations (gsw)
