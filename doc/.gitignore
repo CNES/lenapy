@@ -1,3 +1,4 @@
 _build
 sources
-lenapy.*.rst
+lenapy*.rst
+functions_classes.rst

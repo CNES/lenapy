@@ -1,8 +1,12 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import interpolate
+import xarray as xr
+import matplotlib.ticker as ticker
+from lenapy.utils.harmo import l_factor_conv
 
-def plot_timeseries_uncertainty(xgeo_data, 
+
+def plot_timeseries_uncertainty(xgeo_data,
                                 x_dim='time',
                                 y_dim=None,
                                 thick_line='median',
@@ -14,8 +18,8 @@ def plot_timeseries_uncertainty(xgeo_data,
                                 shaded_area_alpha=0.2,
                                 ax=None,
                                 label=None,
-                                line_kwargs = dict(),
-                                area_kwargs = dict(),
+                                line_kwargs=dict(),
+                                area_kwargs=dict(),
                                 add_legend=True
                                 ):
     """
@@ -42,21 +46,21 @@ def plot_timeseries_uncertainty(xgeo_data,
     if ax is None:
         ax = plt.gca()
     data_dims = data.dims
-    if y_dim is None and len(data_dims)>=2:
-        y_dim = [dim for dim in data_dims if dim!=x_dim][0]
+    if y_dim is None and len(data_dims) >= 2:
+        y_dim = [dim for dim in data_dims if dim != x_dim][0]
 
-    if thick_line=='median':
+    if thick_line == 'median':
         main_metric = data.median(y_dim)
-    elif thick_line=='mean':
+    elif thick_line == 'mean':
         main_metric = data.mean(y_dim)
     elif thick_line is None:
         pass
     else:
         raise ValueError("thick_line can only be 'mean', 'median' or None.")
-        
+
     if label is None:
-        label=f"{variable} {thick_line}"
-    
+        label = f"{variable} {thick_line}"
+
     if thick_line is not None:
         plot_line = main_metric.plot(ax=ax, color=thick_line_color, **line_kwargs, label=label)
     if shaded_area_color is None:
@@ -66,21 +70,21 @@ def plot_timeseries_uncertainty(xgeo_data,
         if thick_line is None:
             main_metric = data.mean(y_dim)
         if shaded_area == 'std':
-            ax.fill_between(data.time.values, main_metric-data_std, main_metric+data_std,
-                            color=shaded_area_color, alpha=shaded_area_alpha, 
+            ax.fill_between(data.time.values, main_metric - data_std, main_metric + data_std,
+                            color=shaded_area_color, alpha=shaded_area_alpha,
                             linewidth=0, **area_kwargs, label='_nolegend_')
         if shaded_area == '2std':
-            ax.fill_between(data.time.values, main_metric-2*data_std, main_metric+2*data_std,
-                            color=shaded_area_color, alpha=shaded_area_alpha, 
+            ax.fill_between(data.time.values, main_metric - 2 * data_std, main_metric + 2 * data_std,
+                            color=shaded_area_color, alpha=shaded_area_alpha,
                             linewidth=0, **area_kwargs, label='_no_legend_')
         if shaded_area == '3std':
-            ax.fill_between(data.time.values, main_metric-3*data_std, main_metric+3*data_std,
-                            color=shaded_area_color, alpha=shaded_area_alpha, 
+            ax.fill_between(data.time.values, main_metric - 3 * data_std, main_metric + 3 * data_std,
+                            color=shaded_area_color, alpha=shaded_area_alpha,
                             linewidth=0, **area_kwargs, label='_no_legend_')
 
     elif shaded_area == 'quantiles':
         data_quantile = data.quantile([quantile_min, quantile_max],
-                                      dim = y_dim)
+                                      dim=y_dim)
         if thick_line is None:
             main_metric = data.median(y_dim)
         ax.fill_between(data.time.values, data_quantile.isel(quantile=0), data_quantile.isel(quantile=1),
@@ -94,8 +98,8 @@ def plot_timeseries_uncertainty(xgeo_data,
 
     if add_legend:
         ax.legend()
-        
-        
+
+
 class TaylorDiagram(object):
     """
     Taylor diagram.
@@ -124,23 +128,23 @@ class TaylorDiagram(object):
         import mpl_toolkits.axisartist.floating_axes as FA
         import mpl_toolkits.axisartist.grid_finder as GF
 
-        self.refstd = refstd            # Reference standard deviation
+        self.refstd = refstd  # Reference standard deviation
 
         tr = PolarAxes.PolarTransform()
 
         # Correlation labels
-        if rlocs==None:
+        if rlocs == None:
             rlocs = np.array([0, 0.2, 0.4, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 1])
-            
+
         if extend:
             # Diagram extended to negative correlations
             self.tmax = np.pi
             rlocs = np.concatenate((-rlocs[:0:-1], rlocs))
         else:
             # Diagram limited to positive correlations
-            self.tmax = np.pi/2
-        tlocs = np.arccos(rlocs)        # Conversion to polar angles
-        gl1 = GF.FixedLocator(tlocs)    # Positions
+            self.tmax = np.pi / 2
+        tlocs = np.arccos(rlocs)  # Conversion to polar angles
+        gl1 = GF.FixedLocator(tlocs)  # Positions
         tf1 = GF.DictFormatter(dict(zip(tlocs, map(str, rlocs))))
 
         # Standard deviation axis extent (in units of reference stddev)
@@ -159,7 +163,7 @@ class TaylorDiagram(object):
         fig.add_subplot(ax)
 
         # Adjust axes
-        ax.axis["top"].set_axis_direction("bottom")   # "Angle axis"
+        ax.axis["top"].set_axis_direction("bottom")  # "Angle axis"
         ax.axis["top"].toggle(ticklabels=True, label=True)
         ax.axis["top"].major_ticklabels.set_axis_direction("top")
         ax.axis["top"].label.set_axis_direction("top")
@@ -168,7 +172,7 @@ class TaylorDiagram(object):
         ax.axis["left"].set_axis_direction("bottom")  # "X axis"
         ax.axis["left"].label.set_text("Standard deviation")
 
-        ax.axis["right"].set_axis_direction("top")    # "Y-axis"
+        ax.axis["right"].set_axis_direction("top")  # "Y-axis"
         ax.axis["right"].toggle(ticklabels=True)
         ax.axis["right"].major_ticklabels.set_axis_direction(
             "bottom" if extend else "left")
@@ -176,10 +180,10 @@ class TaylorDiagram(object):
         if self.smin:
             ax.axis["bottom"].toggle(ticklabels=False, label=False)
         else:
-            ax.axis["bottom"].set_visible(False)          # Unused
+            ax.axis["bottom"].set_visible(False)  # Unused
 
-        self._ax = ax                   # Graphical axes
-        self.ax = ax.get_aux_axes(tr)   # Polar coordinates
+        self._ax = ax  # Graphical axes
+        self.ax = ax.get_aux_axes(tr)  # Polar coordinates
 
         # Add reference point and stddev contour
         l, = self.ax.plot([0], self.refstd, 'k*',
@@ -190,15 +194,13 @@ class TaylorDiagram(object):
 
         # Collect sample points for latter use (e.g. legend)
         self.samplePoints = [l]
-        
+
         # Add RMS contours, and label them
         contours = self.add_contours(levels=5, colors='0.3')  # 5 levels in grey
         plt.clabel(contours, inline=1, fontsize=10, fmt='%.2f')
 
-        self.add_grid()                                  # Add grid
+        self.add_grid()  # Add grid
         self._ax.axis[:].major_ticks.set_tick_out(True)  # Put ticks outward
-        
-       
 
     def add_sample(self, stddev, corrcoef, *args, **kwargs):
         """
@@ -226,10 +228,145 @@ class TaylorDiagram(object):
         rs, ts = np.meshgrid(np.linspace(self.smin, self.smax),
                              np.linspace(0, self.tmax))
         # Compute centered RMS difference
-        rms = np.sqrt(self.refstd**2 + rs**2 - 2*self.refstd*rs*np.cos(ts))
+        rms = np.sqrt(self.refstd ** 2 + rs ** 2 - 2 * self.refstd * rs * np.cos(ts))
 
         contours = self.ax.contour(ts, rs, rms, levels, **kwargs)
 
         return contours
 
-    
+
+def plot_hs(ds, lmin=1, lmax=None, mmin=0, mmax=None, reverse=False,
+            ax=None, cbar_ax=None, cbar_kwargs=None, **kwargs):
+    """
+    Plot time series of spherical harmonic dataset, with only l and m dimensions, into pyramidal plot
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        ds with only l and m dimensions to plot
+    lmin : int, optional
+        Minimal degree of the spherical harmonics coefficient to plot, default is 1
+    lmax : int, optional
+        Minimal degree of the spherical harmonics coefficient to plot, default is ds.l.max()
+    mmin : int, optional
+        Minimal order of the spherical harmonics coefficient to plot, default is 1
+    mmax : int, optional
+        Minimal order of the spherical harmonics coefficient to plot, default is ds.m.max()
+    reverse : bool, optional
+        Reverse y-axis, default is False
+    ax : plt.Axes, optional
+        Axes on which to plot. By default, use the current axes.
+    cbar_ax : plt.Axes, optional
+        Axes in which to draw the colorbar.
+    cbar_kwargs : dict, optional
+        Dictionary of keyword arguments to pass to the colorbar
+    **kwargs : optional
+        Additional keyword arguments to plt.matshow() function.
+
+
+    Returns
+    -------
+    ax : plt.Axes
+        Axes with the plot.
+    """
+    # -- set default param values
+    lmax = ds.l.max().values if lmax is None else lmax
+    mmax = lmax if mmax is None else mmax
+
+    ax = plt.gca() if ax is None else ax
+
+    cbar_kwargs = {'shrink': 0.7} if cbar_kwargs is None else cbar_kwargs
+    if cbar_ax is None:
+        cbar_kwargs.setdefault("ax", ax)
+    else:
+        cbar_kwargs.setdefault("cax", cbar_ax)
+
+    # -- Creation of the array for matshow with clm and slm
+    mat = np.zeros((lmax + 1, 2 * lmax + 1)) * np.NaN
+    i, j = np.tril_indices(lmax + 1)
+
+    # set slm before clm to plot order 0 coefficient of clm
+    mat[i, lmax - j] = ((ds.slm.where(ds.l >= lmin, np.NaN).where(np.logical_and(ds.m >= mmin, ds.m <= mmax), np.NaN)
+                         .isel(l=xr.DataArray(i, dims="tril"), m=xr.DataArray(j, dims="tril"))).values)
+    mat[i, lmax + j] = (ds.clm.where(ds.l >= lmin, np.NaN).where(np.logical_and(ds.m >= mmin, ds.m <= mmax), np.NaN)
+                        .isel(l=xr.DataArray(i, dims="tril"), m=xr.DataArray(j, dims="tril")).values)
+
+    # -- plot
+    im = ax.matshow(mat, extent=[-lmax - 0.5, lmax + 0.5, lmax + 0.5, -0.5], **kwargs)
+
+    fig = ax.get_figure()
+    cbar = fig.colorbar(im, **cbar_kwargs)
+
+    if reverse:
+        ax.invert_yaxis()
+    ax.text(-lmax / 1.7, lmax / 4, '$S_{l,m}$', fontsize=25, horizontalalignment='center')
+    ax.text(lmax / 1.7, lmax / 4, '$C_{l,m}$', fontsize=25, horizontalalignment='center')
+    ax.set_ylabel("Order", fontsize=17)
+    ax.set_xlabel("Degree", fontsize=17)
+    ax.xaxis.set_label_position('top')
+
+    def int_abs(tick_value, pos):
+        return int(np.abs(tick_value))
+
+    ax.xaxis.set_major_formatter(ticker.FuncFormatter(int_abs))
+    ax.tick_params(labelsize=13)
+    cbar.ax.tick_params(labelsize=15)
+
+    return ax
+
+
+def plot_power_hs(ds, unit=None, lmin=0, lmax=None, mmin=0, mmax=None, unit_kwargs=None, ax=None, **kwargs):
+    """
+    Plot degree power spectrum of a spherical harmonic dataset, with only l and m dimensions
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        ds with only l and m dimensions to plot
+    unit : str
+        'mewh', 'mmgeoid', 'microGal', 'bar', 'mvcu', or 'norm'
+        Unit of the spatial data to use for the conversion. Default is 'mewh' for meters of Equivalent Water Height
+        See utils.harmo.l_factor_conv() doc for details on the units
+    lmin : int, optional
+        Minimal degree of the spherical harmonics coefficient to plot, default is 1
+    lmax : int, optional
+        Minimal degree of the spherical harmonics coefficient to plot, default is ds.l.max()
+    mmin : int, optional
+        Minimal order of the spherical harmonics coefficient to plot, default is 1
+    mmax : int, optional
+        Minimal order of the spherical harmonics coefficient to plot, default is ds.m.max()
+    unit_kwargs : dict | None, optional
+        Dictionary of keyword arguments to pass to the l_factor_conv() function.
+    ax : plt.Axes, optional
+        Axes on which to plot. By default, use the current axes.
+    **kwargs : optional
+        Additional keyword arguments to plt.plot() function.
+
+    Returns
+    -------
+    ax : plt.Axes
+        Axes with the plot.
+    """
+    # -- set default param values
+    if unit is None and 'units' in ds.attrs:
+        unit = ds.attrs['units']
+    elif unit is None:
+        unit = 'mewh'
+
+    lmax = ds.l.max().values if lmax is None else lmax
+    mmax = lmax if mmax is None else mmax
+
+    ax = plt.gca() if ax is None else ax
+    unit_kwargs = {} if unit_kwargs is None else unit_kwargs
+
+    l_factor = l_factor_conv(ds.l.values, unit=unit, **unit_kwargs)[0]
+    deg_amp = l_factor * np.sqrt((ds.clm ** 2).sel(m=slice(mmin, mmax)).sum('m') +
+                                 (ds.slm ** 2).sel(m=slice(mmin, mmax)).sum('m'))
+
+    ax.plot(ds.l.sel(l=slice(lmin, lmax)), deg_amp.sel(l=slice(lmin, lmax)), **kwargs)
+
+    ax.set_ylabel(unit, fontsize=16)
+    ax.set_xlabel("Degree", fontsize=16)
+    ax.tick_params(labelsize=13)
+
+    return ax

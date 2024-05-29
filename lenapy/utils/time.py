@@ -19,7 +19,7 @@ def filter(data,filter_name='lanczos',time_coord='time',annual_cycle=False,q=3,*
         nom de la fonction de filtrage
     time_coord : str (default='time')
         dimension name along which to apply the filter
-    annual_cycle : Bool (default=False) 
+    annual_cycle : Bool (default=False)
         retire le cycle annuel avant de filtrer, et le rajoute à la fin
     q : integer (default=3)
         ordre du polynome pour l'effet miroir (gestion des bords)
@@ -171,7 +171,7 @@ def to_datetime(data,time_type,format=None):
     
     if time_type=='frac_year':
         data['time']=[ 
-            pd.to_datetime(f'{int(np.floor(i))}')+pd.to_timedelta(float((i-np.floor(i))*LNPY_DAYS_YEAR),unit='D') 
+            pd.to_datetime(f'{int(np.floor(i))}')+pd.to_timedelta(float((i-np.floor(i))*LNPY_DAYS_YEAR),unit='D')
             for i in data.time]
     elif time_type=='360_day':
         data.time.attrs['calendar']='360_day'
@@ -184,7 +184,7 @@ def to_datetime(data,time_type,format=None):
         data['time']=netCDF4.num2date(data.time, data.time.Units, data.time.calendar)
     else:
         raise ValueError(f'Format {time_type} not yet considered, please convert manually to datatime')
-      
+
     return data
 
 def diff_3pts(data,dim,time_unit='1s'):

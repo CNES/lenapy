@@ -1,11 +1,5 @@
-"""This module implements some usuals functions to be applied on gridded data (lat/lon)
-
-.. autosummary::
-    :toctree:
-
-    GeoSet
-    GeoArray
-    
+"""
+This module implements some usuals functions to be applied on gridded data (lat/lon)
 """
 
 # -*- coding: utf-8 -*-

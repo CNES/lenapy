@@ -7,6 +7,7 @@
 import sys, os
 import datetime
 sys.path.insert(0, os.path.abspath('..'))
+sys.path.insert(0, os.path.abspath('../lenapy'))
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -31,11 +32,12 @@ extensions = ["sphinx.ext.autodoc", "sphinx.ext.viewcode", "sphinx.ext.autosumma
 
 # autosummaries from source-files : use .. autosummary::
 autosummary_generate = True
-# autodoc dont show __init__ docstring
+# Inherit docstrings from parent classes
+autodoc_inherit_docstrings = True
+# autodoc don't show __init__ docstring
 autoclass_content = "both"
-# sort class members
+# sort class members by their order in the source
 autodoc_member_order = 'bysource'
-# autodoc_member_order = "groupwise"
 
 # show all members of a class in the Methods and Attributes sections automatically
 numpydoc_show_class_members = True
@@ -74,7 +76,6 @@ intersphinx_mapping = {
     "numpy": ("http://docs.scipy.org/doc/numpy/", None),
     "scipy": ("http://docs.scipy.org/doc/scipy/reference", None),
     "matplotlib": ("http://matplotlib.org", None),
-    "sphinx": ("http://www.sphinx-doc.org/en/stable/", None),
     "xarray": ("https://docs.xarray.dev/en/stable/", None),
 }
 
