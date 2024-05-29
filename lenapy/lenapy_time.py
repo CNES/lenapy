@@ -43,7 +43,7 @@ class TimeSet:
             return annual and semi-annual cycles (cos and sin)
         return_coeffs : Bool (default=False)
             returns cycle coefficient, mean and trend
-        time_period : slice (defalut=slice(None,None), ie the whole time period of the data)
+        time_period : slice (defaultt=slice(None,None), ie the whole time period of the data)
             Reference time period when climatology has to be computed
         fillna : Bool (default=False)
             if fillna=True and signal=True, Nan in signal is replaced by the other selected components
@@ -182,7 +182,7 @@ class TimeArray:
             return annual and semi-annual cycles (cos and sin)
         return_coeffs : Bool (default=False)
             returns cycle coefficient, mean and trend
-        time_period : slice (defalut=slice(None,None), ie the whole time period of the data)
+        time_period : slice (default=slice(None,None), ie the whole time period of the data)
             Reference time period when climatology has to be computed
         fillna : Bool (default=False)
             if fillna=True and signal=True, Nan in signal is replaced by the other selected components
@@ -267,11 +267,55 @@ class TimeArray:
         return interp_time(self._obj,other,**kwargs)
     
     def plot(self, **kwargs):
-        """Plots a variable with uncertanty in time
+        """
+        Plots the timeseries of the data in the TimeArray, including an uncertainty. 
+        Computes the uncertainty on all dimensions that are not time.
         
         Parameters
         ----------
-                    
+        thick_line : String (default='median')
+            How to aggregate the data to plot the main thick line. Can be:
+            * `median`: computes the median
+            * `mean`: computes the mean
+            * None: does not plot a main thick line
+        shaded_area : String (default='auto')
+            How to aggregate the data to plot the uncertainty around the thick line. Can be:
+            * `auto`: plots 1 standard deviation if thick_line is `mean` and quantiles 17-83 if thick_line is `median`.
+            * `auto-multiple`: plots 1,2 and 3 standard deviations if thick_line is `mean` and quantiles 5-95, 17-83 and 25-75 if thick_line is `median`. 
+            * `std`: plots 1 standard deviation
+            * `2std`: plots 2 standards deviation
+            * `3std`: plots 3 standards deviation
+            * `quantiles`: plots quantiles based on the kwargs `quantile_min` and `quantile_max`
+            * None: does not plot uncertainty
+        hue : String (default=None)
+            Similar to hue in xarray.DataArray.plot(hue=...), group data by the dimension before aggregating and computing uncertainties.
+            Has to be a dimension other than time in the dataarray.
+        quantile_min : Float between 0 and 1 (default=0.05)
+            lower quantile to compute uncertainty with `shaded_area=quantiles`
+        quantile_max : Float between 0 and 1 (default=0.95)
+            upper quantile to compute uncertainty with `shaded_area=quantiles`
+        thick_line_color : String or List (default=None)
+            color of the main thick line. Must be a string 
+            If hue and one color are provided, the single color is used for all line plots.
+            If hue and a list of colors are provided, the colors are cycled.
+        shaded_area_color : String or List (default=None)
+            color of the shaded area. Must be a string.
+            If not provided, defaults to the thick_line_color value.
+            If hue and one color are provided, the single color is used for all area plots.
+            If hue and a list of colors are provided, the colors are cycled.
+        shaded_area_alpha : Float between 0 and 1 (default=0.2)
+            Transparency of the uncertainty plots
+        ax : matplotlib.pyplot.Axes instance (default=None)
+            If not provided, plots on the current axes.
+        label : String (default=None)
+            If provided, label that is provided to ax.plot. 
+            Does not work if hue is provided.
+        line_kwargs : kwargs
+            Additional arguments provided to the plot function for the main thick line
+        area_kwargs : kwargs
+            Additional arguments provided to the plot function for the uncertainty
+        add_legend : Bool (default=True)
+            if True, adds matplotlib legend to the current ax after plotting the data.
         """
         plot_timeseries_uncertainty(self._obj, **kwargs)
         
