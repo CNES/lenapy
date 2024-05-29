@@ -266,7 +266,13 @@ class TimeArray:
         """        
         return interp_time(self._obj,other,**kwargs)
     
-    def plot_timeseries_uncertainty(self, **kwargs):
+    def plot(self, **kwargs):
+        """Plots a variable with uncertanty in time
+        
+        Parameters
+        ----------
+                    
+        """
         plot_timeseries_uncertainty(self._obj, **kwargs)
         
     def to_datetime(self,time_type):
