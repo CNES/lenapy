@@ -10,6 +10,7 @@ from lenapy.utils.harmo import l_factor_conv
 def plot_timeseries_uncertainty(xgeo_data,
                                 thick_line='median',
                                 shaded_area='auto',
+                                standard_deviation_multiple=1.645,
                                 quantile_min=0.05,
                                 quantile_max=0.95,
                                 thick_line_color=None,
@@ -22,24 +23,57 @@ def plot_timeseries_uncertainty(xgeo_data,
                                 add_legend=True,
                                 hue=None
                                 ):
+    
     """
-    Affiche une série temporelle avec une enveloppe d'incertitude.
+    Plots the timeseries of the data in the TimeArray, including an uncertainty. 
+    Computes the uncertainty on all dimensions that are not time.
     
     Parameters
     ----------
-    data : xr.DataArray, la série temporelle que l'on veut plotter
-    thick_line : la métrique afficher en ligne epaisse: "median" ou "mean"
-    shaded_area : la métrique qui permet de calculer l'incertitude: "std", "quantiles", "auto", "auto-multiple" ou None
-    quantile_min : si shaded_area="quantiles", la valeur du quantile inférieur (entre 0 et 1)
-    quantile_max : si shaded_area="quantiles", la valeur du quantile supérieur (entre 0 et 1)
-    thick_line_color : couleur de la ligne épaisse
-    shaded_area_color : couleur de l'applat de couleur pour l'incertitude
-    shaded_area_alpha : transparence de l'aplat de couleur pour l'incertitude
-    add_legend : bool, ajoute une legend
-    hue : same as in xarray line plot : create plot with additional dimension
+    thick_line : String (default='median')
+        How to aggregate the data to plot the main thick line. Can be:
+        * `median`: computes the median
+        * `mean`: computes the mean
+        * None: does not plot a main thick line
+    shaded_area : String (default='auto')
+        How to aggregate the data to plot the uncertainty around the thick line. Can be:
+        * `auto`: plots 1.645 standard deviation if thick_line is `mean` and quantiles 5-95 if thick_line is `median`.
+        * `auto-multiple`: plots 1,2 and 3 standard deviations if thick_line is `mean` and quantiles 5-95, 17-83 and 25-75 if thick_line is `median`. 
+        * `std`: plots a multiple of the standard deviation based on kwarg `standard_deviation_multiple`
+        * `quantiles`: plots quantiles based on the kwargs `quantile_min` and `quantile_max`
+        * None: does not plot uncertainty
+    hue : String (default=None)
+        Similar to hue in xarray.DataArray.plot(hue=...), group data by the dimension before aggregating and computing uncertainties.
+        Has to be a dimension other than time in the dataarray.
+    standard_deviation_multiple : Float > 0 (default=1.65) 
+        The multiple of standard deviations to use for the uncertainty with `shaded_area=std`
+    quantile_min : Float between 0 and 1 (default=0.05)
+        lower quantile to compute uncertainty with `shaded_area=quantiles`
+    quantile_max : Float between 0 and 1 (default=0.95)
+        upper quantile to compute uncertainty with `shaded_area=quantiles`
+    thick_line_color : String or List (default=None)
+        color of the main thick line. Must be a string 
+        If hue and one color are provided, the single color is used for all line plots.
+        If hue and a list of colors are provided, the colors are cycled.
+    shaded_area_color : String or List (default=None)
+        color of the shaded area. Must be a string.
+        If not provided, defaults to the thick_line_color value.
+        If hue and one color are provided, the single color is used for all area plots.
+        If hue and a list of colors are provided, the colors are cycled.
+    shaded_area_alpha : Float between 0 and 1 (default=0.2)
+        Transparency of the uncertainty plots
+    ax : matplotlib.pyplot.Axes instance (default=None)
+        If not provided, plots on the current axes.
+    label : String (default=None)
+        If provided, label that is provided to ax.plot. 
+        Does not work if hue is provided.
+    line_kwargs : kwargs
+        Additional arguments provided to the plot function for the main thick line
+    area_kwargs : kwargs
+        Additional arguments provided to the plot function for the uncertainty
+    add_legend : Bool (default=True)
+        if True, adds matplotlib legend to the current ax after plotting the data.
     """
-    # Il faut gérer les assert dimensions
-    # Il faut gérer la légende
     data = xgeo_data
     variable = data.name
 
@@ -139,30 +173,25 @@ def plot_timeseries_uncertainty(xgeo_data,
             elif shaded_area == "auto":
                 if thick_line == "mean":
                     data_std = data.std(y_dim)
-                    ax.fill_between(data.time.values, main_metric - data_std, main_metric + data_std,
+                    ax.fill_between(data.time.values, 
+                                    main_metric - standard_deviation_multiple*data_std, 
+                                    main_metric + standard_deviation_multiple*data_std,
                                     color=shaded_area_color, alpha=shaded_area_alpha,
                                     linewidth=0, **area_kwargs, label='_nolegend_')
                 if thick_line=='median':
-                    quantiles = data.quantile([0.17,0.83],y_dim)
+                    quantiles = data.quantile([0.05,0.95],y_dim)
                     ax.fill_between(quantiles.time.values, quantiles.sel(quantile=0.17), quantiles.sel(quantile=0.83),
                                     color=shaded_area_color, alpha=shaded_area_alpha,
                                     linewidth=0, **area_kwargs, label='_nolegend_')
-            elif 'std' in shaded_area:
+            elif shaded_area=='std':
                 data_std = data.std(y_dim)
                 if thick_line is None:
                     main_metric = data.mean(y_dim)
-                if shaded_area == 'std':
-                    ax.fill_between(data.time.values, main_metric - data_std, main_metric + data_std,
-                                    color=shaded_area_color, alpha=shaded_area_alpha,
-                                    linewidth=0, **area_kwargs, label='_nolegend_')
-                if shaded_area == '2std':
-                    ax.fill_between(data.time.values, main_metric - 2 * data_std, main_metric + 2 * data_std,
-                                    color=shaded_area_color, alpha=shaded_area_alpha,
-                                    linewidth=0, **area_kwargs, label='_no_legend_')
-                if shaded_area == '3std':
-                    ax.fill_between(data.time.values, main_metric - 3 * data_std, main_metric + 3 * data_std,
-                                    color=shaded_area_color, alpha=shaded_area_alpha,
-                                    linewidth=0, **area_kwargs, label='_no_legend_')
+                ax.fill_between(data.time.values, 
+                                main_metric - standard_deviation_multiple*data_std, 
+                                main_metric + standard_deviation_multiple*data_std,
+                                color=shaded_area_color, alpha=shaded_area_alpha,
+                                linewidth=0, **area_kwargs, label='_nolegend_')
 
             elif shaded_area == 'quantiles':
                 data_quantile = data.quantile([quantile_min, quantile_max],

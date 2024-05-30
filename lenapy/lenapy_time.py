@@ -280,16 +280,16 @@ class TimeArray:
             * None: does not plot a main thick line
         shaded_area : String (default='auto')
             How to aggregate the data to plot the uncertainty around the thick line. Can be:
-            * `auto`: plots 1 standard deviation if thick_line is `mean` and quantiles 17-83 if thick_line is `median`.
+            * `auto`: plots 1.645 standard deviation if thick_line is `mean` and quantiles 5-95 if thick_line is `median`.
             * `auto-multiple`: plots 1,2 and 3 standard deviations if thick_line is `mean` and quantiles 5-95, 17-83 and 25-75 if thick_line is `median`. 
-            * `std`: plots 1 standard deviation
-            * `2std`: plots 2 standards deviation
-            * `3std`: plots 3 standards deviation
+            * `std`: plots a multiple of the standard deviation based on kwarg `standard_deviation_multiple`
             * `quantiles`: plots quantiles based on the kwargs `quantile_min` and `quantile_max`
             * None: does not plot uncertainty
         hue : String (default=None)
             Similar to hue in xarray.DataArray.plot(hue=...), group data by the dimension before aggregating and computing uncertainties.
             Has to be a dimension other than time in the dataarray.
+        standard_deviation_multiple : Float > 0 (default=1.65) 
+            The multiple of standard deviations to use for the uncertainty with `shaded_area=std`
         quantile_min : Float between 0 and 1 (default=0.05)
             lower quantile to compute uncertainty with `shaded_area=quantiles`
         quantile_max : Float between 0 and 1 (default=0.95)
