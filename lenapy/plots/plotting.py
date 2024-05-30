@@ -180,7 +180,7 @@ def plot_timeseries_uncertainty(xgeo_data,
                                     linewidth=0, **area_kwargs, label='_nolegend_')
                 if thick_line=='median':
                     quantiles = data.quantile([0.05,0.95],y_dim)
-                    ax.fill_between(quantiles.time.values, quantiles.sel(quantile=0.17), quantiles.sel(quantile=0.83),
+                    ax.fill_between(quantiles.time.values, quantiles.sel(quantile=0.05), quantiles.sel(quantile=0.95),
                                     color=shaded_area_color, alpha=shaded_area_alpha,
                                     linewidth=0, **area_kwargs, label='_nolegend_')
             elif shaded_area=='std':
