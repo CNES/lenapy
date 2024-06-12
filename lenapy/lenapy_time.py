@@ -9,6 +9,7 @@ import xesmf as xe
 import os.path
 from .utils.time import *
 from .utils.covariance import *
+from .utils.eof import *
 from .plots.plotting import *
 
 @xr.register_dataset_accessor("lntime")
@@ -347,4 +348,9 @@ class TimeArray:
         Climatology is computed over the optional time_period slice
         """
         return fillna_climato(self._obj,time_period=time_period)
+    
+    def EOF(self,dim):
+        """Return an instance of the *eof* class based on the data array and the dimension names of the eof
+        """
+        return EOF(self._obj,dim)
     
