@@ -94,7 +94,9 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
     time_period : slice (default=slice(None,None==
         Periode de reference sur laquelle est calculee la climato
     """
-
+    
+    use_dask = True if isinstance(data.data, DaskArray) else False
+    
     if not 'time' in data.coords: raise AssertionError('The time coordinates does not exist')
     
     # Toutes les dimensions differentes de time sont regroupees en une seule
@@ -110,16 +112,23 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
     # Construction de la matrice des mesures
     t1=(data.time-tref)/pd.to_timedelta("1D").asm8
     omega=2*np.pi/LNPY_DAYS_YEAR
-    X=xr.concat((t1**0,t1,np.cos(omega*t1),np.sin(omega*t1),np.cos(2*omega*t1),np.sin(2*omega*t1)),dim='deg').chunk(time=-1)
+    X=xr.concat((t1**0,t1,np.cos(omega*t1),np.sin(omega*t1),np.cos(2*omega*t1),np.sin(2*omega*t1)),dim='deg')
+    if use_dask:
+        X=X.chunk(time=-1)
 
     # Construction du vecteur des observations
     if (dims_stack==[]):
         Y=data
     else:
-        Y=data.stack(pos=dims_stack).dropna('pos',thresh=6).chunk(time=-1,pos=10000)
+        Y=data.stack(pos=dims_stack).dropna('pos',thresh=6)
+        if use_dask:
+            Y=Y.chunk(time=-1,pos=10000)
 
     # Resolution du moindre carré
-    (coeffs,residus,rank,eig)=da.linalg.lstsq(X.sel(time=time_period).T.data,Y.sel(time=time_period).data)
+    if use_dask:
+        (coeffs,residus,rank,eig)=da.linalg.lstsq(X.sel(time=time_period).T.data,Y.sel(time=time_period).data)
+    else:
+        (coeffs,residus,rank,eig)=np.linalg.lstsq(X.sel(time=time_period).T.data,Y.sel(time=time_period).data)
     
     
     if (dims_stack==[]):
