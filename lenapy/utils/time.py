@@ -129,7 +129,7 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
     if use_dask:
         (coeffs,residus,rank,eig)=da.linalg.lstsq(X.sel(time=time_period).T.data,Y.sel(time=time_period).data)
     else:
-        (coeffs,residus,rank,eig)=np.linalg.lstsq(X.sel(time=time_period).T.data,Y.sel(time=time_period).data)
+        (coeffs,residus,rank,eig)=np.linalg.lstsq(X.sel(time=time_period).T.data,Y.sel(time=time_period).data,rcond=None)
     
     
     if (dims_stack==[]):
