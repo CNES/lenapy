@@ -95,7 +95,7 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
         Periode de reference sur laquelle est calculee la climato
     """
     
-    use_dask = True if isinstance(data.data, DaskArray) else False
+    use_dask = True if isinstance(data.data, da.Array) else False
     
     if not 'time' in data.coords: raise AssertionError('The time coordinates does not exist')
     
