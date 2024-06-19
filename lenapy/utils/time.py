@@ -112,7 +112,8 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
     # Construction de la matrice des mesures
     t1=(data.time-tref)/pd.to_timedelta("1D").asm8
     omega=2*np.pi/LNPY_DAYS_YEAR
-    X=xr.concat((t1**0,t1,np.cos(omega*t1),np.sin(omega*t1),np.cos(2*omega*t1),np.sin(2*omega*t1)),dim='deg')
+    X=xr.concat((t1**0,t1,np.cos(omega*t1),np.sin(omega*t1),np.cos(2*omega*t1),np.sin(2*omega*t1)),
+                dim=pd.Index(['mean','trend','CosAnnual','SinAnnual','cosBiannual','sinBiannual'], name="deg"))
     if use_dask:
         X=X.chunk(time=-1)
 
@@ -137,14 +138,14 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
         coeffs=xr.DataArray(coeffs,(X.deg,Y.pos),attrs=dict(time_ref=tref)).unstack('pos')
 
     res=coeffs*X
-
-    if return_coeffs:
-        return coeffs
         
     # Sélection des composantes de la climato à retourner
     composants=np.where([mean,trend,cycle,cycle,cycle,cycle])[0]
-
-    return (data-res.sum('deg'))*signal+res.isel(deg=composants).sum('deg')
+    
+    if return_coeffs:
+        return (data-res.sum('deg'))*signal+res.isel(deg=composants).sum('deg'), coeffs
+    else:
+        return (data-res.sum('deg'))*signal+res.isel(deg=composants).sum('deg')
 
 def generate_climato(time, coeffs, mean=True, trend=False, cycle=True):
 
