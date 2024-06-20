@@ -38,13 +38,16 @@ class TimeSet:
         mean : Bool (default=True)
             returns mean signal
         trend : Bool (default=True)
-            returns trend
+            returns trend (unit=day**-1)
         cycle : Bool (default=False)
-            return annual and semi-annual cycles
+            return annual and semi-annual cycles (cos and sin)
         return_coeffs : Bool (default=False)
             returns cycle coefficient, mean and trend
         time_period : slice (defalut=slice(None,None), ie the whole time period of the data)
             Reference time period when climatology has to be computed
+        fillna : Bool (default=False)
+            if fillna=True and signal=True, Nan in signal is replaced by the other selected components
+            Only for 1D signal, for higher dimensions any NaN in the signal will produce a NaN in the output
             
         Returns
         -------
@@ -174,18 +177,21 @@ class TimeArray:
         mean : Bool (default=True)
             returns mean signal
         trend : Bool (default=True)
-            returns trend
+            returns trend (unit=day**-1)
         cycle : Bool (default=False)
-            return annual and semi-annual cycles
+            return annual and semi-annual cycles (cos and sin)
         return_coeffs : Bool (default=False)
             returns cycle coefficient, mean and trend
         time_period : slice (defalut=slice(None,None), ie the whole time period of the data)
             Reference time period when climatology has to be computed
+        fillna : Bool (default=False)
+            if fillna=True and signal=True, Nan in signal is replaced by the other selected components
+            Only for 1D signal, for higher dimensions any NaN in the signal will produce a NaN in the output
             
         Returns
         -------
-        climato : dataarray
-            a dataarray with the same structure as the input, with modified data according to the chosen options
+        climato : dataset
+            a dataset with the same structure as the input, with modified data according to the chosen options
         if return_coeffs=True, an extra dataset is provided with the coefficients of the decomposition
         
         Example

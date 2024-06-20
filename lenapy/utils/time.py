@@ -67,12 +67,12 @@ def filter(data,filter_name='lanczos',time_coord='time',annual_cycle=False,q=3,*
     return v0+v4
 
 
-def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs=False,time_period=slice(None,None)):
+def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs=False,time_period=slice(None,None),fillna=False):
     """
     Analyse du cycle annuel, bi-annuel et de la tendance
     Decompose les données en entrée en :
     * Un cycle annuel
-    * Un cycle bi-annuel
+    * Un cycle semi-annuel
     * Une tendance
     * Une moyenne
     * Un signal résiduel
@@ -86,9 +86,9 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
     mean : Bool (default=True)
         renvoie la valeur moyenne des données d'entrée
     trend : Bool (default=True)
-        renvoie la tendance
+        renvoie la tendance (en jour-1)
     cycle : Bool (default=False)
-        renvoie le cycle annuel et bi-annuel
+        renvoie le cycle annuel et semi-annuel
     return_coeffs : Bool (default=False)
         retourne en plus les coefficients des cycles et de la tendance linéaire
     time_period : slice (default=slice(None,None==
@@ -113,51 +113,63 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
     t1=(data.time-tref)/pd.to_timedelta("1D").asm8
     omega=2*np.pi/LNPY_DAYS_YEAR
     X=xr.concat((t1**0,t1,np.cos(omega*t1),np.sin(omega*t1),np.cos(2*omega*t1),np.sin(2*omega*t1)),
-                dim=pd.Index(['mean','trend','CosAnnual','SinAnnual','cosBiannual','sinBiannual'], name="deg"))
+                dim=pd.Index(['mean','trend','cosAnnual','sinAnnual','cosSemiAnnual','sinSemiAnnual'], name="coeffs"))
     if use_dask:
         X=X.chunk(time=-1)
 
+    # Vecteur temps a utiliser pour calcul de la climato
+    time_vector=data.time.sel(time=time_period)
+    
     # Construction du vecteur des observations
     if (dims_stack==[]):
         Y=data
+        # Pour gerer les Nan dans le cas d'une time series a une seule dimensino, on ne garde que les pas de temps sans NaN
+        time_vector=time_vector.where(Y.notnull()).dropna('time')
+        
     else:
+        # Dans le cas de dimensions multiples, les NaN ne sont pas gérés et pour les coordonnees ou il y a un NaN ou plus 
+        #  dans la timeserie, le retour sera NaN pour tous les pas de temps
         Y=data.stack(pos=dims_stack).dropna('pos',thresh=6)
         if use_dask:
             Y=Y.chunk(time=-1,pos=10000)
 
     # Resolution du moindre carré
     if use_dask:
-        (coeffs,residus,rank,eig)=da.linalg.lstsq(X.sel(time=time_period).T.data,Y.sel(time=time_period).data)
+        (coeffs,residus,rank,eig)=da.linalg.lstsq(X.sel(time=time_vector).T.data,Y.sel(time=time_vector).data)
     else:
-        (coeffs,residus,rank,eig)=np.linalg.lstsq(X.sel(time=time_period).T.data,Y.sel(time=time_period).data,rcond=None)
+        (coeffs,residus,rank,eig)=np.linalg.lstsq(X.sel(time=time_vector).T.data,Y.sel(time=time_vector).data,rcond=None)
     
     
     if (dims_stack==[]):
-        coeffs=xr.DataArray(coeffs,(X.deg,),attrs=dict(time_ref=tref))
+        coeffs=xr.DataArray(coeffs,(X.coeffs,),attrs=dict(time_ref=tref))
     else:
-        coeffs=xr.DataArray(coeffs,(X.deg,Y.pos),attrs=dict(time_ref=tref)).unstack('pos')
+        coeffs=xr.DataArray(coeffs,(X.coeffs,Y.pos),attrs=dict(time_ref=tref)).unstack('pos')
 
     res=coeffs*X
+
+    
+    residus=(data-res.sum('coeffs')).assign_coords(coeffs='residu').expand_dims('coeffs')
+    res=xr.concat((residus,res),dim='coeffs')    
         
     # Sélection des composantes de la climato à retourner
-    composants=np.where([mean,trend,cycle,cycle,cycle,cycle])[0]
+    composants=np.where([signal,mean,trend,cycle,cycle,cycle,cycle])[0]
     
     if return_coeffs:
-        return (data-res.sum('deg'))*signal+res.isel(deg=composants).sum('deg'), coeffs
+        return res.isel(coeffs=composants).sum('coeffs',skipna=fillna), coeffs
     else:
-        return (data-res.sum('deg'))*signal+res.isel(deg=composants).sum('deg')
+        return res.isel(coeffs=composants).sum('coeffs',skipna=fillna)
 
 def generate_climato(time, coeffs, mean=True, trend=False, cycle=True):
 
     tref=coeffs.time_ref
     t1=(time-tref)/pd.to_timedelta("1D").asm8
     omega=2*np.pi/LNPY_DAYS_YEAR
-    X=xr.concat((t1**0,t1,np.cos(omega*t1),np.sin(omega*t1),np.cos(2*omega*t1),np.sin(2*omega*t1)),dim='deg').chunk(time=-1)
+    X=xr.concat((t1**0,t1,np.cos(omega*t1),np.sin(omega*t1),np.cos(2*omega*t1),np.sin(2*omega*t1)),dim='coeffs').chunk(time=-1)
 
     # Sélection des composantes de la climato à retourner
     composants=np.where([mean,trend,cycle,cycle,cycle,cycle])[0]
 
-    return (coeffs*X).isel(deg=composants).sum('deg')
+    return (coeffs*X).isel(coeffs=composants).sum('coeffs')
 
    
 
@@ -245,9 +257,9 @@ def JJ_to_date(jj):
     """
     Turns a date in format 'Jours Julien CNES' into a standard datetime64 format
     """
-    if jj==None:
+    if type(jj)==type(None):
         return jj
-    dt=np.timedelta64(jj,'D')
+    dt=pd.Timedelta(jj,'D')
     t0=np.datetime64('1950-01-01','ns')
     return t0+dt
 
