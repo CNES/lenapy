@@ -43,7 +43,7 @@ class TimeSet:
             return annual and semi-annual cycles (cos and sin)
         return_coeffs : Bool (default=False)
             returns cycle coefficient, mean and trend
-        time_period : slice (defaultt=slice(None,None), ie the whole time period of the data)
+        time_period : slice (default=slice(None,None), ie the whole time period of the data)
             Reference time period when climatology has to be computed
         fillna : Bool (default=False)
             if fillna=True and signal=True, Nan in signal is replaced by the other selected components
