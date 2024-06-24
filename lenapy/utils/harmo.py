@@ -27,7 +27,7 @@ def sh_to_grid(data, unit='mewh',
                lmax=None, mmax=None, lmin=None, mmin=None, used_l=None, used_m=None,
                lonmin=-180, lonmax=180, latmin=-90, latmax=90, bounds=None,
                dlon=1, dlat=1, longitude=None, latitude=None, radians_in=False,
-               ellispoidal_earth=False, include_elastic=True, plm=None, normalization_plm='4pi', **kwargs):
+               ellipsoidal_earth=False, include_elastic=True, plm=None, normalization_plm='4pi', **kwargs):
     """
     Transform Spherical Harmonics (SH) dataset into spatial DataArray.
     With choice for constants, unit, love numbers, degree/order, spatial grid latitude and longitude, Earth hypothesis.
@@ -77,7 +77,7 @@ def sh_to_grid(data, unit='mewh',
     latitude : np.ndarray, optional
         List of latitude to use for the grid computation (if given, others latitude information are not considered).
 
-    ellispoidal_earth : bool, optional
+    ellipsoidal_earth : bool, optional
         If True, consider the Earth as an ellipsoid following [Ditmar2018]. Default is False for a spherical Earth.
     include_elastic : bool, optional
         If True, the Earth behavior is elastic. Default is True
@@ -159,7 +159,7 @@ def sh_to_grid(data, unit='mewh',
     # -- beginning of computation
     # Computing plm for converting to spatial domain
     if plm is None:
-        if ellispoidal_earth:
+        if ellipsoidal_earth:
             plm = compute_plm(lmax, np.cos(geocentric_colat),
                               mmax=mmax, normalization=normalization_plm)
         else:
@@ -182,7 +182,7 @@ def sh_to_grid(data, unit='mewh',
 
     # scale factor for each degree
     lfactor, cst = l_factor_conv(used_l, unit=unit, include_elastic=include_elastic,
-                                 ellispoidal_earth=ellispoidal_earth, geocentric_colat=geocentric_colat,
+                                 ellipsoidal_earth=ellipsoidal_earth, geocentric_colat=geocentric_colat,
                                  attrs=data.attrs, **kwargs)
 
     # convolve unit over degree
@@ -213,7 +213,7 @@ def sh_to_grid(data, unit='mewh',
 
 def grid_to_sh(grid, lmax, unit='mewh',
                mmax=None, lmin=0, mmin=0, used_l=None, used_m=None,
-               ellispoidal_earth=False, include_elastic=True, plm=None, normalization_plm='4pi', **kwargs):
+               ellipsoidal_earth=False, include_elastic=True, plm=None, normalization_plm='4pi', **kwargs):
     """
     Transform gravity field spatial representation DataArray into Spherical Harmonics (SH) dataset.
     With choice for constants, unit of the spatial DataArray, love_numbers, degree/order, Earth hypothesis.
@@ -242,7 +242,7 @@ def grid_to_sh(grid, lmax, unit='mewh',
     used_m : np.ndarray, optional
         List of order to compute for the SH Dataset (if given, mmax and mmin are not considered).
 
-    ellispoidal_earth : bool, optional
+    ellipsoidal_earth : bool, optional
         If True, consider the Earth as an ellipsoid following [Ditmar2018]. Default is False for a spherical Earth.
     include_elastic : bool, optional
         If True, the Earth behavior is elastic. Default is True.
@@ -301,13 +301,13 @@ def grid_to_sh(grid, lmax, unit='mewh',
 
     # scale factor for each degree
     lfactor, cst = l_factor_conv(used_l, unit=unit, include_elastic=include_elastic,
-                                 ellispoidal_earth=ellispoidal_earth, geocentric_colat=geocentric_colat,
+                                 ellipsoidal_earth=ellipsoidal_earth, geocentric_colat=geocentric_colat,
                                  attrs=grid.attrs, **kwargs)
 
     # -- prepare variables for the computation of SH
     # Computing plm for converting to spatial domain
     if plm is None:
-        if ellispoidal_earth:
+        if ellipsoidal_earth:
             plm = compute_plm(lmax, np.cos(geocentric_colat),
                               mmax=mmax, normalization=normalization_plm)
         else:
@@ -547,7 +547,7 @@ def mid_month_grace_estimate(begin_time, end_time):
     return tmp_begin + (tmp_end - tmp_begin) / 2
 
 
-def l_factor_conv(l, unit='mewh', include_elastic=True, ellispoidal_earth=False, geocentric_colat=None,
+def l_factor_conv(l, unit='mewh', include_elastic=True, ellipsoidal_earth=False, geocentric_colat=None,
                   ds_love=None, a_earth=None, gm_earth=None, f_earth=F_EARTH_GRS80, rho_earth=LNPY_RHO_EARTH,
                   attrs=None):
     """
@@ -568,7 +568,7 @@ def l_factor_conv(l, unit='mewh', include_elastic=True, ellispoidal_earth=False,
         'mvcu' represents meters viscoelastic crustal uplift
     include_elastic : bool, optional
         If True, the Earth behavior is elastic.
-    ellispoidal_earth : bool, optional
+    ellipsoidal_earth : bool, optional
         If True, consider the Earth as an ellipsoid following [Ditmar2018]_ and if False as a sphere.
     geocentric_colat : list, optional
         List of geocentric colatitude for ellipsoidal Earth radius computation.
@@ -624,14 +624,14 @@ def l_factor_conv(l, unit='mewh', include_elastic=True, ellispoidal_earth=False,
 
         fraction = fraction + ds_love.kl
 
-    # test for ellispoidal_earth
-    if ellispoidal_earth:
+    # test for ellipsoidal_earth
+    if ellipsoidal_earth:
         # test if geocentric_colat is set
         if geocentric_colat is None:
             raise ValueError("For ellipsoidal Earth, you need to set "
                              "the parameter 'geocentric_colat' in l_factor_conv function")
 
-        # compute variable for ellispoidal_earth
+        # compute variable for ellipsoidal_earth
         # e = sqrt(2f - f**2)
         e_earth = np.sqrt(2 * f_earth - f_earth ** 2)
         # a_div_r_lat = a / r(theta)  with r(theta) = a(1-f)/sqrt(1 - e**2*sin(theta)**2)
@@ -647,55 +647,55 @@ def l_factor_conv(l, unit='mewh', include_elastic=True, ellispoidal_earth=False,
     elif unit == 'mewh':
         # mewh, meters equivalent water height [kg.m-2]
         l_factor = rho_earth * a_earth * (2*l + 1) / (3 * fraction * 1e3)
-        if ellispoidal_earth:
+        if ellipsoidal_earth:
             l_factor = l_factor * ((raverage_radius/a_earth)**3 * a_div_r_lat**(l + 2))
 
     elif unit == 'mmgeoid':
         # mmgeoid, millimeters geoid height
         l_factor = xr.ones_like(l) * a_earth * 1e3
-        if ellispoidal_earth:
+        if ellipsoidal_earth:
             l_factor = l_factor * a_div_r_lat**(l + 1)
 
     elif unit == 'microGal':
         # microGal, microGal gravity perturbations
         l_factor = gm_earth * (l + 1) / (a_earth ** 2) * 1e8
-        if ellispoidal_earth:
+        if ellipsoidal_earth:
             l_factor = l_factor * a_div_r_lat**(l + 2)
 
     elif unit == 'potential':
         # potential, meters².seconds⁻²
         l_factor = gm_earth / a_earth
-        if ellispoidal_earth:
+        if ellipsoidal_earth:
             l_factor = l_factor * a_div_r_lat**(l + 1)
 
     elif unit == 'pascal':
         # pascal, equivalent surface pressure
         l_factor = LNPY_G_WMO * rho_earth * a_earth * (2*l + 1) / (3 * fraction)
-        if ellispoidal_earth:
+        if ellipsoidal_earth:
             l_factor = l_factor * a_div_r_lat**(l + 1)
 
     elif unit == 'mvcu':
         # mvcu, meters viscoelastic crustal uplift
         l_factor = a_earth * (2*l + 1) / 2
-        if ellispoidal_earth:
+        if ellipsoidal_earth:
             l_factor = l_factor * a_div_r_lat**(l + 1)
 
     elif unit == 'mecu':
         # mecu, meters elastic crustal deformation (uplift)
         l_factor = a_earth * ds_love.hl / fraction
-        if ellispoidal_earth:
+        if ellipsoidal_earth:
             l_factor = l_factor * a_div_r_lat**(l - 1)
 
     elif unit == 'int_radial_mag':
         # internal radial magnetic field in nT
         l_factor = l + 1
-        if ellispoidal_earth:
+        if ellipsoidal_earth:
             pass
 
     elif unit == 'ext_radial_mag':
         # external radial magnetic field in nT
         l_factor = -l
-        if ellispoidal_earth:
+        if ellipsoidal_earth:
             pass
 
     # Gt, Gigatonnes ?
