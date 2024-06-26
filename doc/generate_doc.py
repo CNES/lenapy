@@ -24,7 +24,8 @@ def list_classes_and_functions(package_name):
 
                         for name, obj in inspect.getmembers(module):
                             if inspect.isclass(obj) and obj.__module__ == full_module_name:
-                                class_methods = [method_name for method_name, method_obj in inspect.getmembers(obj) if inspect.isfunction(method_obj)]
+                                class_methods = [method_name for method_name, method_obj in inspect.getmembers(obj)
+                                                 if inspect.isfunction(method_obj)]
                                 results[full_module_name]["classes"][name] = class_methods
                             elif inspect.isfunction(obj) and obj.__module__ == full_module_name:
                                 results[full_module_name]["functions"].append(name)
@@ -45,6 +46,8 @@ def write_results_to_file(results, output_file):
                     if method == "__init__":
                         f.write(f"    {module}.{cls}\n")
                         f.write(f"    {module}.{cls}.{method}\n")
+                    elif method == "__repr__":
+                        f.write(f"    {module}.{cls}\n")
                     else:
                         f.write(f"    {module}.{cls}.{method}\n")
             for func in members["functions"]:

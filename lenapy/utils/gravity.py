@@ -30,7 +30,7 @@ import xarray as xr
 from lenapy.constants import *
 
 
-def change_reference(ds, new_radius=A_EARTH_GRS80, new_earth_gravity_constant=LNPY_GM_EARTH,
+def change_reference(ds, new_radius=LNPY_A_EARTH_GRS80, new_earth_gravity_constant=LNPY_GM_EARTH,
                      old_radius=None, old_earth_gravity_constant=None, apply=False):
     """
     Spherical Harmonics dataset are associated with an earth radius *a* and *µ* or *GM* the earth gravity constant.
@@ -45,7 +45,7 @@ def change_reference(ds, new_radius=A_EARTH_GRS80, new_earth_gravity_constant=LN
     ds : xr.Dataset
         xr.Dataset that corresponds to SH data associated with a current reference frame (constants whise) to update.
     new_radius : float
-        New Earth radius constant in meters. Default is A_EARTH_GRS80 define in constants.py
+        New Earth radius constant in meters. Default is LNPY_A_EARTH_GRS80 define in constants.py
     new_earth_gravity_constant : float
         New gravitational constant of the Earth in m³/s². Default is LNPY_GM_EARTH define in constants.py
     old_radius : float | None, optional
@@ -275,7 +275,7 @@ def change_love_reference_frame(ds, new_frame, old_frame, apply=False):
     return ds_love
 
 
-def gauss_weights(radius, lmax, a_earth=A_EARTH_GRS80, cutoff=1e-10):
+def gauss_weights(radius, lmax, a_earth=LNPY_A_EARTH_GRS80, cutoff=1e-10):
     """
     Generate a xr.DataArray with Gaussian weights as a function of degree.
 

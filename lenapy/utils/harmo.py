@@ -153,7 +153,7 @@ def sh_to_grid(data, unit='mewh',
 
     cos_latitude = np.cos(np.deg2rad(latitude))
     sin_latitude = np.sin(np.deg2rad(latitude))
-    f_earth = kwargs['f_earth'] if 'f_earth' in kwargs else F_EARTH_GRS80
+    f_earth = kwargs['f_earth'] if 'f_earth' in kwargs else LNPY_F_EARTH_GRS80
     geocentric_colat = np.arctan2(cos_latitude, (1 - f_earth) ** 2 * sin_latitude)
 
     # -- beginning of computation
@@ -287,7 +287,7 @@ def grid_to_sh(grid, lmax, unit='mewh',
 
     cos_latitude = np.cos(np.deg2rad(grid.cf["latitude"].values))
     sin_latitude = np.sin(np.deg2rad(grid.cf["latitude"].values))
-    f_earth = kwargs['f_earth'] if 'f_earth' in kwargs else F_EARTH_GRS80
+    f_earth = kwargs['f_earth'] if 'f_earth' in kwargs else LNPY_F_EARTH_GRS80
     geocentric_colat = np.arctan2(cos_latitude, (1 - f_earth) ** 2 * sin_latitude)
 
     # create DataArray corresponding to the integration factor [sin(theta) * dtheta * dphi] for each cell
@@ -548,7 +548,7 @@ def mid_month_grace_estimate(begin_time, end_time):
 
 
 def l_factor_conv(l, unit='mewh', include_elastic=True, ellipsoidal_earth=False, geocentric_colat=None,
-                  ds_love=None, a_earth=None, gm_earth=None, f_earth=F_EARTH_GRS80, rho_earth=LNPY_RHO_EARTH,
+                  ds_love=None, a_earth=None, gm_earth=None, f_earth=LNPY_F_EARTH_GRS80, rho_earth=LNPY_RHO_EARTH,
                   attrs=None):
     """
     Compute scale factor for a transformation between spherical harmonics and grid data.
@@ -577,9 +577,9 @@ def l_factor_conv(l, unit='mewh', include_elastic=True, ellipsoidal_earth=False,
         are Love numbers.
         Default Love numbers used are from Gegout97.
     a_earth : float, optional
-        Earth semi-major axis [m]. Default is A_EARTH_GRS80.
+        Earth semi-major axis [m]. Default is LNPY_A_EARTH_GRS80.
     f_earth : float, optional
-        Earth flattening. Default is F_EARTH_GRS80.
+        Earth flattening. Default is LNPY_F_EARTH_GRS80.
     gm_earth : float, optional
         Standard gravitational parameter for Earth [m³.s⁻²]. Default is LNPY_GM_EARTH.
     rho_earth : float, optional
@@ -605,7 +605,7 @@ def l_factor_conv(l, unit='mewh', include_elastic=True, ellipsoidal_earth=False,
         attrs = {}
     if a_earth is None:
         a_earth = float(attrs['radius']) if 'radius' in attrs \
-            else A_EARTH_GRS80
+            else LNPY_A_EARTH_GRS80
     if gm_earth is None:
         gm_earth = float(attrs['earth_gravity_constant']) if 'earth_gravity_constant' in attrs \
             else LNPY_GM_EARTH
