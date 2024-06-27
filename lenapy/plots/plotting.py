@@ -6,11 +6,11 @@ import matplotlib.ticker as ticker
 from lenapy.utils.harmo import l_factor_conv
 
 
+
 def plot_timeseries_uncertainty(xgeo_data,
-                                x_dim='time',
-                                y_dim=None,
                                 thick_line='median',
-                                shaded_area='quantiles',
+                                shaded_area='auto',
+                                standard_deviation_multiple=1.645,
                                 quantile_min=0.05,
                                 quantile_max=0.95,
                                 thick_line_color=None,
@@ -20,84 +20,190 @@ def plot_timeseries_uncertainty(xgeo_data,
                                 label=None,
                                 line_kwargs=dict(),
                                 area_kwargs=dict(),
-                                add_legend=True
+                                add_legend=True,
+                                hue=None
                                 ):
+    
     """
-    Affiche une série temporelle avec une enveloppe d'incertitude.
+    Plots the timeseries of the data in the TimeArray, including an uncertainty. 
+    Computes the uncertainty on all dimensions that are not time.
     
     Parameters
     ----------
-    data : xr.DataArray, la série temporelle que l'on veut plotter
-    x_dim : la dimension qui sera sur l'axe des x. Par defaut on prend 'time'
-    y_dim : la dimension qui permet de calculer l'incertitude
-    thick_line : la métrique afficher en ligne epaisse: "median" ou "mean"
-    shaded_area : la métrique qui permet de calculer l'incertitude: "std" ou "quantiles"
-    quantile_min : si shaded_area="quantile", la valeur du quantile inférieur (entre 0 et 1)
-    quantile_max : si shaded_area="quantile", la valeur du quantile supérieur (entre 0 et 1)
-    thick_line_color : couleur de la ligne épaisse
-    shaded_area_color : couleur de l'applat de couleur pour l'incertitude
-    shaded_area_alpha : transparence de l'aplat de couleur pour l'incertitude
-    add_legend : bool, ajoute une legend
+    thick_line : String (default='median')
+        How to aggregate the data to plot the main thick line. Can be:
+        * `median`: computes the median
+        * `mean`: computes the mean
+        * None: does not plot a main thick line
+    shaded_area : String (default='auto')
+        How to aggregate the data to plot the uncertainty around the thick line. Can be:
+        * `auto`: plots 1.645 standard deviation if thick_line is `mean` and quantiles 5-95 if thick_line is `median`.
+        * `auto-multiple`: plots 1,2 and 3 standard deviations if thick_line is `mean` and quantiles 5-95, 17-83 and 25-75 if thick_line is `median`. 
+        * `std`: plots a multiple of the standard deviation based on kwarg `standard_deviation_multiple`
+        * `quantiles`: plots quantiles based on the kwargs `quantile_min` and `quantile_max`
+        * None: does not plot uncertainty
+    hue : String (default=None)
+        Similar to hue in xarray.DataArray.plot(hue=...), group data by the dimension before aggregating and computing uncertainties.
+        Has to be a dimension other than time in the dataarray.
+    standard_deviation_multiple : Float > 0 (default=1.65) 
+        The multiple of standard deviations to use for the uncertainty with `shaded_area=std`
+    quantile_min : Float between 0 and 1 (default=0.05)
+        lower quantile to compute uncertainty with `shaded_area=quantiles`
+    quantile_max : Float between 0 and 1 (default=0.95)
+        upper quantile to compute uncertainty with `shaded_area=quantiles`
+    thick_line_color : String or List (default=None)
+        color of the main thick line. Must be a string 
+        If hue and one color are provided, the single color is used for all line plots.
+        If hue and a list of colors are provided, the colors are cycled.
+    shaded_area_color : String or List (default=None)
+        color of the shaded area. Must be a string.
+        If not provided, defaults to the thick_line_color value.
+        If hue and one color are provided, the single color is used for all area plots.
+        If hue and a list of colors are provided, the colors are cycled.
+    shaded_area_alpha : Float between 0 and 1 (default=0.2)
+        Transparency of the uncertainty plots
+    ax : matplotlib.pyplot.Axes instance (default=None)
+        If not provided, plots on the current axes.
+    label : String (default=None)
+        If provided, label that is provided to ax.plot. 
+        Does not work if hue is provided.
+    line_kwargs : kwargs
+        Additional arguments provided to the plot function for the main thick line
+    area_kwargs : kwargs
+        Additional arguments provided to the plot function for the uncertainty
+    add_legend : Bool (default=True)
+        if True, adds matplotlib legend to the current ax after plotting the data.
     """
-    # Il faut gérer les assert dimensions
-    # Il faut gérer la légende
     data = xgeo_data
     variable = data.name
+
     if ax is None:
         ax = plt.gca()
-    data_dims = data.dims
-    if y_dim is None and len(data_dims) >= 2:
-        y_dim = [dim for dim in data_dims if dim != x_dim][0]
-
-    if thick_line == 'median':
-        main_metric = data.median(y_dim)
-    elif thick_line == 'mean':
-        main_metric = data.mean(y_dim)
-    elif thick_line is None:
-        pass
-    else:
-        raise ValueError("thick_line can only be 'mean', 'median' or None.")
-
     if label is None:
-        label = f"{variable} {thick_line}"
+        label = f"{variable}"
 
-    if thick_line is not None:
-        plot_line = main_metric.plot(ax=ax, color=thick_line_color, **line_kwargs, label=label)
-    if shaded_area_color is None:
-        shaded_area_color = plot_line[0].get_color()
-    if 'std' in shaded_area:
-        data_std = data.std(y_dim)
-        if thick_line is None:
-            main_metric = data.mean(y_dim)
-        if shaded_area == 'std':
-            ax.fill_between(data.time.values, main_metric - data_std, main_metric + data_std,
-                            color=shaded_area_color, alpha=shaded_area_alpha,
-                            linewidth=0, **area_kwargs, label='_nolegend_')
-        if shaded_area == '2std':
-            ax.fill_between(data.time.values, main_metric - 2 * data_std, main_metric + 2 * data_std,
-                            color=shaded_area_color, alpha=shaded_area_alpha,
-                            linewidth=0, **area_kwargs, label='_no_legend_')
-        if shaded_area == '3std':
-            ax.fill_between(data.time.values, main_metric - 3 * data_std, main_metric + 3 * data_std,
-                            color=shaded_area_color, alpha=shaded_area_alpha,
-                            linewidth=0, **area_kwargs, label='_no_legend_')
+    
+    data_dims = data.dims
+    y_dim = [dim for dim in data_dims if dim != 'time']
+    if hue is not None and hue not in y_dim:
+        raise ValueError(f"hue must be in None or in {y_dim}.")
+    elif hue is not None and hue in y_dim:
+        hue_values = data[hue].values
+        for k, value in enumerate(hue_values):
+            data_hue = data.sel({hue:value})
+            if type(thick_line_color)==str or thick_line_color is None:
+                thick_line_colors = [thick_line_color for i in range(hue_values.size)]
+            elif type(thick_line_color)==list:
+                thick_line_colors = [thick_line_color[i%len(thick_line_color)] for i in range(hue_values.size)]
+            else:
+                raise ValueError("thick_line_color must be None, a string or a list of strings")
+            if type(shaded_area_color)==str or shaded_area_color is None:
+                shaded_area_colors = [shaded_area_color for i in range(hue_values.size)]
+            elif type(shaded_area_color)==list:
+                shaded_area_colors = [shaded_area_color[i%len(thick_line_color)] for i in range(hue_values.size)]
+            else:
+                raise ValueError("shaded_area_color must be None, a string or a list of strings")
+            # shaded_area_colors = [thick_line_color for i in range(hue_values.size)]
+            plot_timeseries_uncertainty(data_hue,
+                                thick_line=thick_line,
+                                shaded_area=shaded_area,
+                                quantile_min=quantile_min,
+                                quantile_max=quantile_max,
+                                thick_line_color=thick_line_colors[k],
+                                shaded_area_color=shaded_area_color,
+                                shaded_area_alpha=shaded_area_alpha,
+                                ax=ax,
+                                label=value,
+                                line_kwargs=line_kwargs,
+                                area_kwargs=area_kwargs,
+                                add_legend=add_legend,
+                                hue=None,
+                                )
 
-    elif shaded_area == 'quantiles':
-        data_quantile = data.quantile([quantile_min, quantile_max],
-                                      dim=y_dim)
-        if thick_line is None:
-            main_metric = data.median(y_dim)
-        ax.fill_between(data.time.values, data_quantile.isel(quantile=0), data_quantile.isel(quantile=1),
-                        color=shaded_area_color, alpha=shaded_area_alpha,
-                        linewidth=0, **area_kwargs,
-                        label='_no_legend_')
-    elif shaded_area is None:
-        pass
     else:
-        raise ValueError("shaded_area can only be 'std','2std','3std', 'quantiles' or None.")
+        if len(y_dim)==0:
+            main_metric = data
+        else:
+            if thick_line == 'median':
+                main_metric = data.median(y_dim)
+            elif thick_line == 'mean':
+                main_metric = data.mean(y_dim)
+            elif thick_line is None:
+                pass
+            else:
+                raise ValueError("thick_line can only be 'mean', 'median' or None.")
 
-    if add_legend:
-        ax.legend()
+        if thick_line is not None:
+            plot_line = main_metric.plot(ax=ax, color=thick_line_color, **line_kwargs, label=label)
+        else:
+            ax.plot([], [], color=thick_line_color, **line_kwargs, label=label)
+
+        if len(data_dims) > 0 : 
+            if shaded_area not in ["auto","auto-multiple", "std", "2std", "3std", "quantiles", None]:
+                raise ValueError("Possible values for shaded_area can only be 'auto','auto-multiple', 'std', '2std', '3std', 'quantiles', None") 
+            
+            if shaded_area_color is None:
+                shaded_area_color = plot_line[0].get_color()
+            if shaded_area is None:
+                pass
+            elif shaded_area == "auto-multiple":
+                if thick_line == "mean":
+                    data_std = data.std(y_dim)
+                    ax.fill_between(data.time.values, main_metric - 3*data_std, main_metric + 3*data_std,
+                                    color=shaded_area_color, alpha=shaded_area_alpha,
+                                    linewidth=0, **area_kwargs, label='_nolegend_')
+                    ax.fill_between(data.time.values, main_metric - 2*data_std, main_metric + 2*data_std,
+                                    color=shaded_area_color, alpha=shaded_area_alpha,
+                                    linewidth=0, **area_kwargs, label='_nolegend_')
+                    ax.fill_between(data.time.values, main_metric - data_std, main_metric + data_std,
+                                    color=shaded_area_color, alpha=shaded_area_alpha,
+                                    linewidth=0, **area_kwargs, label='_nolegend_')
+                if thick_line == "median":
+                    quantiles = data.quantile([0.05,0.17,0.25,0.75,0.83,0.95],y_dim)
+                    ax.fill_between(quantiles.time.values, quantiles.sel(quantile=0.05), quantiles.sel(quantile=0.95),
+                                    color=shaded_area_color, alpha=shaded_area_alpha,
+                                    linewidth=0, **area_kwargs, label='_nolegend_')
+                    ax.fill_between(quantiles.time.values, quantiles.sel(quantile=0.17), quantiles.sel(quantile=0.83),
+                                    color=shaded_area_color, alpha=shaded_area_alpha,
+                                    linewidth=0, **area_kwargs, label='_nolegend_')
+                    ax.fill_between(quantiles.time.values, quantiles.sel(quantile=0.25), quantiles.sel(quantile=0.75),
+                                    color=shaded_area_color, alpha=shaded_area_alpha,
+                                    linewidth=0, **area_kwargs, label='_nolegend_')
+                    
+            elif shaded_area == "auto":
+                if thick_line == "mean":
+                    data_std = data.std(y_dim)
+                    ax.fill_between(data.time.values, 
+                                    main_metric - standard_deviation_multiple*data_std, 
+                                    main_metric + standard_deviation_multiple*data_std,
+                                    color=shaded_area_color, alpha=shaded_area_alpha,
+                                    linewidth=0, **area_kwargs, label='_nolegend_')
+                if thick_line=='median':
+                    quantiles = data.quantile([0.05,0.95],y_dim)
+                    ax.fill_between(quantiles.time.values, quantiles.sel(quantile=0.05), quantiles.sel(quantile=0.95),
+                                    color=shaded_area_color, alpha=shaded_area_alpha,
+                                    linewidth=0, **area_kwargs, label='_nolegend_')
+            elif shaded_area=='std':
+                data_std = data.std(y_dim)
+                if thick_line is None:
+                    main_metric = data.mean(y_dim)
+                ax.fill_between(data.time.values, 
+                                main_metric - standard_deviation_multiple*data_std, 
+                                main_metric + standard_deviation_multiple*data_std,
+                                color=shaded_area_color, alpha=shaded_area_alpha,
+                                linewidth=0, **area_kwargs, label='_nolegend_')
+
+            elif shaded_area == 'quantiles':
+                data_quantile = data.quantile([quantile_min, quantile_max],
+                                            dim=y_dim)
+                if thick_line is None:
+                    main_metric = data.median(y_dim)
+                ax.fill_between(data.time.values, data_quantile.isel(quantile=0), data_quantile.isel(quantile=1),
+                                color=shaded_area_color, alpha=shaded_area_alpha,
+                                linewidth=0, **area_kwargs,
+                                label='_no_legend_')
+        if add_legend:
+            ax.legend()
 
 
 class TaylorDiagram(object):
