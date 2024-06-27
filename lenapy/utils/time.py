@@ -123,7 +123,8 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
         For a given 1d time series, returns the coefficients of the fitted climatology
         """
         Y_in_nona = data_in[~np.isnan(data_in)]
-        if len(Y_in_nona) == 0:
+        # If less than 6 non-na elements, climato is not computable
+        if len(Y_in_nona) <= 6:
             return np.full(X_in.shape[0], np.nan)
         time_in_nona = time_vector_in[~np.isnan(data_in)]
         X_in_nona = X_in[:,~np.isnan(data_in)]
