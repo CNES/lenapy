@@ -43,10 +43,10 @@ class EOF:
 
         # Create xarray DataArray for eigenvectors and eigenvalues
         c = M.isel(time=0, pos=0).dims + ('pos', 'order')
-        self.vp = xr.DataArray(r[...,:-1], dims=c, coords=dict(M.drop(['time']).coords)).persist()
+        self.vp = xr.DataArray(r[...,:-1], dims=c, coords=dict(M.drop(['time']).coords)).isel(order=slice(None, None, -1)).persist()
 
         c = M.isel(time=0, pos=0).dims + ('order',)
-        self.val = xr.DataArray(r[...,-1], dims=c, coords=dict(M.drop(['time','pos']).coords)).persist()
+        self.val = xr.DataArray(r[...,-1], dims=c, coords=dict(M.drop(['time','pos']).coords)).isel(order=slice(None, None, -1)).persist()
 
         # Project the signal onto the eigenvectors
         self.lbd = (M * self.vp).sum('pos').persist()
@@ -65,7 +65,7 @@ class EOF:
         xarray.DataArray
             The n-th EOF.
         """
-        return self.vp.sel(order=-n).unstack('pos')
+        return self.vp.sel(order=n).unstack('pos')
     
     def amplitude(self, n):
         """
@@ -81,7 +81,7 @@ class EOF:
         xarray.DataArray
             Amplitude timeseries of the n-th EOF.
         """
-        return self.lbd.sel(order=-n)
+        return self.lbd.sel(order=n)
     
     def variance(self, n):
         """
@@ -97,7 +97,7 @@ class EOF:
         xarray.DataArray
             The n-th eigenvalue (variance).
         """
-        return self.val.sel(order=-n)
+        return self.val.sel(order=n)
     
     def reconstruct(self, n):
         """
@@ -113,7 +113,7 @@ class EOF:
         xarray.DataArray
             Reconstructed dataset.
         """
-        return (self.vp.sel(order=slice(-n, None)) * self.lbd.sel(order=slice(-n, None))).sum('order').unstack('pos') + self.moyenne
+        return (self.vp.sel(order=slice(None,n)) * self.lbd.sel(order=slice(None,n))).sum('order').unstack('pos') + self.moyenne
     
     def explained_variance(self, n):
         """
@@ -129,6 +129,6 @@ class EOF:
         float
             Explained variance by the first n EOFs.
         """
-        return (self.val.sel(order=slice(-n, None)).sum('order') / self.val.sum('order'))
+        return (self.val.sel(order=slice(None,n)).sum('order') / self.val.sum('order'))
 
 
