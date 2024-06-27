@@ -94,16 +94,10 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
     time_period : slice (default=slice(None,None==
         Periode de reference sur laquelle est calculee la climato
     """
-    
     use_dask = True if isinstance(data.data, da.Array) else False
     
     if not 'time' in data.coords: raise AssertionError('The time coordinates does not exist')
     
-    # Toutes les dimensions differentes de time sont regroupees en une seule
-    # Pour cela on récupère le nom des dimensions, et on enlève 'time'
-    dims_stack=list(data.dims)
-    dims_stack.remove('time')
-
     # Reference temporelle = milieu de la période
     tmin=data.time.sel(time=time_period).min()
     tmax=data.time.sel(time=time_period).max()
@@ -120,44 +114,52 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
     # Vecteur temps a utiliser pour calcul de la climato
     time_vector=data.time.sel(time=time_period)
     
-    # Construction du vecteur des observations
-    if (dims_stack==[]):
-        Y=data
-        # Pour gerer les Nan dans le cas d'une time series a une seule dimensino, on ne garde que les pas de temps sans NaN
-        time_vector=time_vector.where(Y.notnull()).dropna('time')
-        
-    else:
-        # Dans le cas de dimensions multiples, les NaN ne sont pas gérés et pour les coordonnees ou il y a un NaN ou plus 
-        #  dans la timeserie, le retour sera NaN pour tous les pas de temps
-        Y=data.stack(pos=dims_stack).dropna('pos',thresh=6)
-        if use_dask:
-            Y=Y.chunk(time=-1,pos=10000)
+    # Détermination des coefficients par résolution des moindres carrés
+    time_vector_in = time_vector.values
+    X_in = X.values
 
-    # Resolution du moindre carré
-    if use_dask:
-        (coeffs,residus,rank,eig)=da.linalg.lstsq(X.sel(time=time_vector).T.data,Y.sel(time=time_vector).data)
-    else:
-        (coeffs,residus,rank,eig)=np.linalg.lstsq(X.sel(time=time_vector).T.data,Y.sel(time=time_vector).data,rcond=None)
+    def solve_least_square(data_in):
+        """
+        For a given 1d time series, returns the coefficients of the fitted climatology
+        """
+        Y_in_nona = data_in[~np.isnan(data_in)]
+        if len(Y_in_nona) == 0:
+            return np.full(X_in.shape[0], np.nan)
+        time_in_nona = time_vector_in[~np.isnan(data_in)]
+        X_in_nona = X_in[:,~np.isnan(data_in)]
+        (coeffs,residus,rank,eig)=np.linalg.lstsq(X_in_nona.T,Y_in_nona,rcond=None)
+        return coeffs
     
+    # Application de ufunc
+    coeffs = xr.apply_ufunc(
+        solve_least_square, 
+        data, 
+        input_core_dims=[['time']],
+        output_core_dims=[['coeffs']],
+        exclude_dims=set(('time',)),
+        vectorize=True,
+        dask='parallelized',
+        output_dtypes=[float],
+        dask_gufunc_kwargs={'output_sizes': {'coeffs': X_in.shape[0]}}
+    )
     
-    if (dims_stack==[]):
-        coeffs=xr.DataArray(coeffs,(X.coeffs,),attrs=dict(time_ref=tref))
-    else:
-        coeffs=xr.DataArray(coeffs,(X.coeffs,Y.pos),attrs=dict(time_ref=tref)).unstack('pos')
+    coeffs = coeffs.assign_coords(coeffs=X.coeffs.values)
+    
+    # Calcul des résidus
+    data_climato = coeffs*X
+    residus = (data-data_climato.sum('coeffs')).assign_coords(coeffs='residu').expand_dims('coeffs')
 
-    res=coeffs*X
+    # Toutes les composantes de la climatologie
+    results = xr.concat((residus,data_climato),dim='coeffs')    
 
-    
-    residus=(data-res.sum('coeffs')).assign_coords(coeffs='residu').expand_dims('coeffs')
-    res=xr.concat((residus,res),dim='coeffs')    
-        
     # Sélection des composantes de la climato à retourner
-    composants=np.where([signal,mean,trend,cycle,cycle,cycle,cycle])[0]
+    composants = np.where([signal,mean,trend,cycle,cycle,cycle,cycle])[0]
     
     if return_coeffs:
-        return res.isel(coeffs=composants).sum('coeffs',skipna=fillna), coeffs
+        return results.isel(coeffs=composants).sum('coeffs',skipna=fillna), coeffs
     else:
-        return res.isel(coeffs=composants).sum('coeffs',skipna=fillna)
+        return results.isel(coeffs=composants).sum('coeffs',skipna=fillna)
+    
 
 def generate_climato(time, coeffs, mean=True, trend=False, cycle=True):
 
