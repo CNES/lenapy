@@ -95,7 +95,9 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
         Periode de reference sur laquelle est calculee la climato
     """
     use_dask = True if isinstance(data.data, da.Array) else False
-    
+    if use_dask:
+        data = data.chunk(time=-1)
+
     if not 'time' in data.coords: raise AssertionError('The time coordinates does not exist')
     
     # Reference temporelle = milieu de la période
@@ -108,8 +110,7 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
     omega=2*np.pi/LNPY_DAYS_YEAR
     X=xr.concat((t1**0,t1,np.cos(omega*t1),np.sin(omega*t1),np.cos(2*omega*t1),np.sin(2*omega*t1)),
                 dim=pd.Index(['mean','trend','cosAnnual','sinAnnual','cosSemiAnnual','sinSemiAnnual'], name="coeffs"))
-    if use_dask:
-        X=X.chunk(time=-1)
+    
 
     # Vecteur temps a utiliser pour calcul de la climato
     time_vector=data.time.sel(time=time_period)
@@ -126,7 +127,6 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
         # If less than 6 non-na elements, climato is not computable
         if len(Y_in_nona) <= 6:
             return np.full(X_in.shape[0], np.nan)
-        time_in_nona = time_vector_in[~np.isnan(data_in)]
         X_in_nona = X_in[:,~np.isnan(data_in)]
         (coeffs,residus,rank,eig)=np.linalg.lstsq(X_in_nona.T,Y_in_nona,rcond=None)
         return coeffs
