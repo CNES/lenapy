@@ -13,6 +13,7 @@ def plot_timeseries_uncertainty(xgeo_data,
                                 standard_deviation_multiple=1.645,
                                 quantile_min=0.05,
                                 quantile_max=0.95,
+                                color=None,
                                 thick_line_color=None,
                                 shaded_area_color=None,
                                 shaded_area_alpha=0.2,
@@ -51,6 +52,8 @@ def plot_timeseries_uncertainty(xgeo_data,
         lower quantile to compute uncertainty with `shaded_area=quantiles`
     quantile_max : Float between 0 and 1 (default=0.95)
         upper quantile to compute uncertainty with `shaded_area=quantiles`
+    color : String or List (default=None)
+        color of the main thick line and the shaded area. Must be a string 
     thick_line_color : String or List (default=None)
         color of the main thick line. Must be a string 
         If hue and one color are provided, the single color is used for all line plots.
@@ -82,6 +85,8 @@ def plot_timeseries_uncertainty(xgeo_data,
     if label is None:
         label = f"{variable}"
 
+    if color is not None:
+        thick_line_color=color
     
     data_dims = data.dims
     y_dim = [dim for dim in data_dims if dim != 'time']

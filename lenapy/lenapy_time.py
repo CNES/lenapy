@@ -294,6 +294,8 @@ class TimeArray:
             lower quantile to compute uncertainty with `shaded_area=quantiles`
         quantile_max : Float between 0 and 1 (default=0.95)
             upper quantile to compute uncertainty with `shaded_area=quantiles`
+        color : String or List (default=None)
+            color of the main thick line and the shaded area. Must be a string 
         thick_line_color : String or List (default=None)
             color of the main thick line. Must be a string 
             If hue and one color are provided, the single color is used for all line plots.
