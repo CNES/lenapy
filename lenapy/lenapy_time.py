@@ -407,8 +407,8 @@ class TimeArray:
         """
         return fillna_climato(self._obj,time_period=time_period)
     
-    def EOF(self,dim):
+    def EOF(self,dim,k):
         """Return an instance of the *eof* class based on the data array and the dimension names of the eof
         """
-        return EOF(self._obj,dim)
+        return EOF(self._obj,dim,k)
     

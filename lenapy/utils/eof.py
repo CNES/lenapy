@@ -12,44 +12,47 @@ class EOF:
         Contains the data on which to apply the decomposition. Must have a "time" coordinate.
     dim : str or list of str
         Dimensions of the EOF.
+    k : int
+        order of the last EOF to compute
     """
 
-    def __init__(self, data, dim):
+    def __init__(self, data, dim, k=6):
         self.data = data
         self.dim = np.ravel(dim)
         
         self.moyenne = self.data.mean('time').persist()
 
         # Remove the mean value
-        M = (self.data - self.moyenne).stack(pos=tuple(self.dim)).fillna(0)
+        M = (self.data - self.moyenne).stack(pos=tuple(self.dim)).fillna(0).persist()
         
         # Create the covariance matrix
-        mat1 = M.transpose(..., 'pos', 'time').data
-        mat2 = M.transpose(..., 'time', 'pos').data
-        S = da.matmul(mat1, mat2)
-        self.S = S
-        self.M = M
-
-        # Decomposition function for Dask
+        mat = M.transpose(..., 'pos', 'time').chunk(dict(pos=-1,time=-1))
+        
+        
         def decompose(S):
-            val, vec = np.linalg.eigh(S)
-            return np.append(vec, np.expand_dims(val, S.ndim-1), axis=S.ndim-1)
-        
-        # Chunk size for the decomposition function
-        cs = S.chunksize[:-1] + (S.chunksize[-1] + 1,)
-        
-        # Eigenvalue decomposition distributed by Dask
-        r = S.map_blocks(decompose, chunks=(cs))
+            u,s,v=da.linalg.svd_compressed(da.array(S),k=k)
 
+            return u,s**2
+
+        res = xr.apply_ufunc(
+            decompose, 
+            mat, 
+            input_core_dims=[['pos','time']],
+            output_core_dims=[['pos','order'],['order']],
+            exclude_dims=set(('time',)),
+            vectorize=True,
+            dask='parallelized',
+            output_dtypes=[float,float],
+            dask_gufunc_kwargs={'output_sizes': {'order': k}}
+        )
+
+    
         # Create xarray DataArray for eigenvectors and eigenvalues
-        c = M.isel(time=0, pos=0).dims + ('pos', 'order')
-        self.vp = xr.DataArray(r[...,:-1], dims=c, coords=dict(M.drop(['time']).coords)).isel(order=slice(None, None, -1)).persist()
-
-        c = M.isel(time=0, pos=0).dims + ('order',)
-        self.val = xr.DataArray(r[...,-1], dims=c, coords=dict(M.drop(['time','pos']).coords)).isel(order=slice(None, None, -1)).persist()
+        self.vp = res[0].persist()
+        self.val = res[1].persist()
 
         # Project the signal onto the eigenvectors
-        self.lbd = (M * self.vp).sum('pos').persist()
+        self.lbd = (M * self.vp).sum('pos')
 
     def eof(self, n):
         """
