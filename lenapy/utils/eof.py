@@ -18,15 +18,18 @@ class EOF:
 
     def __init__(self, data, dim, k=6):
         self.data = data
-        self.dim = np.ravel(dim)
+        self.dim=[]
+        for i in data.dims:
+            if i in  np.ravel(dim):
+                self.dim.append(i)
         
         self.moyenne = self.data.mean('time').persist()
 
         # Remove the mean value
-        M = (self.data - self.moyenne).stack(pos=tuple(self.dim)).fillna(0).persist()
+        M = (self.data - self.moyenne).fillna(0).persist()
         
         # Create the covariance matrix
-        mat = M.transpose(..., 'pos', 'time').chunk(dict(pos=-1,time=-1))
+        mat = M.stack(pos=tuple(self.dim)).transpose(..., 'pos', 'time').chunk(dict(pos=-1,time=-1))
         
         
         def decompose(S):
@@ -48,13 +51,13 @@ class EOF:
 
     
         # Create xarray DataArray for eigenvectors and eigenvalues
-        self.vp = res[0].persist()
+        self.vp = res[0].unstack('pos').persist()
         self.val = res[1].persist()
 
         # Project the signal onto the eigenvectors
-        self.lbd = (M * self.vp).sum('pos')
+        self.lbd = xr.dot(M,self.vp,dim=dim)
 
-    def eof(self, n):
+    def eof(self, n=None):
         """
         Returns the n-th EOF.
         
@@ -68,9 +71,12 @@ class EOF:
         xarray.DataArray
             The n-th EOF.
         """
-        return self.vp.sel(order=n).unstack('pos')
+        if type(n)==type(None):
+            return self.vp
+        else:
+            return self.vp.sel(order=n)
     
-    def amplitude(self, n):
+    def amplitude(self, n=None):
         """
         Returns the amplitude timeseries of the n-th EOF.
         
@@ -84,9 +90,12 @@ class EOF:
         xarray.DataArray
             Amplitude timeseries of the n-th EOF.
         """
-        return self.lbd.sel(order=n)
+        if type(n)==type(None):
+            return self.lbd
+        else:
+            return self.lbd.sel(order=n)
     
-    def variance(self, n):
+    def variance(self, n=None):
         """
         Returns the n-th eigenvalue (variance).
         
@@ -100,7 +109,10 @@ class EOF:
         xarray.DataArray
             The n-th eigenvalue (variance).
         """
-        return self.val.sel(order=n)
+        if type(n)==type(None):
+            return self.val
+        else:
+            return self.val.sel(order=n)
     
     def reconstruct(self, n):
         """
@@ -116,7 +128,7 @@ class EOF:
         xarray.DataArray
             Reconstructed dataset.
         """
-        return (self.vp.sel(order=slice(None,n)) * self.lbd.sel(order=slice(None,n))).sum('order').unstack('pos') + self.moyenne
+        return (self.vp.sel(order=slice(None,n)) * self.lbd.sel(order=slice(None,n))).sum('order') + self.moyenne
     
     def explained_variance(self, n):
         """
