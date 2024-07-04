@@ -27,8 +27,6 @@ class EOF:
 
         # Remove the mean value
         M = (self.data - self.moyenne).fillna(0).persist()
-        
-        # Create the covariance matrix
         mat = M.stack(pos=tuple(self.dim)).transpose(..., 'pos', 'time').chunk(dict(pos=-1,time=-1))
         
         
@@ -55,7 +53,7 @@ class EOF:
         self.val = res[1].persist()
 
         # Project the signal onto the eigenvectors
-        self.lbd = xr.dot(M,self.vp,dim=dim)
+        self.lbd = xr.dot(M,self.vp,dim=dim).persist()
 
     def eof(self, n=None):
         """
@@ -91,9 +89,9 @@ class EOF:
             Amplitude timeseries of the n-th EOF.
         """
         if type(n)==type(None):
-            return self.lbd
+            return self.lbd.compute()
         else:
-            return self.lbd.sel(order=n)
+            return self.lbd.sel(order=n).compute()
     
     def variance(self, n=None):
         """
