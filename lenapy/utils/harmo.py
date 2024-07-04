@@ -271,46 +271,22 @@ def grid_to_sh(grid, lmax, unit='mewh',
     used_l = np.arange(lmin, lmax + 1) if used_l is None else used_l
     used_m = np.arange(mmin, mmax + 1) if used_m is None else used_m
 
-    # -- create integration factor over the grid
-    # longitude degree spacing of each cell in radians
-    diff_phi = np.abs(grid.cf["longitude"].diff(dim='longitude').values)
-    # deal with case where longitude goes from 180 to -180 in the array
-    diff_phi[diff_phi > np.pi] = np.abs(2 * np.pi - diff_phi[diff_phi > np.pi])
-    # size of the cell is half of the diff with both adjacent grid cell + convert to radians
-    dphi = np.deg2rad(np.concatenate((diff_phi[[0]], (diff_phi[1:] + diff_phi[:-1]) / 2, diff_phi[[-1]])))
-
-    # latitude degree spacing in radians
-    diff_th = np.abs(grid.cf["latitude"].diff(dim='latitude').values)
-    # size of the cell is half of the diff with both adjacent grid cell + convert to radians
-    dth = np.deg2rad(np.concatenate((diff_th[[0]], (diff_th[1:] + diff_th[:-1]) / 2, diff_th[[-1]])))
-
     cos_latitude = np.cos(np.deg2rad(grid.cf["latitude"].values))
     sin_latitude = np.sin(np.deg2rad(grid.cf["latitude"].values))
+
     f_earth = kwargs['f_earth'] if 'f_earth' in kwargs else LNPY_F_EARTH_GRS80
     geocentric_colat = xr.DataArray(np.arctan2(cos_latitude, (1 - f_earth) ** 2 * sin_latitude), dims=['latitude'],
                                     coords={'latitude': grid.cf["latitude"]})
 
-    # create DataArray corresponding to the integration factor [sin(theta) * dtheta * dphi] for each cell
+    # create DataArray corresponding to the integration factor for each cell
     # case for ellipsoidal earth where integration over ellipsoidal cell
     if ellipsoidal_earth:
-        ep = np.sqrt(2*f_earth - f_earth**2)/(1 - f_earth)  # earth eccentricity prime
-        diff_geocentrique = np.abs(geocentric_colat.diff(dim='latitude').values)
-        dgeoc = np.concatenate((diff_geocentrique[[0]], (diff_geocentrique[1:] + diff_geocentrique[:-1]) / 2,
-                                diff_geocentrique[[-1]]))
-        pds_lat = np.abs(np.arcsinh(ep*np.cos(geocentric_colat + dgeoc/2)) -
-                         np.arcsinh(ep*np.cos(geocentric_colat - dgeoc/2))) / (2*ep) + \
-                  np.abs(np.cos(geocentric_colat + dgeoc/2)*np.sqrt(1 + ep**2*np.cos(geocentric_colat + dgeoc/2)**2) -
-                         np.cos(geocentric_colat - dgeoc/2)*np.sqrt(1 + ep**2*np.cos(geocentric_colat - dgeoc/2)**2))/2
-        # normalisation for numerical stability
-        norm_pds_lat = 2*pds_lat.values / np.sum(pds_lat.values)
-        int_fact = xr.DataArray(norm_pds_lat[np.newaxis, :] * dphi[:, np.newaxis] / (4*np.pi),
-                                dims=['longitude', 'latitude'],
-                                coords={'longitude': grid.cf["longitude"], 'latitude': grid.cf["latitude"]})
+        surface = grid.lngeo.cell_surface(ellipsoidal_earth=True, f_earth=f_earth)
+        int_fact = surface / surface.sum()
+
     # case for spherical earth where integration over spherical cell
     else:
-        int_fact = xr.DataArray(cos_latitude[np.newaxis, :] * np.sin(dth/2) * dphi[:, np.newaxis] / (2*np.pi),
-                                dims=['longitude', 'latitude'],
-                                coords={'longitude': grid.cf["longitude"], 'latitude': grid.cf["latitude"]})
+        int_fact = grid.lngeo.cell_surface(ellipsoidal_earth=False, a_earth=1) / (4*np.pi)
 
     # Create a readable cf_xarray DataArray
     int_fact['latitude'].attrs = dict(standard_name='latitude')
