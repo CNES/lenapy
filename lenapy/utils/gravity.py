@@ -289,7 +289,7 @@ def gauss_weights(radius, lmax, a_earth=LNPY_A_EARTH_GRS80, cutoff=1e-10):
     lmax : int
         Maximum degree of spherical harmonic coefficients.
     a_earth : float, optional
-        Radius of the Earth in meters. Default is LNPY_A_EARTH_GRS80 define in constants.py
+        Radius of the Earth in meters, default is the semi-major axis of GRS80.
     cutoff : float, optional
         Minimum value for the tail of the Gaussian averaging function (see [Jekeli1981]_ p.18), default is 1e-10.
 
