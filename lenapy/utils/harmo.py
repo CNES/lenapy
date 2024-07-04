@@ -281,12 +281,12 @@ def grid_to_sh(grid, lmax, unit='mewh',
     # create DataArray corresponding to the integration factor for each cell
     # case for ellipsoidal earth where integration over ellipsoidal cell
     if ellipsoidal_earth:
-        surface = grid.lngeo.cell_surface(ellipsoidal_earth=True, f_earth=f_earth)
+        surface = grid.lngeo.surface_cell(ellipsoidal_earth=True, f_earth=f_earth)
         int_fact = surface / surface.sum()
 
     # case for spherical earth where integration over spherical cell
     else:
-        int_fact = grid.lngeo.cell_surface(ellipsoidal_earth=False, a_earth=1) / (4*np.pi)
+        int_fact = grid.lngeo.surface_cell(ellipsoidal_earth=False, a_earth=1) / (4*np.pi)
 
     # Create a readable cf_xarray DataArray
     int_fact['latitude'].attrs = dict(standard_name='latitude')
