@@ -231,7 +231,7 @@ class GeoSet:
     
 
         
-    def surface_cell(self):
+    def surface_cell(self, ellipsoidal_earth=True, a_earth=None, f_earth=LNPY_F_EARTH_GRS80):
         """Returns the earth surface of each cell defined by a longitude/latitude in a array
         Cells limits are half distance between each given coordinate. That means that given coordinates are not necessary the center of each cell.
         Border cells are supposed to have the same size on each side of the given coordinate.
@@ -250,7 +250,7 @@ class GeoSet:
             surface = data.lngeo.surface_cell()
 
         """
-        return surface_cell(self._obj)
+        return surface_cell(self._obj, ellipsoidal_earth=ellipsoidal_earth, a_earth=a_earth, f_earth=f_earth)
     
     def reset_longitude(self,origin=-180):
         """Rolls the longitude in order to place the specified longitude at the beggining of the array
@@ -336,7 +336,7 @@ class GeoArray:
                 w=np.cos(np.radians(self._obj.latitude ))
             if 'latitude_ellipsoide' in weights and 'latitude' in self._obj.coords:
                 # poids = cos(latitude)*earth oblatness factor
-                w=np.cos(np.radians(self._obj.latitude ))/(1+LNPY_EARTH_FLATTENING*np.cos(2*np.radians(self._obj.latitude )))**2
+                w=np.cos(np.radians(self._obj.latitude ))/(1+LNPY_F_EARTH_GRS80*np.cos(2*np.radians(self._obj.latitude )))**2
             if 'depth' in weights and 'depth' in self._obj.coords:
                 # poids *= épaisseur des couches (l'épaisseur de la première couche est la première profondeur)
                 w=w*xr.concat((self._obj.depth.isel(depth=0),self._obj.depth.diff(dim='depth')),dim='depth')
@@ -389,7 +389,7 @@ class GeoArray:
                 w=np.cos(np.radians(self._obj.latitude ))
             if 'latitude_ellipsoide' in weights and 'latitude' in self._obj.coords:
                 # poids = cos(latitude)*earth oblatness factor
-                w=np.cos(np.radians(self._obj.latitude ))/(1+LNPY_EARTH_FLATTENING*np.cos(2*np.radians(self._obj.latitude )))**2
+                w=np.cos(np.radians(self._obj.latitude ))/(1+LNPY_F_EARTH_GRS80*np.cos(2*np.radians(self._obj.latitude )))**2
             if 'depth' in weights and 'depth' in self._obj.coords:
                 # poids *= épaisseur des couches (l'épaisseur de la première couche est la première profondeur)
                 w=w*xr.concat((self._obj.depth.isel(depth=0),self._obj.depth.diff(dim='depth')),dim='depth')
@@ -491,8 +491,7 @@ class GeoArray:
         """        
         return regridder(self._obj,*args,**kwargs)
 
-
-    def surface_cell(self):
+    def surface_cell(self, ellipsoidal_earth=True, a_earth=None, f_earth=LNPY_F_EARTH_GRS80):
         """Returns the earth surface of each cell defined by a longitude/latitude in a array
         Cells limits are half distance between each given coordinate. That means that given coordinates are not necessary the center of each cell.
         Border cells are supposed to have the same size on each side of the given coordinate.
@@ -502,6 +501,15 @@ class GeoArray:
         -------
         surface : dataarray
             dataarray with cells surface
+        ellipsoidal_earth: bool | str, optional
+            Boolean to choose if the surface of the Earth is an ellipsoid or a sphere. Default is True for ellipsoidal
+            Earth. If ellipsoidal_earth='approx', the given surface is the one of a spherical cell with the radius
+            corresponding to the distance between the ellispoid point and the center of the ellipsoid.
+        a_earth : float, optional
+            Earth semi-major axis [m]. If not provided, use `data.attrs['radius']` and
+            if it does not exist, use LNPY_A_EARTH_GRS80.
+        f_earth : float, optional
+            Earth flattening. Default is LNPY_F_EARTH_GRS80.
 
         Example
         -------
@@ -511,7 +519,7 @@ class GeoArray:
             surface = data.lngeo.surface_cell()
 
         """
-        return surface_cell(self._obj)
+        return surface_cell(self._obj, ellipsoidal_earth=ellipsoidal_earth, a_earth=a_earth, f_earth=f_earth)
     
     def reset_longitude(self,origin=-180):
         """Rolls the longitude in order to place the specified longitude at the beggining of the array
