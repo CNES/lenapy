@@ -179,8 +179,8 @@ def surface_cell(data, ellipsoidal_earth=True, a_earth=None, f_earth=LNPY_F_EART
     if a_earth is None:
         a_earth = float(data.attrs['radius']) if 'radius' in data.attrs else LNPY_A_EARTH_GRS80
 
-    dlat = ecarts(data, 'latitude').astype('float128')
-    dlon = ecarts(data, 'longitude').astype('float128')
+    dlat = ecarts(data, 'latitude')
+    dlon = ecarts(data, 'longitude')
 
     # case of the cell on an ellipsoid
     if ellipsoidal_earth == 'ellipsoidal' or ellipsoidal_earth is True:
