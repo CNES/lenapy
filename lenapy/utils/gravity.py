@@ -176,7 +176,7 @@ def change_tide_system(ds, new_tide, old_tide=None, k20=None, apply=False):
     # if apply = False : Copy the dataset to avoid modifying the input dataset
     ds_out = ds if apply else ds.copy(deep=True)
 
-    ds_out.clm[2, 0] += conv * A0 * H0
+    ds_out.clm.loc[dict(l=2,m=0)] += conv * A0 * H0
     ds_out.attrs['tide_system'] = new_tide
 
     # -- return ds
