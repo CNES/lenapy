@@ -130,7 +130,7 @@ class HarmoSet:
             # case where other does not have a time dimension
             if 'time' not in other.coords:
                 self.ds['clm'] = op(self.ds.clm, other.clm.sel(l=common_l, m=common_m))
-                self.ds['slm'] = op(self.ds.slm, other.clm.sel(l=common_l, m=common_m))
+                self.ds['slm'] = op(self.ds.slm, other.slm.sel(l=common_l, m=common_m))
 
             elif 'time' not in self._obj.coords:  # if the previous test, other has time dimension
                 raise AssertionError("Cannot operate on a HarmoSet with time dimension to a Harmoset without it. "
