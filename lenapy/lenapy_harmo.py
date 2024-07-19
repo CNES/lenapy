@@ -66,7 +66,7 @@ class HarmoSet:
         return self._apply_operator(operator.sub, other)
 
     def __rsub__(self, other):
-        return (self.__neg__()).xharmo.__add__(other)
+        return (self.__neg__()).lnharmo.__add__(other)
 
     def __mul__(self, other):
         return self._apply_operator(operator.mul, other)
@@ -119,7 +119,7 @@ class HarmoSet:
             self.ds['slm'] = op(self._obj.slm, other)
 
         # case where other is another xr.Dataset with spherical harmonics info
-        elif isinstance(other, xr.Dataset) or isinstance(other, xr.DataArray):
+        elif isinstance(other, xr.Dataset):
             assert_sh(other)
 
             # change clm and slm size if other.l or other.m are different
@@ -129,8 +129,8 @@ class HarmoSet:
 
             # case where other does not have a time dimension
             if 'time' not in other.coords:
-                self.ds['clm'] = op(self.ds.clm, other.clm.isel(l=common_l, m=common_m))
-                self.ds['slm'] = op(self.ds.slm, other.clm.isel(l=common_l, m=common_m))
+                self.ds['clm'] = op(self.ds.clm, other.clm.sel(l=common_l, m=common_m))
+                self.ds['slm'] = op(self.ds.slm, other.clm.sel(l=common_l, m=common_m))
 
             elif 'time' not in self._obj.coords:  # if the previous test, other has time dimension
                 raise AssertionError("Cannot operate on a HarmoSet with time dimension to a Harmoset without it. "

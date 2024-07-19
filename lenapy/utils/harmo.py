@@ -115,10 +115,12 @@ def sh_to_grid(data, unit='mewh',
     used_m = np.arange(mmin, mmax + 1) if used_m is None else used_m
 
     # test if mass conservation has to be forced to remove mass induced by the projection of C2n,0 coefficients
-    if force_mass_conservation and 0 in used_l and len(used_l) != 1:
+    if force_mass_conservation and 0 in used_l and len(used_l) > 1:
         use_czero_coef = True
         used_l.sort()
         used_l = used_l[1:]
+    elif force_mass_conservation and 0 in used_l and len(used_l) == 1:
+        force_mass_conservation = False  # no need of mass conservation with only coefficient C0,0
     else:
         use_czero_coef = False
 
@@ -659,6 +661,8 @@ def l_factor_conv(l, unit='mewh', include_elastic=True, ellipsoidal_earth=False,
     if unit == 'norm':
         # norm, fully normalized spherical harmonics
         l_factor = xr.ones_like(l)
+        if ellipsoidal_earth:
+            l_factor = l_factor * a_div_r_lat**l
 
     elif unit == 'mewh':
         # mewh, meters equivalent water height [kg.m-2]
