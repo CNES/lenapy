@@ -2,6 +2,7 @@ import xarray as xr
 import numpy as np
 import dask.array as da
 import pandas as pd
+import cftime
 import netCDF4
 from . import filters
 from ..constants import *
@@ -26,7 +27,6 @@ def filter(data,filter_name='lanczos',time_coord='time',annual_cycle=False,q=3,*
     **kwargs :
         paramètres de la fonction de filtrage demandée
     """
-
     if not time_coord in data.coords: raise AssertionError('The time coordinates does not exist')
     try:
         f = getattr(filters,filter_name)
@@ -105,12 +105,26 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
     if not 'time' in data.coords: raise AssertionError('The time coordinates does not exist')
     
     # Reference temporelle = milieu de la période
-    tmin=data.time.sel(time=time_period).min()
-    tmax=data.time.sel(time=time_period).max()
+    tmin=data.time.sel(time=time_period).min().values
+    tmax=data.time.sel(time=time_period).max().values
     tref=tmin+(tmax-tmin)/2.
     
     # Construction de la matrice des mesures
-    t1=(data.time-tref)/pd.to_timedelta("1D").asm8
+    if isinstance(tref, np.datetime64):
+        one_day = pd.to_timedelta("1D").asm8
+        t1 = t1=(data.time-tref)/one_day
+    elif isinstance(tref, 
+                        (cftime.Datetime360Day,
+                         cftime.DatetimeNoLeap,
+                         cftime.DatetimeAllLeap,
+                         cftime.DatetimeGregorian,
+                         cftime.DatetimeProlepticGregorian,
+                         cftime.DatetimeJulian,)
+                    ):
+        t1 =  xr.DataArray([(date - tref).days for date in data.time.values], 
+                           coords=dict(time=data.time),
+                           dims=['time'])
+    
     omega=2*np.pi/LNPY_DAYS_YEAR
     X=xr.concat((t1**0,t1,np.cos(omega*t1),np.sin(omega*t1),np.cos(2*omega*t1),np.sin(2*omega*t1)),
                 dim=pd.Index(['mean','trend','cosAnnual','sinAnnual','cosSemiAnnual','sinSemiAnnual'], name="coeffs"))
@@ -164,7 +178,7 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
 
     # Récupérer les attributs des données d'entrées
     results_out.attrs = data.attrs
-
+    results_out = results_out.rename(data.name)
     if return_coeffs:
         return results_out, coeffs
     else:
