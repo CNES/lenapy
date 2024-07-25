@@ -64,7 +64,11 @@ def filter(data,filter_name='lanczos',time_coord='time',annual_cycle=False,q=3,*
     v4[time_coord]=data[time_coord]
     
     # Ajout du polynome aux données filtrées
-    return v0+v4
+    data_filtered = v0+v4
+
+    # Récupérer les attributs des données d'entrées
+    data_filtered.attrs = data.attrs
+    return data_filtered
 
 
 def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs=False,time_period=slice(None,None),fillna=False):
@@ -156,10 +160,15 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
     # Sélection des composantes de la climato à retourner
     composants = np.where([signal,mean,trend,cycle,cycle,cycle,cycle])[0]
     
+    results_out = results.isel(coeffs=composants).sum('coeffs',skipna=fillna)
+
+    # Récupérer les attributs des données d'entrées
+    results_out.attrs = data.attrs
+
     if return_coeffs:
-        return results.isel(coeffs=composants).sum('coeffs',skipna=fillna), coeffs
+        return results_out, coeffs
     else:
-        return results.isel(coeffs=composants).sum('coeffs',skipna=fillna)
+        return results_out
     
 
 def generate_climato(time, coeffs, mean=True, trend=False, cycle=True):
