@@ -3,9 +3,11 @@ import numpy as np
 import pandas as pd
 import netCDF4
 from ..constants import *
-                   
-def rename_data(data,**kwargs):
-    """Standardization of coordinates names of a product
+
+
+def rename_data(data, **kwargs):
+    """
+    Standardization of coordinates names of a product
     Looks for different possible names for latitude, longitude, and time, and turn them into a standardized name.
     Definitions are specified in setup.py, and are also based on standard cf attributes and units
     Custom names changes can also be performed with kwargs parameter
@@ -26,21 +28,20 @@ def rename_data(data,**kwargs):
 
         ds=xr.open_mfdataset('product.nc',preprocess=rename_data)
     """
-    data=data.rename(**kwargs)
-    for coord in ['latitude','longitude','time','depth']:
+    data = data.rename(**kwargs)
+    for coord in ['latitude', 'longitude', 'time', 'depth']:
         try:
-            nom=data.cf[coord].name
-            data=data.rename({nom:coord})
+            nom = data.cf[coord].name
+            data = data.rename({nom: coord})
         except:
             pass
-            
 
-    if 'longitude' in data.variables and not('longitude' in data.coords):
-        lon=data['longitude']
+    if 'longitude' in data.variables and 'longitude' not in data.coords:
+        lon = data['longitude']
         del data['longitude']
-        lat=data['latitude']
+        lat = data['latitude']
         del data['latitude']    
-        data=data.assign_coords(longitude=lon,latitude=lat)        
+        data = data.assign_coords(longitude=lon, latitude=lat)
     return data
 
 
@@ -51,7 +52,7 @@ def isosurface(data, target, dim, coord=None, upper=False):
 
     Parameters
     ----------
-    field : xarray DataArray
+    data : xarray DataArray
         The field in which to interpolate the target isosurface
     target : float
         The target isosurface value
@@ -76,8 +77,8 @@ def isosurface(data, target, dim, coord=None, upper=False):
         <xarray.DataArray ()>
         array(4.5)
     """
-    if coord==None:
-        coord=dim
+    if coord is None:
+        coord = dim
         
     slice0 = {dim: slice(None, -1)}
     slice1 = {dim: slice(1, None)}
@@ -107,30 +108,31 @@ def isosurface(data, target, dim, coord=None, upper=False):
 
 
 def split_duplicate_coords(data):
-
     for v in data.data_vars:
-            dims=data[v].dims
-            dup = {x+'_' for x in dims if dims.count(x) > 1}
-            for d in dup:
-                data=data.assign_coords({d:data[d[:-1]].data})
+        dims = data[v].dims
+        dup = {x+'_' for x in dims if dims.count(x) > 1}
+        for d in dup:
+            data = data.assign_coords({d: data[d[:-1]].data})
 
-            new_dims=tuple(list(set(dims))+list(dup))
+        new_dims = tuple(list(set(dims))+list(dup))
 
-            if len(dup)>0:
-                data[v]=(new_dims,data[v].data)
+        if len(dup) > 0:
+            data[v] = (new_dims, data[v].data)
     return data
+
 
 def longitude_increase(data):
     if 'longitude' in data.coords:
-        l=xr.where(data.longitude<data.longitude.isel(longitude=0),data.longitude+360,data.longitude)
-        if l.max()>360:
-            l=l-360
-        data['longitude']=l
+        l = xr.where(data.longitude < data.longitude.isel(longitude=0), data.longitude+360, data.longitude)
+        if l.max() > 360:
+            l = l - 360
+        data['longitude'] = l
     return data
-        
+
+
 def reset_longitude(data, orig=-180):
-    i=((np.mod(data.longitude-orig+180,360)-180)**2).argmin().values
-    return longitude_increase(data.roll(longitude=-i,roll_coords=True))
+    i = ((np.mod(data.longitude-orig+180, 360) - 180)**2).argmin().values
+    return longitude_increase(data.roll(longitude=-i, roll_coords=True))
 
 
 def surface_cell(data, ellipsoidal_earth=True, a_earth=None, f_earth=LNPY_F_EARTH_GRS80):
@@ -186,8 +188,8 @@ def surface_cell(data, ellipsoidal_earth=True, a_earth=None, f_earth=LNPY_F_EART
     if ellipsoidal_earth == 'ellipsoidal' or ellipsoidal_earth is True:
         ep = np.sqrt((2 * f_earth - f_earth ** 2) / (1 - f_earth) ** 2)  # eccentricity prime
         # geocentric latitude of the cell border
-        omega_1 = np.arctan((1 - f_earth)**2 * np.tan(np.radians(data.latitude - dlat/2)))
-        omega_2 = np.arctan((1 - f_earth)**2 * np.tan(np.radians(data.latitude + dlat/2)))
+        omega_1 = np.arctan((1 - f_earth)**2 * np.tan(np.radians(data.cf["latitude"] - dlat/2)))
+        omega_2 = np.arctan((1 - f_earth)**2 * np.tan(np.radians(data.cf["latitude"] + dlat/2)))
 
         return np.abs(a_earth**2 * (1 - f_earth) * np.radians(dlon) * (
                 (np.arcsinh(ep * np.sin(omega_2)) - np.arcsinh(ep * np.sin(omega_1))) / ep +
@@ -196,12 +198,12 @@ def surface_cell(data, ellipsoidal_earth=True, a_earth=None, f_earth=LNPY_F_EART
 
     # case of the sphere that approximates the ellipsoid
     elif ellipsoidal_earth == 'approx':
-        return np.abs(a_earth**2 * np.radians(dlon) * np.cos(np.radians(data.latitude)) * np.radians(dlat) /
-                      (1 + f_earth * np.cos(2 * np.radians(data.latitude)))**2)
+        return np.abs(a_earth**2 * np.radians(dlon) * np.cos(np.radians(data.cf["latitude"])) * np.radians(dlat) /
+                      (1 + f_earth * np.cos(2 * np.radians(data.cf["latitude"])))**2)
 
     # case of the spherical cell with a sphere of radius a_earth
     elif ellipsoidal_earth == 'spherical' or ellipsoidal_earth is False:
-        return np.abs(2 * a_earth**2 * np.radians(dlon) * np.cos(np.radians(data.latitude)) *
+        return np.abs(2 * a_earth**2 * np.radians(dlon) * np.cos(np.radians(data.cf["latitude"])) *
                       np.sin(np.radians(dlat) / 2))
 
     else:
@@ -209,7 +211,7 @@ def surface_cell(data, ellipsoidal_earth=True, a_earth=None, f_earth=LNPY_F_EART
                          'or either "ellispoidal", "spherical" or "approx".')
     
 
-def ecarts(data,dim):
+def ecarts(data, dim):
     """
     Return the width of each cells along specified coordinate.
     Cells limits are half distance between each given coordinate. That means that given coordinates are not necessary the center of each cell.
@@ -231,7 +233,74 @@ def ecarts(data,dim):
     
     """
         
-    i0=data[dim].isel({dim:slice(None,2)}).diff(dim,label='lower')
-    i1=(data[dim]-data[dim].diff(dim,label='upper')/2).diff(dim,label='lower')
-    i2=data[dim].isel({dim:slice(-2,None)}).diff(dim,label='upper')
-    return xr.concat([i0,i1,i2],dim=dim)
+    i0 = data[dim].isel({dim: slice(None, 2)}).diff(dim, label='lower')
+    i1 = (data[dim]-data[dim].diff(dim, label='upper')/2).diff(dim, label='lower')
+    i2 = data[dim].isel({dim: slice(-2, None)}).diff(dim, label='upper')
+    return xr.concat([i0, i1, i2], dim=dim)
+
+
+def distance(data, pt, ellipsoidal_earth=False, a_earth=None, f_earth=LNPY_F_EARTH_GRS80):
+    """
+    Compute the great-circle/geodetic distance between coordinates on a sphere/ellipsoid.
+
+    Parameters
+    ----------
+    data : dataarray or dataset
+        Must have latitude and longitude coordinates
+    pt : dataarray
+        DataArray with coordinates that are not latitude or longitude but that contains latitude and longitude.
+        For example, a list of points with a coordinate "id".
+    ellipsoidal_earth: bool | str, optional
+        Boolean to choose if the surface of the Earth is an ellipsoid or a sphere. Default is False for spherical Earth
+    a_earth : float, optional
+        Earth semi-major axis [m]. If not provided, use `data.attrs['radius']` and
+        if it does not exist, use LNPY_A_EARTH_GRS80.
+    f_earth : float, optional
+        Earth flattening. Default is LNPY_F_EARTH_GRS80.
+
+    Returns
+    -------
+    distance : xr.DataArray
+        DataArray with distance between the latitude and longitude of data and the latitude and longitude of pt.
+        The final coordinates are latitude, longitude + coordinates of pt.
+    """
+    if a_earth is None:
+        a_earth = float(data.attrs['radius']) if 'radius' in data.attrs else LNPY_A_EARTH_GRS80
+
+    if 'latitude' in pt.coords or 'longitude' in pt.coords:
+        raise ValueError("Given xr.DataArray to compute distance with must not have latitude and longitude coordinates."
+                         " Use 'id' as a coordinate for example.")
+
+    if ellipsoidal_earth:
+        raise AssertionError("Distance for ellipsoidal Earth is not yet implemented.")
+    else:
+        return a_earth*np.real(np.arccos(np.cos(np.deg2rad(pt.cf["latitude"]))*np.cos(np.deg2rad(data.cf["latitude"])) *
+                                         np.cos(np.deg2rad(data.cf["longitude"] - pt.cf["longitude"])) +
+                                         np.sin(np.deg2rad(pt.cf["latitude"]))*np.sin(np.deg2rad(data.cf["latitude"]))))
+
+
+def assert_grid(ds):
+    """
+    Verify if the dataset ds have dimensions 'longitude' and 'latitude'.
+    Raise Assertion error if not.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        Dataset to verify.
+
+    Returns
+    -------
+    True : bool
+        Returns True if the dataset has dimensions 'longitude' and 'latitude'.
+
+    Raises
+    ------
+    AssertionError
+        This function raise AssertionError is self._obj is not a xr.Dataset corresponding to spherical harmonics
+    """
+    if 'latitude' not in ds.coords:
+        raise AssertionError("The latitude coordinates that should be named 'latitude' does not exist")
+    if 'longitude' not in ds.coords:
+        raise AssertionError("The longitude coordinates that should be named 'longitude' does not exist")
+    return True

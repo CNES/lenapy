@@ -759,30 +759,3 @@ def assert_sh(ds):
     if 'slm' not in ds.keys():
         raise AssertionError("The Dataset have to contain 'slm' variable")
     return True
-
-
-def assert_grid(ds):
-    """
-    Verify if the dataset ds have dimensions 'longitude' and 'latitude'.
-    Raise Assertion error if not.
-
-    Parameters
-    ----------
-    ds : xr.Dataset
-        Dataset to verify.
-
-    Returns
-    -------
-    True : bool
-        Returns True if the dataset has dimensions 'longitude' and 'latitude'.
-
-    Raises
-    ------
-    AssertionError
-        This function raise AssertionError is self._obj is not a xr.Dataset corresponding to spherical harmonics
-    """
-    if 'latitude' not in ds.coords:
-        raise AssertionError("The latitude coordinates that should be named 'latitude' does not exist")
-    if 'longitude' not in ds.coords:
-        raise AssertionError("The longitude coordinates that should be named 'longitude' does not exist")
-    return True
