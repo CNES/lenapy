@@ -47,3 +47,8 @@ def moving_average(cutoff):
     
     return np.ones(cutoff)/cutoff
 
+def linear(cutoff):
+    x=np.arange(-cutoff,cutoff+1)
+    y=cutoff-np.abs(x)
+    y=y/np.sum(y)
+    return xr.DataArray(y, dims=('x',), coords={'x':x})
