@@ -25,6 +25,7 @@ Examples
 import operator
 import numbers
 import xarray as xr
+from lenapy.utils.geo import assert_grid
 from lenapy.utils.harmo import *
 from lenapy.utils.gravity import change_reference, change_tide_system
 from lenapy.plots.plotting import plot_hs, plot_power_hs
