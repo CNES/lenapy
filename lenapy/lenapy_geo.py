@@ -3,14 +3,11 @@ This module implements some usuals functions to be applied on gridded data (lat/
 """
 
 # -*- coding: utf-8 -*-
-import warnings
 import numpy as np
 import xarray as xr
 import xesmf as xe
-import os.path
 from .utils.geo import *
 from .utils.time import *
-from .plots import *
 
 
 @xr.register_dataset_accessor("lngeo")
@@ -33,17 +30,17 @@ class GeoSet:
             list of the dimensions along which to average
         
         weights : None or list or dataarray
-            if None, no weight is applyed
-            if 'latitude', a weight is applyed as the cosine of the latitude 
-            if 'latitude-ellipsoide',  a weight is applyed as the cosine of the latitude multiplied by an oblatness factor
-            if 'depth', a weight is applyed as the thickness of the layer
+            if None, no weight is applied
+            if 'latitude', a weight is applied as the cosine of the latitude
+            if 'latitude-ellipsoide',  a weight is applied as the cos of the latitude multiplied by an oblateness factor
+            if 'depth', a weight is applied as the thickness of the layer
             if dataarray : input data are multiplied by this dataarray before averaging
         mask : None or dataarray
             mask to be applyed befire averaging
         na_eq_zero : boolean (default=False)
             replace NaN values by zeros. The averaging is then applyed on all data, and not only valid ones
         **kwargs : keyword arguments
-            any keyword arguments passe to the native xarray.mean function
+            any keyword arguments given to the native xarray.mean function
             
         Returns
         -------
@@ -64,7 +61,8 @@ class GeoSet:
         return xr.Dataset(res)
 
     def sum(self, *args, **kwargs):
-        """Returns the sum for all variables in dataset along specified dimension, applying specified weights
+        """
+        Returns the sum for all variables in dataset along specified dimension, applying specified weights
         
         Parameters
         ----------
@@ -72,15 +70,15 @@ class GeoSet:
             list of the dimensions along which to sum
         
         weights : None or list or dataarray
-            if None, no weight is applyed
-            if 'latitude', a weight is applyed as the cosine of the latitude 
-            if 'latitude-ellipsoide',  a weight is applyed as the cosine of the latitude multiplied by an oblatness factor
-            if 'depth', a weight is applyed as the thickness of the layer
+            if None, no weight is applied
+            if 'latitude', a weight is applied as the cos of the latitude
+            if 'latitude-ellipsoide', a weight is applied as the cos of the latitude multiplied by an oblateness factor
+            if 'depth', a weight is applied as the thickness of the layer
             if dataarray : input data are multiplied by this dataarray before summing
         mask : None or dataarray
-            mask to be applyed before summing
+            mask to be applied before summing
         **kwargs : keyword arguments
-            any keyword arguments passe to the native xarray.sum function
+            any keyword arguments given to the native xarray.sum function
             
         Returns
         -------
@@ -102,16 +100,17 @@ class GeoSet:
 
     def isosurface(self, criterion, dim, coord=None, upper=False):
         """
-        Compute the isosurface along the specified coordinate at the value defined  by the kwarg field=value.
+        Compute the isosurface along the specified coordinate at the value defined by the kwarg field=value.
         For example, we want to compute the isosurface defined by a temperature of 10°C along depth dimension.
         All data variables of the data set are interpolated on this iso surface
-        Data is supposed to be monotonic along the chosen dimension. If not, the first fitting value encountered is retained,
-        starting from the end (bottom) if upper=False, or from the beggining (top) if upper=True
+        Data is supposed to be monotonic along the chosen dimension. If not, the first fitting value encountered is
+        retained, starting from the end (bottom) if upper=False, or from the beggining (top) if upper=True
         
         Parameters
         ----------
         criterion : dict
-            one-entry dictionnary with the key equal to a variable of the dataset, and the value equal to the isosurface criterion
+            one-entry dictionnary with the key equal to a variable of the dataset, and
+            the value equal to the isosurface criterion
         dim : string
             dimension along which to compute the isosurface
         coord : str (optional)
@@ -122,7 +121,9 @@ class GeoSet:
         Returns
         -------
         isosurface : dataset
-            Dataset with all the variables interpolated at the criterion value along chosen dimension. The variables chosen for criterion should contain a constant value equal to the criterion. the dimension chosen for the isosurface computation is filled with the isosurface itself.
+            Dataset with all the variables interpolated at the criterion value along chosen dimension. The variables
+            chosen for a criterion should contain a constant value equal to the criterion. The dimension chosen for the
+            isosurface computation is filled with the isosurface itself.
                 
         Example
         -------
@@ -144,8 +145,8 @@ class GeoSet:
                 SA         (latitude, longitude) float64 34.48 34.39 34.39 ... 34.53 34.52
                 
         """
-        # Calcule l'isosurface selon la coordonnée 'dim' pour le champ défini par le dictionnaire **kwargs (ex : temp=10)
-        # Retourne tous les champs interpolés sur cette isosurface (pour ceux ayant "dim" en coordonnée), ainsi que l'isosurface elle-même
+        # Calcule l'isosurface selon la coord 'dim' pour le champ défini par le dictionnaire **kwargs (ex : temp=10)
+        # Return les champs interpolés sur l'isosurface (pour ceux ayant "dim" en coordonnée), et l'isosurface elle-même
         if coord is None:
             coord = dim
         k = list(criterion.keys())[0]
@@ -188,11 +189,11 @@ class GeoSet:
         assert_grid(gr_out)
 
         ds = self._obj
-        if type(mask_in) == xr.DataArray:
+        if type(mask_in) is xr.DataArray:
             ds['mask'] = mask_in
 
         ds_out = xr.Dataset({"latitude": gr_out.latitude, "longitude": gr_out.longitude, })
-        if type(mask_out) != type(None):
+        if type(mask_out) is not type(None):
             ds_out['mask'] = mask_out
 
         return xe.Regridder(ds, ds_out, *args, **kwargs)
@@ -219,8 +220,8 @@ class GeoSet:
         -------
         .. code-block:: python
 
-            ds_out = xr.Dataset({"latitude":(["latitude"],np.arange(-89.5,90,1.)),
-                                 "longitude":(["longitude"],np.arange(-179.5,180,1.))})
+            ds_out = xr.Dataset({"latitude":(["latitude"], np.arange(-89.5,90,1.)),
+                                 "longitude":(["longitude"], np.arange(-179.5,180,1.))})
             regridder = data.lngeo.regridder(ds_out,"conservative_normed",periodic=True)
             out = data.lngeo.regrid(regridder)
 
@@ -229,8 +230,9 @@ class GeoSet:
 
     def surface_cell(self, ellipsoidal_earth=True, a_earth=None, f_earth=LNPY_F_EARTH_GRS80):
         """
-        Returns the earth surface of each cell defined by a longitude/latitude in a array
-        Cells limits are half distance between each given coordinate. That means that given coordinates are not necessary the center of each cell.
+        Returns the earth surface of each cell defined by a longitude/latitude in an array
+        Cells limits are half distance between each given coordinate. That means that given coordinates are not
+        necessary the center of each cell.
         Border cells are supposed to have the same size on each side of the given coordinate.
         Ex : coords=[1,2,4,7,9] ==> cells size are [1,1.5,2.5,2.5,2]
 
@@ -316,17 +318,17 @@ class GeoArray:
             list of the dimensions along which to average
         
         weights : None or list or dataarray
-            if None, no weight is applyed
-            if 'latitude', a weight is applyed as the cosine of the latitude 
-            if 'latitude-ellipsoide',  a weight is applyed as the cosine of the latitude multiplied by an oblatness factor
-            if 'depth', a weight is applyed as the thickness of the layer
+            if None, no weight is applied
+            if 'latitude', a weight is applied as the cos of the latitude
+            if 'latitude-ellipsoide', a weight is applied as the cos of the latitude multiplied by an oblateness factor
+            if 'depth', a weight is applied as the thickness of the layer
             if dataarray : input data are multiplied by this dataarray before averaging
         mask : None or dataarray
-            mask to be applyed before averaging
+            mask to be applied before averaging
         na_eq_zero : boolean (default=False)
-            replace NaN values by zeros. The averaging is then applyed on all data, and not only valid ones
+            replace NaN values by zeros. The averaging is then applied on all data, and not only valid ones
         **kwargs : keyword arguments
-            any keyword arguments passe to the native xarray.mean function
+            any keyword arguments given to the native xarray.mean function
             
         Returns
         -------
@@ -349,17 +351,18 @@ class GeoArray:
 
         if len(argmean) == 0:
             argmean = None
-        if type(weights) == type(None):
+        if type(weights) is type(None):
             # Moyenne simple
             return data.mean(argmean, **kwargs)
-        elif type(weights) == list or type(weights) == str:
+        elif type(weights) is list or type(weights) is str:
             w = 1
             if 'latitude' in weights and 'latitude' in self._obj.coords:
                 # poids = cos(latitude)
                 w = np.cos(np.radians(self._obj.latitude))
             if 'latitude_ellipsoide' in weights and 'latitude' in self._obj.coords:
                 # poids = cos(latitude)*earth oblatness factor
-                w = np.cos(np.radians(self._obj.latitude))/(1+LNPY_F_EARTH_GRS80*np.cos(2*np.radians(self._obj.latitude)))**2
+                w = np.cos(np.radians(self._obj.latitude)) / (1 + LNPY_F_EARTH_GRS80 *
+                                                              np.cos(2*np.radians(self._obj.latitude)))**2
             if 'depth' in weights and 'depth' in self._obj.coords:
                 # poids *= épaisseur des couches (l'épaisseur de la première couche est la première profondeur)
                 w = w*xr.concat((self._obj.depth.isel(depth=0), self._obj.depth.diff(dim='depth')), dim='depth')
@@ -378,15 +381,15 @@ class GeoArray:
             list of the dimensions along which to sum
         
         weights : None or list or dataarray
-            if None, no weight is applyed
-            if 'latitude', a weight is applyed as the cosine of the latitude 
-            if 'latitude-ellipsoide',  a weight is applyed as the cosine of the latitude  multiplied by an oblatness factor
-            if 'depth', a weight is applyed as the thickness of the layer
+            if None, no weight is applied
+            if 'latitude', a weight is applied as the cos of the latitude
+            if 'latitude-ellipsoide', a weight is applied as the cos of the latitude multiplied by an oblateness factor
+            if 'depth', a weight is applied as the thickness of the layer
             if dataarray : input data are multiplied by this dataarray before summing
         mask : None or dataarray
-            mask to be applyed before summing
+            mask to be applied before summing
         **kwargs : keyword arguments
-            any keyword arguments passe to the native xarray.sum function
+            any keyword arguments given to the native xarray.sum function
             
         Returns
         -------
@@ -403,17 +406,18 @@ class GeoArray:
         """
         argsum = set(np.ravel(*args)).intersection(list(self._obj.coords))
         data = self._obj.where(mask)
-        if type(weights) == type(None):
+        if type(weights) is type(None):
             # Somme simple
             return data.sum(argsum, **kwargs)
-        elif type(weights) == list or type(weights) == str:
+        elif type(weights) is list or type(weights) is str:
             w = 1
             if 'latitude' in weights and 'latitude' in self._obj.coords:
                 # poids = cos(latitude)
                 w = np.cos(np.radians(self._obj.latitude))
             if 'latitude_ellipsoide' in weights and 'latitude' in self._obj.coords:
                 # poids = cos(latitude)*earth oblatness factor
-                w = np.cos(np.radians(self._obj.latitude))/(1+LNPY_F_EARTH_GRS80*np.cos(2*np.radians(self._obj.latitude)))**2
+                w = np.cos(np.radians(self._obj.latitude)) / (1 + LNPY_F_EARTH_GRS80 *
+                                                              np.cos(2*np.radians(self._obj.latitude)))**2
             if 'depth' in weights and 'depth' in self._obj.coords:
                 # poids *= épaisseur des couches (l'épaisseur de la première couche est la première profondeur)
                 w = w*xr.concat((self._obj.depth.isel(depth=0), self._obj.depth.diff(dim='depth')), dim='depth')
@@ -425,8 +429,8 @@ class GeoArray:
     def isosurface(self, target, dim, coord=None, upper=False):
         """
         Compute the isosurface along the specified coordinate at the value defined by the target.
-        Data is supposed to be monotonic along the chosen dimension. If not, the first fitting value encountered is retained,
-        starting from the end (bottom) if upper=False, or from the beggining (top) if upper=True
+        Data is supposed to be monotonic along the chosen dimension. If not, the first fitting value encountered is
+        retained, starting from the end (bottom) if upper=False, or from the beggining (top) if upper=True
         
         Parameters
         ----------
@@ -451,7 +455,8 @@ class GeoArray:
             data = xgeo.open_geodata('/home/user/lenapy/data/isas.nc').temp
             data.isosurface(3,'depth')
             <xarray.DataArray (latitude: 90, longitude: 180)>
-            dask.array<_nanmax_skip-aggregate, shape=(90, 180), dtype=float64, chunksize=(90, 180), chunktype=numpy.ndarray>
+            dask.array<_nanmax_skip-aggregate, shape=(90, 180), dtype=float64,
+                       chunksize=(90, 180), chunktype=numpy.ndarray>
             Coordinates:
               * latitude   (latitude) float32 -44.5 -43.5 -42.5 -41.5 ... 42.5 43.5 44.5
               * longitude  (longitude) float32 1.0 2.0 3.0 4.0 ... 177.0 178.0 179.0 180.0
@@ -508,8 +513,8 @@ class GeoArray:
         -------
         .. code-block:: python
 
-            ds_out = xr.Dataset({"latitude":(["latitude"],np.arange(-89.5,90,1.)),
-                                 "longitude":(["longitude"],np.arange(-179.5,180,1.))})
+            ds_out = xr.Dataset({"latitude":(["latitude"], np.arange(-89.5,90,1.)),
+                                 "longitude":(["longitude"], np.arange(-179.5,180,1.))})
             regridder = data.lngeo.regridder(ds_out,"conservative_normed",periodic=True)
             out = data.lngeo.regrid(regridder)
             

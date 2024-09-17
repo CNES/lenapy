@@ -1,7 +1,5 @@
 import xarray as xr
 import numpy as np
-import pandas as pd
-import netCDF4
 from ..constants import *
 
 
@@ -14,19 +12,21 @@ def rename_data(data, **kwargs):
 
     Parameters
     ----------
+    data : xr.DataArray | xr.Dataset
+        xarray object that has coordinates to rename
     **kwargs :  {old_name: new_name, ...}, optional
         dictionnary specifying old names to be changed into new names
 
     Returns
     -------
-    renamed : Dataset
+    renamed : xr.DataArray | xr.Dataset
         New dataset containing modified names
 
     Example
     -------
     .. code-block:: python
 
-        ds=xr.open_mfdataset('product.nc',preprocess=rename_data)
+        ds=xr.open_mfdataset('product.nc', preprocess=rename_data)
     """
     data = data.rename(**kwargs)
     for coord in ['latitude', 'longitude', 'time', 'depth']:
@@ -213,10 +213,10 @@ def surface_cell(data, ellipsoidal_earth=True, a_earth=None, f_earth=LNPY_F_EART
 
 def ecarts(data, dim):
     """
-    Return the width of each cells along specified coordinate.
-    Cells limits are half distance between each given coordinate. That means that given coordinates are not necessary the center of each cell.
+    Return the width of each cell along specified coordinate.
+    Cell limits are half-distance between each given coordinate (that are not necessary the center of each cell).
     Border cells are supposed to have the same size on each side of the given coordinate.
-    Ex : coords=[1,2,4,7,9] ==> cells size are [1,1.5,2.5,2.5,2]
+    Ex : coords=[1,2,4,7,9] ==> cells size is [1,1.5,2.5,2.5,2]
     
     Parameters
     ----------
@@ -234,7 +234,7 @@ def ecarts(data, dim):
     """
         
     i0 = data[dim].isel({dim: slice(None, 2)}).diff(dim, label='lower')
-    i1 = (data[dim]-data[dim].diff(dim, label='upper')/2).diff(dim, label='lower')
+    i1 = (data[dim] - data[dim].diff(dim, label='upper')/2).diff(dim, label='lower')
     i2 = data[dim].isel({dim: slice(-2, None)}).diff(dim, label='upper')
     return xr.concat([i0, i1, i2], dim=dim)
 
@@ -297,7 +297,7 @@ def assert_grid(ds):
     Raises
     ------
     AssertionError
-        This function raise AssertionError is self._obj is not a xr.Dataset corresponding to spherical harmonics
+        This function raises AssertionError is self._obj is not a xr.Dataset corresponding to spherical harmonics
     """
     if 'latitude' not in ds.coords:
         raise AssertionError("The latitude coordinates that should be named 'latitude' does not exist")
