@@ -5,22 +5,22 @@ from ..constants import *
 
 def rename_data(data, **kwargs):
     """
-    Standardization of coordinates names of a product
+    Standardization of coordinates names of a product.
     Looks for different possible names for latitude, longitude, and time, and turn them into a standardized name.
-    Definitions are specified in setup.py, and are also based on standard cf attributes and units
-    Custom names changes can also be performed with kwargs parameter
+    Definitions are specified in setup.py and are based on standard cf attributes and units : https://cfconventions.org
+    Custom names changes can also be performed with kwargs parameter.
 
     Parameters
     ----------
     data : xr.DataArray | xr.Dataset
-        xarray object that has coordinates to rename
+        xarray object that has coordinates to rename.
     **kwargs :  {old_name: new_name, ...}, optional
-        dictionnary specifying old names to be changed into new names
+        Dictionary specifying old names to be changed into new names.
 
     Returns
     -------
     renamed : xr.DataArray | xr.Dataset
-        New dataset containing modified names
+        New object containing modified names.
 
     Example
     -------
@@ -31,9 +31,9 @@ def rename_data(data, **kwargs):
     data = data.rename(**kwargs)
     for coord in ['latitude', 'longitude', 'time', 'depth']:
         try:
-            nom = data.cf[coord].name
-            data = data.rename({nom: coord})
-        except:
+            old_name = data.cf[coord].name
+            data = data.rename({old_name: coord})
+        except KeyError:
             pass
 
     if 'longitude' in data.variables and 'longitude' not in data.coords:
@@ -47,21 +47,29 @@ def rename_data(data, **kwargs):
 
 def isosurface(data, target, dim, coord=None, upper=False):
     """
-    Linearly interpolate a coordinate isosurface where a field
-    equals a target
+    Linearly interpolate a coordinate isosurface where a field equals a target.
+    Compute the isosurface along the specified coordinate at the value defined by the target argument.
+    Data is supposed to be monotonic along the chosen dimension. If not, the first fitting value encountered is
+    retained, starting from the end (bottom) if upper=False, or from the beggining (top) if upper=True.
 
     Parameters
     ----------
-    data : xarray DataArray
-        The field in which to interpolate the target isosurface
+    data : xr.DataArray
+        The field in which to interpolate the target isosurface.
     target : float
-        The target isosurface value
+        Criterion value to be satisfied at the iso surface.
     dim : str
-        The field dimension to interpolate
+        Dimension along which to compute the isosurface.
     coord : str (optional)
-        The field coordinate to interpolate. If absent, coordinate is supposed to be "dim"
+        The field coordinate to interpolate. If absent, coordinate is supposed to be "dim".
     upper : bool
-        if True, returns the highest point of the isosurface, else the lowest
+        Order to perform the research of the criterion value. If True, returns the highest point of the isosurface,
+        else the lowest.
+
+    Returns
+    -------
+    isosurface : xr.DataArray
+        DataArray containing the isosurface along the dimension dim on which data=target.
 
     Examples
     --------
@@ -69,16 +77,18 @@ def isosurface(data, target, dim, coord=None, upper=False):
 
     .. code-block:: python
 
-         temp = xr.DataArray(
-             range(10,0,-1),
-             coords={"depth": range(10)}
-             )
+         temp = xr.DataArray(range(10, 0, -1), coords={"depth": range(10)})
          isosurface(temp, 5.5, dim="depth")
-        <xarray.DataArray ()>
-        array(4.5)
+         # Output : <xarray.DataArray ()>
+         # array(4.5)
     """
     if coord is None:
         coord = dim
+
+    if dim not in data.dims:
+        raise ValueError(f"Dimension '{dim}' not found in data.")
+    if coord not in data.coords:
+        raise ValueError(f"Coordinate '{coord}' not found in data.")
         
     slice0 = {dim: slice(None, -1)}
     slice1 = {dim: slice(1, None)}
@@ -131,6 +141,21 @@ def longitude_increase(data):
 
 
 def reset_longitude(data, orig=-180):
+    """
+    Rolls the longitude to place the specified longitude at the beginning of the array.
+
+    Returns
+    -------
+    origin : float
+        First longitude in the array.
+
+    Example
+    -------
+    .. code-block:: python
+
+        data = xr.open_dataset('/home/user/lenapy/data/gohc_2020.nc', engine="lenapyNetcdf")
+        surface = data.lngeo.surface_cell()
+    """
     i = ((np.mod(data.longitude-orig+180, 360) - 180)**2).argmin().values
     return longitude_increase(data.roll(longitude=-i, roll_coords=True))
 
@@ -154,7 +179,7 @@ def surface_cell(data, ellipsoidal_earth=True, a_earth=None, f_earth=LNPY_F_EART
     Parameters
     ----------
     data : xr.DataArray | xr.Dataset
-        xarray object that must have latitude and longitude coordinates
+        xarray object that must have latitude and longitude coordinates.
     ellipsoidal_earth: bool | str, optional
         Boolean to choose if the surface of the Earth is an ellipsoid or a sphere. Default is True for ellipsoidal Earth
         If ellipsoidal_earth='approx', the given surface is the one of a spherical cell with the radius corresponding to
@@ -228,7 +253,6 @@ def ecarts(data, dim):
     -------
     width : xr.DataArray
         xr.DataArray with cell width for each coordinate.
-    
     """
         
     i0 = data[dim].isel({dim: slice(None, 2)}).diff(dim, label='lower')
@@ -246,12 +270,12 @@ def distance(data, pt, ellipsoidal_earth=False, a_earth=None, f_earth=LNPY_F_EAR
     Parameters
     ----------
     data : xr.DataArray | xr.Dataset
-        Must have latitude and longitude coordinates
+        Must have latitude and longitude coordinates.
     pt : xr.DataArray | xr.Dataset
         Object with coordinates that are not latitude or longitude but that contain latitude and longitude.
         For example, a list of points with a coordinate "id".
     ellipsoidal_earth: bool | str, optional
-        Boolean to choose if the surface of the Earth is an ellipsoid or a sphere. Default is False for spherical Earth
+        Boolean to choose if the surface of the Earth is an ellipsoid or a sphere. Default is False for spherical Earth.
     a_earth : float, optional
         Earth semi-major axis [m]. If not provided, use `data.attrs['radius']` and
         if it does not exist, use LNPY_A_EARTH_GRS80.
@@ -316,8 +340,7 @@ def distance(data, pt, ellipsoidal_earth=False, a_earth=None, f_earth=LNPY_F_EAR
 
 def assert_grid(ds):
     """
-    Verify if the dataset ds have dimensions 'longitude' and 'latitude'.
-    Raise Assertion error if not.
+    Verify if the given xr.Dataset have dimensions 'longitude' and 'latitude'. Raise Assertion error if not.
 
     Parameters
     ----------
@@ -329,10 +352,10 @@ def assert_grid(ds):
     True : bool
         Returns True if the dataset has dimensions 'longitude' and 'latitude'.
 
-    Raises
-    ------
+    Raise
+    -----
     AssertionError
-        This function raises AssertionError is self._obj is not a xr.Dataset corresponding to spherical harmonics
+        This function raises AssertionError is self._obj is not a xr.Dataset corresponding to spherical harmonics.
     """
     if 'latitude' not in ds.coords:
         raise AssertionError("The latitude coordinates that should be named 'latitude' does not exist")
