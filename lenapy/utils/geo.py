@@ -137,7 +137,7 @@ def reset_longitude(data, orig=-180):
 
 def surface_cell(data, ellipsoidal_earth=True, a_earth=None, f_earth=LNPY_F_EARTH_GRS80):
     """
-    Returns the earth surface of each cell defined by a longitude/latitude in an array
+    Returns the Earth surface of each cell defined by a longitude/latitude in a xarray object.
     Cells limits are half the distance between each given coordinate. Given coordinates are not necessary the center of
     each cell. Border cells are supposed to have the same size on each side of the given coordinate.
     Ex : coords=[1,2,4,7,9] ==> cell sizes are [1,1.5,2.5,2.5,2]
@@ -153,8 +153,8 @@ def surface_cell(data, ellipsoidal_earth=True, a_earth=None, f_earth=LNPY_F_EART
 
     Parameters
     ----------
-    data : dataarray or dataset
-        Must have latitude and longitude coordinates
+    data : xr.DataArray | xr.Dataset
+        xarray object that must have latitude and longitude coordinates
     ellipsoidal_earth: bool | str, optional
         Boolean to choose if the surface of the Earth is an ellipsoid or a sphere. Default is True for ellipsoidal Earth
         If ellipsoidal_earth='approx', the given surface is the one of a spherical cell with the radius corresponding to
@@ -168,15 +168,14 @@ def surface_cell(data, ellipsoidal_earth=True, a_earth=None, f_earth=LNPY_F_EART
     Returns
     -------
     surface : xr.DataArray
-        DataArray with cell surface
+        DataArray with cell surface.
 
     Example
     -------
     .. code-block:: python
     
-        data = xgeo.open_geodata('/home/user/lenapy/data/gohc_2020.nc')
-        surface = surface_cell(data)
-
+        xr.open_dataset('/home/user/lenapy/data/gohc_2020.nc', engine="lenapyNetcdf")
+        surface = data.lngeo.surface_cell()
     """
     if a_earth is None:
         a_earth = float(data.attrs['radius']) if 'radius' in data.attrs else LNPY_A_EARTH_GRS80
@@ -220,16 +219,15 @@ def ecarts(data, dim):
     
     Parameters
     ----------
-    data : dataarray or dataset
-        Must have latitude and longitude coordinates
-    
+    data : xr.DataArray | xr.Dataset
+        Must have latitude and longitude coordinates.
     dim : str
-        Coordinate along which to compute cell width
+        Coordinate along which to compute cell width.
 
     Returns
     -------
-    width : dataarray
-        dataarray with cell width for each coordinate
+    width : xr.DataArray
+        xr.DataArray with cell width for each coordinate.
     
     """
         
@@ -241,14 +239,16 @@ def ecarts(data, dim):
 
 def distance(data, pt, ellipsoidal_earth=False, a_earth=None, f_earth=LNPY_F_EARTH_GRS80):
     """
-    Compute the great-circle/geodetic distance between coordinates on a sphere/ellipsoid.
+    Compute the great-circle/geodetic distance between coordinates on a sphere / ellipsoid.
+    The computation of the distance for ellipsoidal_earth=True uses the pyproj librairy that implements the
+    algorithm given in [Karney2013]_.
 
     Parameters
     ----------
-    data : dataarray or dataset
+    data : xr.DataArray | xr.Dataset
         Must have latitude and longitude coordinates
-    pt : dataarray
-        DataArray with coordinates that are not latitude or longitude but that contains latitude and longitude.
+    pt : xr.DataArray | xr.Dataset
+        Object with coordinates that are not latitude or longitude but that contain latitude and longitude.
         For example, a list of points with a coordinate "id".
     ellipsoidal_earth: bool | str, optional
         Boolean to choose if the surface of the Earth is an ellipsoid or a sphere. Default is False for spherical Earth
@@ -263,16 +263,51 @@ def distance(data, pt, ellipsoidal_earth=False, a_earth=None, f_earth=LNPY_F_EAR
     distance : xr.DataArray
         DataArray with distance between the latitude and longitude of data and the latitude and longitude of pt.
         The final coordinates are latitude, longitude + coordinates of pt.
+
+    References
+    ----------
+    .. [Karney2013] C.F.F. Karney,
+        "Algorithms for geodesics",
+        *Journal of Geodesy*, 87, 43-55, (2013).
+        `doi: 10.1007/s00190-012-0578-z <https://doi.org/10.1007/s00190-012-0578-z>`_
     """
     if a_earth is None:
         a_earth = float(data.attrs['radius']) if 'radius' in data.attrs else LNPY_A_EARTH_GRS80
 
+    # Verify the format of 'pt' argument, raise Error with verbose in case of an identified problem
     if 'latitude' in pt.coords or 'longitude' in pt.coords:
         raise ValueError("Given xr.DataArray to compute distance with must not have latitude and longitude coordinates."
                          " Use 'id' as a coordinate for example.")
+    if pt.latitude.dims != pt.longitude.dims:
+        raise ValueError("Given xr.DataArray to compute distance with must have the same dimension along latitude and "
+                         "longitude. Use 'id' as a dimension for latitude and longitude for example.")
+    if len(pt.latitude.dims) != 1:
+        raise ValueError("Given xr.DataArray to compute distance with must have exactly one dimension.")
 
     if ellipsoidal_earth:
-        raise AssertionError("Distance for ellipsoidal Earth is not yet implemented.")
+        try:
+            import pyproj
+        except ModuleNotFoundError:
+            raise ModuleNotFoundError('pyproj module is needed for distance computation on an ellipsoid. '
+                                      'You can still use distance function with the argument ellipsoidal_earth=False.')
+
+        # create array input for geod.inv() function, with flat shape (pt.size, data.latitude.size, data.longitude.size)
+        lon1 = pt.cf["longitude"].values.repeat(data.cf["latitude"].size * data.cf["longitude"].size)
+        lat1 = pt.cf["latitude"].values.repeat(data.cf["latitude"].size * data.cf["longitude"].size)
+        lon2 = np.tile(data.cf["longitude"].values, pt.longitude.size * data.cf["latitude"].size)
+        lat2 = np.tile(data.cf["latitude"].values.repeat(data.cf["longitude"].size), pt.latitude.size)
+
+        # call the computation of inverse distance and reshape the output
+        geod = pyproj.Geod(a=a_earth, f=f_earth)
+        geod_dist = geod.inv(lon1, lat1, lon2, lat2)[2]
+
+        # reshape for DataArray creation
+        geod_dist_reshape = geod_dist.reshape((pt.latitude.size,
+                                               data.cf["latitude"].size, data.cf["longitude"].size))
+        return xr.DataArray(geod_dist_reshape,
+                            coords={pt.latitude.dims[0]: pt[pt.latitude.dims[0]],  # pt.latitude.dims[0] is the pt dim
+                                    'latitude': data['latitude'], 'longitude': data['longitude']},
+                            dims=['id', 'latitude', 'longitude'])
     else:
         return a_earth*np.real(np.arccos(np.cos(np.deg2rad(pt.cf["latitude"]))*np.cos(np.deg2rad(data.cf["latitude"])) *
                                          np.cos(np.deg2rad(data.cf["longitude"] - pt.cf["longitude"])) +
