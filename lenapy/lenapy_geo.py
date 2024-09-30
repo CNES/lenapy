@@ -27,25 +27,24 @@ class GeoSet:
         Parameters
         ----------
         *args : list
-            list of the dimensions along which to average
-        
+            List of the dimensions along which to sum.
         weights : None | list | xr.DataArray
-            if None, no weight is applied
-            if 'latitude', a weight is applied as the cosine of the latitude
-            if 'latitude-ellipsoide',  a weight is applied as the cos of the latitude multiplied by an oblateness factor
-            if 'depth', a weight is applied as the thickness of the layer
-            if dataarray : input data are multiplied by this dataarray before averaging
-        mask : None | xr.Dataarray
-            mask to be applyed befire averaging
+            If None, no weight is applied.
+            If 'latitude', a weight is applied as the cos of the latitude.
+            If 'latitude_ellipsoid', a weight is applied as the cos of the latitude multiplied by an oblateness factor.
+            If 'depth', a weight is applied as the thickness of the layer.
+            If xr.DataArray is given : input data are multiplied by this object before summing.
+        mask : None | xr.DataArray
+            Mask to be applied before averaging.
         na_eq_zero : boolean (default=False)
-            replace NaN values by zeros. The averaging is then applyed on all data, and not only valid ones
+            Replace NaN values by zeros. The averaging is then applyed on all data, and not only valid ones.
         **kwargs : keyword arguments
-            any keyword arguments given to the native xarray.mean function
+            Any keyword arguments given to the native xr.mean function.
             
         Returns
         -------
-        averaged : dataset
-            dataset with all variables averaged according to specified options
+        averaged : xr.Dataset
+            Dataset with all variables averaged according to specified options.
             
         Example
         -------
@@ -53,7 +52,6 @@ class GeoSet:
         
             data = lngeo.open_geodata('/home/user/lenapy/data/gohc_2020.nc')
             avg = data.lngeo.mean(['latitude', 'longitude'], weights=['latitude'], na_eq_zero=True)
-            
         """
         res = {}
         for var in self._obj.data_vars:
@@ -62,28 +60,27 @@ class GeoSet:
 
     def sum(self, *args, **kwargs):
         """
-        Returns the sum for all variables in dataset along specified dimension, applying specified weights
+        Returns the sum for all variables in dataset along specified dimension, applying specified weights.
         
         Parameters
         ----------
         *args : list
-            list of the dimensions along which to sum
-        
-        weights : None or list or dataarray
-            if None, no weight is applied
-            if 'latitude', a weight is applied as the cos of the latitude
-            if 'latitude-ellipsoide', a weight is applied as the cos of the latitude multiplied by an oblateness factor
-            if 'depth', a weight is applied as the thickness of the layer
-            if dataarray : input data are multiplied by this dataarray before summing
-        mask : None or dataarray
-            mask to be applied before summing
+            List of the dimensions along which to sum.
+        weights : None | list | xr.DataArray
+            If None, no weight is applied.
+            If 'latitude', a weight is applied as the cos of the latitude.
+            If 'latitude_ellipsoid', a weight is applied as the cos of the latitude multiplied by an oblateness factor.
+            If 'depth', a weight is applied as the thickness of the layer.
+            If xr.DataArray is given : input data are multiplied by this object before summing.
+        mask : None | xr.DataArray
+            Mask to be applied before summing up.
         **kwargs : keyword arguments
-            any keyword arguments given to the native xarray.sum function
+            Any keyword arguments given to the native xr.sum function.
             
         Returns
         -------
-        averaged : dataset
-            dataset with all variablessummed according to specified options
+        averaged : xr.Dataset
+            Dataset with all variables summed according to specified options.
             
         Example
         -------
@@ -91,7 +88,6 @@ class GeoSet:
         
             data = xr.open_dataset('/home/user/lenapy/data/isas.nc', engine="lenapyNetcdf")
             avg = data.lngeo.sum(['latitude','longitude'],weights=['latitude'])
-            
         """
         res = {}
         for var in self._obj.data_vars:
@@ -318,15 +314,15 @@ class GeoArray:
         Parameters
         ----------
         *args : list
-            List of the dimensions along which to average.
+            List of the dimensions along which to sum.
         weights : None | list | xr.DataArray
             If None, no weight is applied.
-            if 'latitude', a weight is applied as the cosine of the latitude.
-            if 'latitude_ellipsoid', a weight is applied as the cos of the latitude multiplied by an oblateness factor.
-            if 'depth', a weight is applied as the thickness of the layer.
-            if xr.DataArray is given : input data are multiplied by this object before averaging.
+            If 'latitude', a weight is applied as the cos of the latitude.
+            If 'latitude_ellipsoid', a weight is applied as the cos of the latitude multiplied by an oblateness factor.
+            If 'depth', a weight is applied as the thickness of the layer.
+            If xr.DataArray is given : input data are multiplied by this object before summing.
         mask : None | xr.DataArray
-            Mask to be applied before averaging.
+            Mask to be applied before averaging up.
         na_eq_zero : bool (default=False)
             Replace NaN values by zeros. The averaging is then applied on all data, and not only valid ones.
         **kwargs : keyword arguments
@@ -377,15 +373,15 @@ class GeoArray:
         Parameters
         ----------
         *args : list
-            List of the dimensions along which to sum
+            List of the dimensions along which to sum.
         weights : None | list | xr.DataArray
-            if None, no weight is applied.
-            if 'latitude', a weight is applied as the cos of the latitude.
-            if 'latitude_ellipsoid', a weight is applied as the cos of the latitude multiplied by an oblateness factor.
-            if 'depth', a weight is applied as the thickness of the layer.
-            if xr.DataArray is given : input data are multiplied by this object before summing.
+            If None, no weight is applied.
+            If 'latitude', a weight is applied as the cos of the latitude.
+            If 'latitude_ellipsoid', a weight is applied as the cos of the latitude multiplied by an oblateness factor.
+            If 'depth', a weight is applied as the thickness of the layer.
+            If xr.DataArray is given : input data are multiplied by this object before summing.
         mask : None | xr.DataArray
-            Mask to be applied before summing.
+            Mask to be applied before summing up.
         **kwargs : keyword arguments
             Any keyword arguments given to the native xr.sum() function.
             
