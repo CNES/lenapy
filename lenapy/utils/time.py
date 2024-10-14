@@ -178,16 +178,17 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
 
     # Récupérer les attributs des données d'entrées
     results_out.attrs = data.attrs
+    
     results_out = results_out.rename(data.name)
     if return_coeffs:
-        return results_out, coeffs
+        return results_out, coeffs.assign_attrs(time_ref=tref)
     else:
         return results_out
     
 
 def generate_climato(time, coeffs, mean=True, trend=False, cycle=True):
 
-    tref=coeffs.time_ref
+    tref=coeffs.attrs['time_ref']
     t1=(time-tref)/pd.to_timedelta("1D").asm8
     omega=2*np.pi/LNPY_DAYS_YEAR
     X=xr.concat((t1**0,t1,np.cos(omega*t1),np.sin(omega*t1),np.cos(2*omega*t1),np.sin(2*omega*t1)),dim='coeffs').chunk(time=-1)
@@ -290,5 +291,6 @@ def JJ_to_date(jj):
     return t0+dt
 
 def fillna_climato(data,time_period=slice(None,None)):
+    #
     val=climato(data,signal=False,mean=True,trend=True,cycle=True,time_period=time_period)
     return xr.where(data.isnull(),val,data)
