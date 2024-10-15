@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy import interpolate
 import xarray as xr
 from xarray.plot.dataarray_plot import _infer_line_data
 import matplotlib.ticker as ticker
@@ -144,7 +143,7 @@ def plot_timeseries_uncertainty(xgeo_data,
         else:
             ax.plot([], [], color=thick_line_color, **line_kwargs, label=label)
 
-        if len(data_dims) > 0 : 
+        if len(data_dims) > 0:
             if shaded_area not in ["auto","auto-multiple", "std", "2std", "3std", "quantiles", None]:
                 raise ValueError("Possible values for shaded_area can only be 'auto','auto-multiple', 'std', '2std', "
                                  "'3std', 'quantiles', None")
