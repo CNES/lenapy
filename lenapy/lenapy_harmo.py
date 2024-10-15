@@ -28,7 +28,7 @@ import xarray as xr
 from lenapy.utils.geo import assert_grid
 from lenapy.utils.harmo import *
 from lenapy.utils.gravity import change_reference, change_tide_system
-from lenapy.plots.plotting import plot_hs, plot_power_hs
+from lenapy.plots.plotting import plot_hs, plot_power
 from lenapy.writers.gravi_writer import dataset_to_gfc
 
 
@@ -236,7 +236,7 @@ class HarmoSet:
         """
         return plot_hs(self._obj, **kwargs)
 
-    def plot_power_hs(self, **kwargs):
+    def plot_power(self, **kwargs):
         """
         Plot the power of the spherical harmonics.
         For details on the function, see :func:`lenapy.plots.plotting.plot_power_hs` documentation.
@@ -251,7 +251,7 @@ class HarmoSet:
         matplotlib.figure.Figure
             The generated plot of the power of the spherical harmonics.
         """
-        return plot_power_hs(self._obj, **kwargs)
+        return plot_power(self._obj, **kwargs)
 
     def to_gfc(self, filename, **kwargs):
         """

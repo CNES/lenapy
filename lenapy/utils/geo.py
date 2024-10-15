@@ -211,7 +211,7 @@ def surface_cell(data, ellipsoidal_earth=True, a_earth=None, f_earth=LNPY_F_EART
     # case of the cell on an ellipsoid
     if ellipsoidal_earth == 'ellipsoidal' or ellipsoidal_earth is True:
         ep = np.sqrt((2 * f_earth - f_earth ** 2) / (1 - f_earth) ** 2)  # eccentricity prime
-        # geocentric latitude of the cell border, compute a temporary forced in float64 latitude to remove numeric error
+        # geocentric latitude of the cell border, compute a temporary forced in float64 latitude to reduce numeric error
         tmp_latitude_float64 = data.cf["latitude"].values.astype(np.float64)
         omega_1 = np.arctan((1 - f_earth)**2 * np.tan(np.radians(tmp_latitude_float64 - dlat/2)))
         omega_2 = np.arctan((1 - f_earth)**2 * np.tan(np.radians(tmp_latitude_float64 + dlat/2)))

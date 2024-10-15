@@ -2,9 +2,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import interpolate
 import xarray as xr
+from xarray.plot.dataarray_plot import _infer_line_data
 import matplotlib.ticker as ticker
 from lenapy.utils.harmo import l_factor_conv
-
 
 
 def plot_timeseries_uncertainty(xgeo_data,
@@ -75,7 +75,7 @@ def plot_timeseries_uncertainty(xgeo_data,
     area_kwargs : kwargs
         Additional arguments provided to the plot function for the uncertainty
     add_legend : Bool (default=True)
-        if True, adds matplotlib legend to the current ax after plotting the data.
+        If True, adds matplotlib legend to the current ax after plotting the data.
     """
     data = xgeo_data
     variable = data.name
@@ -86,7 +86,7 @@ def plot_timeseries_uncertainty(xgeo_data,
         label = f"{variable}"
 
     if color is not None:
-        thick_line_color=color
+        thick_line_color = color
     
     data_dims = data.dims
     y_dim = [dim for dim in data_dims if dim != 'time']
@@ -94,39 +94,40 @@ def plot_timeseries_uncertainty(xgeo_data,
         raise ValueError(f"hue must be in None or in {y_dim}.")
     elif hue is not None and hue in y_dim:
         hue_values = data[hue].values
+        if type(thick_line_color) is str or thick_line_color is None:
+            thick_line_colors = [thick_line_color for i in range(hue_values.size)]
+        elif type(thick_line_color) is list:
+            thick_line_colors = [thick_line_color[i % len(thick_line_color)] for i in range(hue_values.size)]
+        else:
+            raise ValueError("thick_line_color must be None, a string or a list of strings")
+        if type(shaded_area_color) is str or shaded_area_color is None:
+            shaded_area_colors = [shaded_area_color for i in range(hue_values.size)]
+        elif type(shaded_area_color) is list:
+            shaded_area_colors = [shaded_area_color[i % len(thick_line_color)] for i in range(hue_values.size)]
+        else:
+            raise ValueError("shaded_area_color must be None, a string or a list of strings")
+
         for k, value in enumerate(hue_values):
-            data_hue = data.sel({hue:value})
-            if type(thick_line_color)==str or thick_line_color is None:
-                thick_line_colors = [thick_line_color for i in range(hue_values.size)]
-            elif type(thick_line_color)==list:
-                thick_line_colors = [thick_line_color[i%len(thick_line_color)] for i in range(hue_values.size)]
-            else:
-                raise ValueError("thick_line_color must be None, a string or a list of strings")
-            if type(shaded_area_color)==str or shaded_area_color is None:
-                shaded_area_colors = [shaded_area_color for i in range(hue_values.size)]
-            elif type(shaded_area_color)==list:
-                shaded_area_colors = [shaded_area_color[i%len(thick_line_color)] for i in range(hue_values.size)]
-            else:
-                raise ValueError("shaded_area_color must be None, a string or a list of strings")
-            # shaded_area_colors = [thick_line_color for i in range(hue_values.size)]
+            data_hue = data.sel({hue: value})
+
             plot_timeseries_uncertainty(data_hue,
-                                thick_line=thick_line,
-                                shaded_area=shaded_area,
-                                quantile_min=quantile_min,
-                                quantile_max=quantile_max,
-                                thick_line_color=thick_line_colors[k],
-                                shaded_area_color=shaded_area_color,
-                                shaded_area_alpha=shaded_area_alpha,
-                                ax=ax,
-                                label=value,
-                                line_kwargs=line_kwargs,
-                                area_kwargs=area_kwargs,
-                                add_legend=add_legend,
-                                hue=None,
-                                )
+                                        thick_line=thick_line,
+                                        shaded_area=shaded_area,
+                                        quantile_min=quantile_min,
+                                        quantile_max=quantile_max,
+                                        thick_line_color=thick_line_colors[k],
+                                        shaded_area_color=shaded_area_colors[k],
+                                        shaded_area_alpha=shaded_area_alpha,
+                                        ax=ax,
+                                        label=value,
+                                        line_kwargs=line_kwargs,
+                                        area_kwargs=area_kwargs,
+                                        add_legend=add_legend,
+                                        hue=None,
+                                        )
 
     else:
-        if len(y_dim)==0:
+        if len(y_dim) == 0:
             main_metric = data
         else:
             if thick_line == 'median':
@@ -145,7 +146,8 @@ def plot_timeseries_uncertainty(xgeo_data,
 
         if len(data_dims) > 0 : 
             if shaded_area not in ["auto","auto-multiple", "std", "2std", "3std", "quantiles", None]:
-                raise ValueError("Possible values for shaded_area can only be 'auto','auto-multiple', 'std', '2std', '3std', 'quantiles', None") 
+                raise ValueError("Possible values for shaded_area can only be 'auto','auto-multiple', 'std', '2std', "
+                                 "'3std', 'quantiles', None")
             
             if shaded_area_color is None:
                 shaded_area_color = plot_line[0].get_color()
@@ -164,7 +166,7 @@ def plot_timeseries_uncertainty(xgeo_data,
                                     color=shaded_area_color, alpha=shaded_area_alpha,
                                     linewidth=0, **area_kwargs, label='_nolegend_')
                 if thick_line == "median":
-                    quantiles = data.quantile([0.05,0.17,0.25,0.75,0.83,0.95],y_dim)
+                    quantiles = data.quantile([0.05, 0.17, 0.25, 0.75, 0.83, 0.95], y_dim)
                     ax.fill_between(quantiles.time.values, quantiles.sel(quantile=0.05), quantiles.sel(quantile=0.95),
                                     color=shaded_area_color, alpha=shaded_area_alpha,
                                     linewidth=0, **area_kwargs, label='_nolegend_')
@@ -183,12 +185,12 @@ def plot_timeseries_uncertainty(xgeo_data,
                                     main_metric + standard_deviation_multiple*data_std,
                                     color=shaded_area_color, alpha=shaded_area_alpha,
                                     linewidth=0, **area_kwargs, label='_nolegend_')
-                if thick_line=='median':
-                    quantiles = data.quantile([0.05,0.95],y_dim)
+                if thick_line == 'median':
+                    quantiles = data.quantile([0.05, 0.95], y_dim)
                     ax.fill_between(quantiles.time.values, quantiles.sel(quantile=0.05), quantiles.sel(quantile=0.95),
                                     color=shaded_area_color, alpha=shaded_area_alpha,
                                     linewidth=0, **area_kwargs, label='_nolegend_')
-            elif shaded_area=='std':
+            elif shaded_area == 'std':
                 data_std = data.std(y_dim)
                 if thick_line is None:
                     main_metric = data.mean(y_dim)
@@ -200,7 +202,7 @@ def plot_timeseries_uncertainty(xgeo_data,
 
             elif shaded_area == 'quantiles':
                 data_quantile = data.quantile([quantile_min, quantile_max],
-                                            dim=y_dim)
+                                              dim=y_dim)
                 if thick_line is None:
                     main_metric = data.median(y_dim)
                 ax.fill_between(data.time.values, data_quantile.isel(quantile=0), data_quantile.isel(quantile=1),
@@ -349,28 +351,28 @@ class TaylorDiagram(object):
 def plot_hs(ds, lmin=1, lmax=None, mmin=0, mmax=None, reverse=False,
             ax=None, cbar_ax=None, cbar_kwargs=None, **kwargs):
     """
-    Plot time series of spherical harmonic dataset, with only l and m dimensions, into pyramidal plot
+    Plot time series of spherical harmonic dataset, with only l and m dimensions, into pyramidal plot.
 
     Parameters
     ----------
     ds : xr.Dataset
-        ds with only l and m dimensions to plot
+        Spherical harmonics dataset with only l and m dimensions to plot.
     lmin : int, optional
-        Minimal degree of the spherical harmonics coefficient to plot, default is 1
+        Minimal degree of the spherical harmonics coefficient to plot, default is 1.
     lmax : int, optional
-        Minimal degree of the spherical harmonics coefficient to plot, default is ds.l.max()
+        Minimal degree of the spherical harmonics coefficient to plot, default is ds.l.max().
     mmin : int, optional
-        Minimal order of the spherical harmonics coefficient to plot, default is 1
+        Minimal order of the spherical harmonics coefficient to plot, default is 1.
     mmax : int, optional
-        Minimal order of the spherical harmonics coefficient to plot, default is ds.m.max()
+        Minimal order of the spherical harmonics coefficient to plot, default is ds.m.max().
     reverse : bool, optional
-        Reverse y-axis, default is False
+        Reverse y-axis, default is False.
     ax : plt.Axes, optional
         Axes on which to plot. By default, use the current axes.
     cbar_ax : plt.Axes, optional
         Axes in which to draw the colorbar.
     cbar_kwargs : dict, optional
-        Dictionary of keyword arguments to pass to the colorbar
+        Dictionary of keyword arguments to pass to the colorbar.
     **kwargs : optional
         Additional keyword arguments to plt.matshow() function.
 
@@ -426,28 +428,35 @@ def plot_hs(ds, lmin=1, lmax=None, mmin=0, mmax=None, reverse=False,
     return ax
 
 
-def plot_power_hs(ds, unit=None, lmin=0, lmax=None, mmin=0, mmax=None, unit_kwargs=None, ax=None, **kwargs):
+def plot_power(ds, kind="degree", unit=None, lmin=0, lmax=None, mmin=0, mmax=None, unit_kwargs=None,
+               hue=None, add_legend=True, ax=None, **kwargs):
     """
-    Plot degree power spectrum of a spherical harmonic dataset, with only l and m dimensions
+    Plot degree or order power spectrum of a spherical harmonic dataset, with only l and m dimensions.
 
     Parameters
     ----------
     ds : xr.Dataset
-        ds with only l and m dimensions to plot
+        Spherical harmonics dataset with only l and m dimensions to plot.
+    kind : str
+        Type of power spectrum to plot, either "degree" or "order".
     unit : str
         'mewh', 'mmgeoid', 'microGal', 'bar', 'mvcu', or 'norm'
-        Unit of the spatial data to use for the conversion. Default is 'mewh' for meters of Equivalent Water Height
-        See utils.harmo.l_factor_conv() doc for details on the units
+        Unit of the spatial data to use for the conversion. Default is 'mewh' for meters of Equivalent Water Height.
+        See utils.harmo.l_factor_conv() doc for details on the units.
     lmin : int, optional
-        Minimal degree of the spherical harmonics coefficient to plot, default is 1
+        Minimal degree of the spherical harmonics coefficient to plot, default is 1.
     lmax : int, optional
-        Minimal degree of the spherical harmonics coefficient to plot, default is ds.l.max()
+        Minimal degree of the spherical harmonics coefficient to plot, default is ds.l.max().
     mmin : int, optional
-        Minimal order of the spherical harmonics coefficient to plot, default is 1
+        Minimal order of the spherical harmonics coefficient to plot, default is 1.
     mmax : int, optional
-        Minimal order of the spherical harmonics coefficient to plot, default is ds.m.max()
+        Minimal order of the spherical harmonics coefficient to plot, default is ds.m.max().
     unit_kwargs : dict | None, optional
         Dictionary of keyword arguments to pass to the l_factor_conv() function.
+    hue : str | None, optional
+        Dimension or coordinate for which you want multiple lines plotted.
+    add_legend : bool
+        Add legend with *hue* axis coordinates if given. Default is True.
     ax : plt.Axes, optional
         Axes on which to plot. By default, use the current axes.
     **kwargs : optional
@@ -471,13 +480,30 @@ def plot_power_hs(ds, unit=None, lmin=0, lmax=None, mmin=0, mmax=None, unit_kwar
     unit_kwargs = {} if unit_kwargs is None else unit_kwargs
 
     l_factor = l_factor_conv(ds.l.values, unit=unit, **unit_kwargs)[0]
-    deg_amp = l_factor * np.sqrt((ds.clm ** 2).sel(m=slice(mmin, mmax)).sum('m') +
-                                 (ds.slm ** 2).sel(m=slice(mmin, mmax)).sum('m'))
 
-    ax.plot(ds.l.sel(l=slice(lmin, lmax)), deg_amp.sel(l=slice(lmin, lmax)), **kwargs)
+    if kind == 'degree':
+        deg_amp = l_factor * np.sqrt((ds.clm ** 2).sel(m=slice(mmin, mmax)).sum('m') +
+                                     (ds.slm ** 2).sel(m=slice(mmin, mmax)).sum('m'))
 
-    ax.set_ylabel(unit, fontsize=16)
-    ax.set_xlabel("Degree", fontsize=16)
-    ax.tick_params(labelsize=13)
+        xplt, yplt, hueplt, hue_label = _infer_line_data(deg_amp.sel(l=slice(lmin, lmax)), 'l', None, hue)
+
+        ax.set_xlabel("Degree")
+
+    elif kind == 'order':
+        deg_amp = np.sqrt(((l_factor * ds.clm) ** 2).sel(l=slice(lmin, lmax)).sum('l') +
+                          ((l_factor * ds.slm) ** 2).sel(l=slice(lmin, lmax)).sum('l'))
+
+        xplt, yplt, hueplt, hue_label = _infer_line_data(deg_amp.sel(m=slice(mmin, mmax)), 'm', None, hue)
+
+        ax.set_xlabel("Order")
+    else:
+        raise ValueError("Argument 'kind=' must be either 'degree' or 'order'.")
+
+    primitive = ax.plot(xplt, yplt, **kwargs)
+
+    if hue is not None and add_legend and len(deg_amp.dims) == 2:
+        ax.legend(handles=primitive, labels=list(hueplt.to_numpy()), title=hue_label)
+
+    ax.set_ylabel(unit)
 
     return ax
