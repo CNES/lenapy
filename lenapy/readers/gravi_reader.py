@@ -20,10 +20,10 @@ Examples
 >>> import xarray as xr
 # Load GRACE Level-2 data
 >>> files_csr = [os.path.join(csr_data_dir, f) for f in os.listdir(csr_data_dir)]
->>> ds_csr = xr.open_mfdataset(files_csr, engine='gracel2', combine_attrs="drop_conflicts")
+>>> ds_csr = xr.open_mfdataset(files_csr, engine='lenapyGraceL2', combine_attrs="drop_conflicts")
 # Load gravity field data from .gfc files
 >>> files_graz = [os.path.join(graz_data_dir, f) for f in os.listdir(graz_data_dir)]
->>> ds_graz = xr.open_mfdataset(files_graz, engine='gfc', combine_attrs="drop_conflicts")
+>>> ds_graz = xr.open_mfdataset(files_graz, engine='lenapyGfc', combine_attrs="drop_conflicts")
 """
 
 import os
@@ -183,9 +183,9 @@ def read_tn13(filename):
 
 
 class ReadGFC(BackendEntrypoint):
-    open_dataset_parameters = ["filename_or_obj", "drop_variables", "no_date"]
+    open_dataset_parameters = ["filename_or_obj", "drop_variables", "no_date", "date_regex", "date_format"]
 
-    def open_dataset(self, filename, drop_variables=None, no_date=False):
+    def open_dataset(self, filename, drop_variables=None, no_date=False, date_regex=None, date_format=None):
         """
         Read a .gfc ASCII file (or compressed) and format it as a xr.Dataset.
         The file needs to follow the ICGEM format: https://icgem.gfz-potsdam.de/docs/ICGEM-Format-2023.pdf
@@ -195,6 +195,10 @@ class ReadGFC(BackendEntrypoint):
         For monthly files, time variables are stored as 'begin_time', 'end_time', 'exact_time' and 'mid_month'.
         'mid_month' is used as the time coordinate.
 
+        The time information of the file is read in the mandatory header information 'modelname'. The function search
+        by default a date of format 'YYYY-MM' or '_YYYYDOY-YYYYDOY'. The format of the date can be specified with the
+        arguments `date_regex` and `date_format`. If the file not associated with a date information, use no_date=True.
+
         Parameters
         ----------
         filename : str | os.PathLike[Any]
@@ -203,11 +207,29 @@ class ReadGFC(BackendEntrypoint):
             Variable to align to BackendEntrypoint pattern.
         no_date : bool, optional
             True if the data file contains no date information. Default is False.
+        date_regex : str | None, optional
+            A regular expression pattern used to search for the date in the modelname header information. It should
+            contain at least one capturing group for the begin_time, and optionally a second group for the `end_time`.
+        date_format : str | None, optional
+            A format string compatible with `datetime.strptime` to parse the extracted date strings.
+            Must be provided if `date_regex` is specified.
 
         Returns
         -------
         ds : xr.Dataset
-            Information from the file stored in xr.Dataset format.
+            Information from the file stored in `xr.Dataset` format.
+
+        Examples
+        --------
+        Default usage with automatic date extraction:
+        >>> ds = xr.open_mfdataset('path/to/file.gfc', engine='lenapyGfc')
+
+        Specify custom date pattern and format:
+        >>> s = xr.open_mfdataset('path/to/file.gfc', engine='lenapyGfc',
+        ...                       date_regex=r'_(\\d{8})-(\\d{8})', date_format='%Y%m%d')
+
+        No date information in the file:
+        >>> ds = xr.open_mfdataset('path/to/file.gfc', engine='lenapyGfc', no_date=True)
         """
         # -- Create a pointer to the '.gfc' file
         ext = os.path.splitext(filename)[-1]
@@ -280,29 +302,46 @@ class ReadGFC(BackendEntrypoint):
         if 't' not in legend_before_end_header:
             # -- Compute time
             if not no_date:
-                # For some products, time is stored as YYYYDOY-YYYYDOY in modelname
-                # For GRACE products, DOY can not coincide with 1st and last day of month
-                if bool(re.search(r'_(\d{7})-(\d{7})', header['modelname'])):
+                if date_regex and date_format and bool(re.search(date_regex, header['modelname'])):
+                    # Get dates from the given date_regex and date_format
+                    dates = re.search(date_regex, header['modelname'])
+
+                elif bool(re.search(r'_(\d{7})-(\d{7})', header['modelname'])):
+                    # For some products, time is stored as YYYYDOY-YYYYDOY in modelname
+                    # For GRACE products, DOY can not coincide with 1st and last day of month
                     dates = re.search(r'_(\d{7})-(\d{7})', header['modelname'])
-                    begin_time = datetime.datetime.strptime(dates.group(1), '%Y%j')
-                    end_time = datetime.datetime.strptime(dates.group(2), '%Y%j') + datetime.timedelta(days=1)
+                    date_format = '%Y%j'
 
-                    exact_time = begin_time + (end_time - begin_time) / 2
-
-                    # compute middle of the month for GRACE products
-                    mid_month = mid_month_grace_estimate(begin_time, end_time)
-
-                # For other products, time is stored as YYYY-MM in modelname
                 elif bool(re.search(r'(\d{4}-\d{2})', header['modelname'])):
-                    yyyy_mm = re.search(r'(\d{4}-\d{2})', header['modelname']).group(0)
-                    begin_time = datetime.datetime.strptime(yyyy_mm, '%Y-%m')
-                    end_time = (begin_time + datetime.timedelta(days=32)).replace(day=1)
-                    mid_month = begin_time + (end_time - begin_time) / 2
-                    exact_time = mid_month
+                    # For other products, time is stored as YYYY-MM in modelname
+                    dates = re.search(r'(\d{4}-\d{2})', header['modelname'])
+                    date_format = '%Y-%m'
 
                 else:
-                    raise ValueError(f"Could not extract date information from modelname in the header of {filename}"
-                                     "\n Try with the parameter no_date=True")
+                    raise ValueError(f"Could not extract date information from modelname in the header "
+                                     f"of {filename}\n Try with the parameter no_date=True or "
+                                     f"check the use of arguments date_regex and date_format.")
+
+                # Read begin date and end date if it exists
+                begin_time = datetime.datetime.strptime(dates.group(1), date_format)
+                end_time_str = dates.group(2) if dates.lastindex >= 2 else None
+
+                if end_time_str:  # Case with a date for the end
+                    end_time = datetime.datetime.strptime(end_time_str, date_format) + datetime.timedelta(days=1)
+                    exact_time = begin_time + (end_time - begin_time) / 2
+
+                    # Compute middle of the month for GRACE products
+                    mid_month = mid_month_grace_estimate(begin_time, end_time)
+                else:  # Case without a date for the end
+                    if begin_time.day == 1:  # Case where the date contains no day in the month information
+                        end_time = (begin_time + datetime.timedelta(days=32)).replace(day=1)
+                        mid_month = begin_time + (end_time - begin_time) / 2
+                        exact_time = mid_month
+                    else:  # Case where the date contains day in the month information, we keep the date as reference
+                        end_time = begin_time
+                        mid_month = begin_time
+                        exact_time = begin_time
+
             # If no time, time info will be a string with modelname
             else:
                 mid_month = header['modelname']
