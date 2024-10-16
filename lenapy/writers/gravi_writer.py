@@ -82,6 +82,12 @@ def dataset_to_gfc(ds, filename, overwrite=True, include_errors=False, fmt=' .12
     for attr, default_value in mandatory_attrs_defaults.items():
         attrs.setdefault(attr, default_value)
 
+    # Keep normalization coherent with .gfc standard
+    if 'norm' in attrs and attrs['norm'] == '4pi':
+        attrs['norm'] = 'fully_normalized'
+    elif 'norm' in attrs and attrs['norm'] == 'unnorm':
+        attrs['norm'] = 'unnormalized'
+
     # Update dataset attributes with any additional attributes specified by the user
     attrs.update(kwargs)
 

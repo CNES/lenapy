@@ -283,8 +283,11 @@ class ReadGFC(BackendEntrypoint):
         # case for COSTG header where 'modelname' is created as 'product_name'
         header['modelname'] = header['product_name'] if 'product_name' in header else header['modelname']
 
-        # default norm is fully_normalized
-        header['norm'] = 'fully_normalized' if 'norm' not in header else header['norm']
+        # default norm is fully_normalized, change it to 4pi if needed to be coherent with lenapy functions
+        header['norm'] = '4pi' if 'norm' not in header else header['norm']
+        header['norm'] = '4pi' if header['norm'] == 'fully_normalized' else header['norm']
+        header['norm'] = 'unnorm' if header['norm'] == 'unnormalized' else header['norm']
+
         header['tide_system'] = 'missing' if 'tide_system' not in header else header['tide_system']
 
         # test for mandatory keywords (https://icgem.gfz-potsdam.de/docs/ICGEM-Format-2023.pdf)
@@ -525,6 +528,7 @@ class ReadGRACEL2(BackendEntrypoint):
                              "L2-UserHandbook_v4.0.pdf), it does not contains the name of center key: "
                              f"'COSTG', 'UTCSR', 'CNES', 'JPLEM' or 'GFZOP'. Name : {os.path.basename(filename)}")
 
+        header['norm'] = '4pi' if header['norm'] == 'fully normalized' else header['norm']
         lmax = header['max_degree']
 
         # Compute time

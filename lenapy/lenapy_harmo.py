@@ -219,6 +219,27 @@ class HarmoSet:
         """
         return change_tide_system(self._obj, new_tide, old_tide=old_tide, k20=k20, apply=apply)
 
+    def change_normalization(self, new_normalization, old_normalization=None, apply=False):
+        """
+        Apply a C20 offset to the dataset to change the tide system.
+        For details on the function, see :func:`lenapy.utils.gravity.change_tide_system` documentation.
+
+        Parameters
+        ----------
+        new_normalization : str
+            New normalization for the SH dataset, either '4pi', 'ortho', or 'schmidt'.
+        old_normalization : str | None, optional
+            Current normalization of the SH dataset. If not provided, uses `ds.attrs['norm']`.
+        apply : bool, optional
+            If True, apply the update to the current dataset without making a deep copy. Default is False.
+
+        Returns
+        -------
+        ds_out : xr.Dataset
+            Updated dataset with the new normalization.
+        """
+        return change_normalization(self._obj, new_normalization, old_normalization=old_normalization, apply=apply)
+
     def plot_hs(self, **kwargs):
         """
         Plot time series of spherical harmonics.
