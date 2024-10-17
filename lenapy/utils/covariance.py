@@ -102,7 +102,7 @@ class estimator:
             return np.dot(np.dot(H,A),H)
         elif type=='GLS':
             C = np.linalg.inv(self.cov_matrix)
-            H = np.linalg.inv(np.dot(self.X.T,np.dot(C,self.X)))
+            return np.linalg.inv(np.dot(self.X.T,np.dot(C,self.X)))
 
     @property
     def uncertainties(self):
