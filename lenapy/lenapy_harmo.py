@@ -229,7 +229,8 @@ class HarmoSet:
         new_normalization : str
             New normalization for the SH dataset, either '4pi', 'ortho', or 'schmidt'.
         old_normalization : str | None, optional
-            Current normalization of the SH dataset. If not provided, uses `ds.attrs['norm']`.
+            Current normalization of the SH dataset, either '4pi', 'ortho', 'schmidt', or 'unnorm'.
+             If not provided, uses `ds.attrs['norm']`.
         apply : bool, optional
             If True, apply the update to the current dataset without making a deep copy. Default is False.
 
