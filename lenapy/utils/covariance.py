@@ -93,12 +93,16 @@ class estimator:
         return self.residuals.std()
     
     @property
-    def estimator_covariance(self):
-        """Covariance matrix of the estimator
+    def estimator_covariance(self,type='OLS'):
+        """Covariance matrix of the estimator (OLS or GLS)
         """
-        H = np.linalg.inv(np.dot(self.X.T,self.X))
-        A = np.dot(np.dot(self.X.T,self.cov_matrix),self.X)
-        return np.dot(np.dot(H,A),H)
+        if type=='OLS':
+            H = np.linalg.inv(np.dot(self.X.T,self.X))
+            A = np.dot(np.dot(self.X.T,self.cov_matrix),self.X)
+            return np.dot(np.dot(H,A),H)
+        elif type=='GLS':
+            C = np.linalg.inv(self.cov_matrix)
+            H = np.linalg.inv(np.dot(self.X.T,np.dot(C,self.X)))
 
     @property
     def uncertainties(self):

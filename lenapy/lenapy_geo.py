@@ -582,3 +582,6 @@ class GeoArray:
 
     def geomean(self):
         return self.mean(['latitude', 'longitude'], weights='latitude')
+
+    def surface_grid(self,type='nan',**kwargs):
+        return surface_grid(self._obj,type=type,**kwargs)

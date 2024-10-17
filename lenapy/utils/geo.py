@@ -363,3 +363,10 @@ def assert_grid(ds):
     if 'longitude' not in ds.coords:
         raise AssertionError("The longitude coordinates that should be named 'longitude' does not exist")
     return True
+
+def surface_grid(da,type='nan',**kwargs):
+    if type=='nan':
+        sel=da.notnull()
+    elif type=='bool':
+        sel=da
+    return surface_cell(da,**kwargs).where(sel).sum(['latitude','longitude'])
