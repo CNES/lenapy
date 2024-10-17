@@ -14,7 +14,7 @@ Examples
 >>> import xarray as xr
 >>> from lenapy import lenapy_harmo
 # Load a dataset from a .gfc file
->>> ds = xr.open_dataset('example_file.gfc', engine='gfc')
+>>> ds = xr.open_dataset('example_file.gfc', engine='lenapyGfc')
 # Access HarmoSet methods
 >>> grid = ds.lnharmo.to_grid()
 # Plot the spherical harmonics

@@ -9,8 +9,10 @@ Standardized variables names:
   * clm, slm, begin_time, end_time, exact_time (and eclm, eslm if available)
 
 Supported Formats:
-  * GRACE Level-2 products from SDS centers (use `engine='gracel2'` in `xr.open_mfdataset()`)
-  * Gravity field products organized as .gfc files (use `engine='gfc'` in `xr.open_mfdataset()`)
+  * GRACE Level-2 products from SDS centers (use `engine='lenapyGraceL2'` in
+                                             `xr.open_dataset()` or `xr.mfopen_dataset()`)
+  * Gravity field products organized as .gfc files (use 'lenapyGfc'` in
+                                                    `xr.open_dataset()` or `xr.mfopen_dataset()`)
 
 Dask is implicitly used when using these interface methods.
 

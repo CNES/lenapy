@@ -17,6 +17,7 @@ import datetime
 import pathlib
 import inspect
 import numpy as np
+import scipy as sc
 import xarray as xr
 import pandas as pd
 import cf_xarray as cfxr
@@ -588,9 +589,9 @@ def change_normalization(ds, new_normalization='4pi', old_normalization=None, ap
         New normalization for the SH dataset, either '4pi', 'ortho', or 'schmidt'.
     old_normalization : str | None, optional
         Current normalization of the SH dataset.
-        Either '4pi', 'ortho', or 'schmidt' for
-        4pi normalized, orthonormalized, or Schmidt semi-normalized SH functions, respectively. Default is '4pi'.
-        If not provided, uses `ds.attrs['norm']`.
+        Either '4pi', 'ortho', 'schmidt' or 'unnorm' for
+        4pi normalized, orthonormalized, Schmidt semi-normalized, or unnormalized SH functions, respectively.
+        Default is '4pi'. If not provided, uses `ds.attrs['norm']`.
     apply : bool, optional
         If True, apply the update to the current dataset without making a deep copy. Default is False.
 
@@ -608,8 +609,8 @@ def change_normalization(ds, new_normalization='4pi', old_normalization=None, ap
 
     except ValueError:
         raise ValueError("If you provide no information about the current normalization of your ds dataset using "
-                       "'old_normalization' parameters, those information need to be contained in ds.attrs dict as "
-                       "ds.attrs['norm'].")
+                         "'old_normalization' parameters, those information need to be contained in ds.attrs dict as "
+                         "ds.attrs['norm'].")
 
     # -- conversion for each tidal system
     if new_normalization == '4pi' and old_normalization == 'schmidt':
@@ -624,6 +625,19 @@ def change_normalization(ds, new_normalization='4pi', old_normalization=None, ap
         update_factor = np.sqrt(4*np.pi)
     elif new_normalization == '4pi' and old_normalization == 'ortho':
         update_factor = 1/np.sqrt(4*np.pi)
+    elif old_normalization == 'unnorm':
+        fact_l_minus_m = xr.apply_ufunc(sc.special.factorial, ds.l - ds.m)
+        fact_l_minus_m = fact_l_minus_m.where(fact_l_minus_m != 0, float('NaN'))
+        if new_normalization == '4pi':
+            update_factor = np.sqrt(xr.apply_ufunc(sc.special.factorial, ds.l + ds.m) / fact_l_minus_m
+                                    / (2*ds.l + 1) / (2 - (0 == ds.m).astype(int)))
+        elif new_normalization == 'ortho':
+            update_factor = np.sqrt(xr.apply_ufunc(sc.special.factorial, ds.l + ds.m) * 4*np.pi / fact_l_minus_m
+                                    / (2*ds.l + 1) / (2 - (0 == ds.m).astype(int)))
+        elif new_normalization == 'schmidt':
+            update_factor = np.sqrt(xr.apply_ufunc(sc.special.factorial, ds.l + ds.m) * 4*np.pi / fact_l_minus_m
+                                    / (2 - (0 == ds.m).astype(int)))
+        update_factor = update_factor.fillna(0)
     else:
         update_factor = 1
 
