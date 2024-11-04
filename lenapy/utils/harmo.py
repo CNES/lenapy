@@ -217,7 +217,7 @@ def sh_to_grid(data, unit='mewh', errors=False,
         d_clm = (plm_lfactor**2 * data.sel(l=used_l, m=used_m).clm**2).sum(dim='l')
         d_slm = (plm_lfactor**2 * data.sel(l=used_l, m=used_m).slm**2).sum(dim='l')
 
-        # Final calcul on the grid
+        # Final calcul of sigma on the grid
         xgrid = np.sqrt((c_cos**2).dot(d_clm) + (s_sin**2).dot(d_slm))
 
         unit = "Errors in " + unit
