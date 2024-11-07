@@ -1,0 +1,159 @@
+import xarray as xr
+import pandas as pd
+import numpy as np
+from ..constants import *
+from scipy.interpolate import interp1d
+
+def lstsq(X,Y,poids=None):
+    if type(poids)==type(None):
+        C=1
+    else:
+        C=np.diag(poids)
+    H = np.linalg.inv(np.dot(X.T,np.dot(C,X)))
+    return np.dot(H,np.dot(X.T,np.dot(C,Y)))
+
+        
+class coeffs_clim:
+    def __init__(self,coefficients,func,ds,*args,ref=0.,scale=1.):
+        self.func=func
+        self.coefficients=coefficients
+        self.ds=ds
+        self.ref=ref
+        self.scale=scale
+        self.args=args
+        
+    def compute(self,x=None):
+        if type(x)==type(None):
+            x=self.ds
+        var=[(x[self.args[0]]-self.ref)/self.scale] + [x[u] for u in self.args[1:]]
+        return self.func(*var).assign_coords(coeffs=self.coefficients)
+        
+
+class Climato:
+    def __init__(self,data,dim='time',var=None,Nmin=0,cycle=True,order=1):
+        self.data=data
+        self.dim=dim
+        if type(var)==type(None):
+            self.var=dim
+        else:
+            self.var=var
+        self.Nmin=Nmin
+        self.coeffs=[]
+        self.coeff_names=[]
+        if cycle:
+            self.cycle()
+        if order>0:
+            self.poly(order)
+        
+    def add_coeffs(self,coefficients,func,*args,ref=None,scale=pd.to_timedelta("1D").asm8):
+        if type(ref)==type(None):
+            ref=self.data[args[0]].min()
+        self.coeffs.append(coeffs_clim(coefficients,func,self.data,*args,ref=ref,scale=scale))
+        if type(coefficients)==str:
+            self.coeff_names.append(coefficients)
+        else:
+            self.coeff_names.extend(coefficients)
+        
+    def cycle(self,**kwargs):
+        omega=2*np.pi/LNPY_DAYS_YEAR
+        
+        def annual(x):
+            return xr.concat((np.cos(omega*x),np.sin(omega*x)),dim="coeffs")
+
+        def semiannual(x):
+            return xr.concat((np.cos(2*omega*x),np.sin(2*omega*x)),dim="coeffs")
+        
+        self.add_coeffs(['cosAnnual','sinAnnual'],annual,self.var,**kwargs)
+        self.add_coeffs(['cosSemiAnnual','sinSemiAnnual'],semiannual,self.var,**kwargs)
+    
+    def poly(self,order=2,**kwargs):
+        def pol(x):
+            return  x**xr.DataArray(np.arange(order+1),dims='coeffs')
+        self.add_coeffs(['order_%i'%i for i in np.arange(order+1)],pol,self.var,**kwargs)
+            
+    def expl(self,x=None):
+        return xr.concat([u.compute(x) for u in self.coeffs],dim='coeffs').transpose(...,'coeffs')
+            
+    def solve(self,mesure,chunk={},poids=None,t_min=None,t_max=None):
+
+        ok_time=True
+        if type(t_min)!=type(None):
+            if type(t_min)==str:
+                t_min=pd.to_datetime(t_min)
+            ok_time = ok_time & (self.data[self.var] >= t_min)
+        if type(t_max)!=type(None):
+            if type(t_max)==str:
+                t_max=pd.to_datetime(t_max)
+            ok_time = ok_time & (self.data[self.var] <= t_max)
+                    
+        self.mesure=mesure
+        X_in = self.expl().values
+        
+        def solve_least_square(data_in):
+            """
+            For a given 1d time series, returns the coefficients of the fitted climatology
+            """
+            ok=(~np.isnan(data_in)) & ok_time
+            Y_in_nona = data_in[ok]
+            # If less than 6 non-na elements, climato is not computable
+            if len(Y_in_nona) <= self.Nmin + len(self.coeffs):
+                return np.full(X_in.shape[1], np.nan)
+            X_in_nona = X_in[ok,:]
+            #(coeffs,residus,rank,eig)=np.linalg.lstsq(X_in_nona,Y_in_nona)
+            coeffs=lstsq(X_in_nona,Y_in_nona,poids)
+            return coeffs
+
+        # Application de ufunc
+        coeffs = xr.apply_ufunc(
+            solve_least_square, 
+            self.data[mesure].chunk(chunk), 
+            input_core_dims=[[self.dim]],
+            output_core_dims=[['coeffs']],
+            exclude_dims=set((self.dim,)),
+            vectorize=True,
+            dask='parallelized',
+            output_dtypes=[float],
+            dask_gufunc_kwargs={'output_sizes': {'coeffs': X_in.shape[1]}}
+        )
+        self.result=coeffs.assign_coords(coeffs=self.coeff_names)
+        return self
+
+    def climatology(self,coefficients=None,x=None):
+        res=self.expl(x)*self.result
+        if type(coefficients)==type(None):
+            return res.sum('coeffs')
+        else:
+            return res.sel(coeffs=np.ravel(coefficients)).sum('coeffs')
+        
+    def residuals(self,coefficients=None):
+        return self.data[self.mesure]-self.climatology(coefficients=coefficients)
+    
+    def signal(self,x=None,coefficients=None,method='linear'):
+        
+        if type(x)==type(None):
+            x=self.data[self.var]
+        X_in=self.data[self.var].astype('float').values
+        
+        def interp_residuals(data_in):
+            ok=~np.isnan(data_in)
+            if sum(ok)>1:
+                Y_in_nona = data_in[ok]
+                X_in_nona = X_in[ok]
+                return interp1d(X_in_nona,Y_in_nona,kind=method)(x.astype('float').values)
+            else:
+                return x.astype('float').values+np.nan
+
+        resid_interp=xr.apply_ufunc(
+            interp_residuals, 
+            self.residuals(),
+            input_core_dims=[[self.dim]],
+            output_core_dims=[[self.dim]],
+            exclude_dims=set((self.dim,)),
+            vectorize=True,
+            dask='parallelized',
+            output_dtypes=[float],
+            dask_gufunc_kwargs={'output_sizes': {self.dim: x.shape[0]}}
+        )
+        
+        return resid_interp + self.climatology(coefficients=coefficients,x=x)
+    

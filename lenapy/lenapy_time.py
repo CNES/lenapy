@@ -11,6 +11,7 @@ from .utils.time import *
 from .utils.covariance import *
 from .utils.eof import *
 from .plots.plotting import *
+from .utils.climato import *
 
 @xr.register_dataset_accessor("lntime")
 class TimeSet:
@@ -18,7 +19,11 @@ class TimeSet:
     """
     def __init__(self, xarray_obj):
         self._obj = xarray_obj
-        if not 'time' in xarray_obj.coords: raise AssertionError('The time coordinates does not exist')
+        if not 'time' in list(xarray_obj.keys())+list(xarray_obj.coords)  : raise AssertionError('The time coordinates does not exist')
+        
+
+    def Climato(self,**kwargs):
+        return Climato(self._obj,**kwargs)
         
     def climato(self,**kwargs):
         """Perform climato analysis on all the variables in a dataset

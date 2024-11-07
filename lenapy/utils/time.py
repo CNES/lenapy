@@ -6,6 +6,7 @@ import cftime
 import netCDF4
 from . import filters
 from ..constants import *
+from .climato import Climato
 
 
 def filter(data,filter_name='lanczos',time_coord='time',annual_cycle=False,q=3,**kwargs):
@@ -98,6 +99,20 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
     time_period : slice (default=slice(None,None==
         Periode de reference sur laquelle est calculee la climato
     """
+    
+    a=Climato(xr.Dataset(dict(measure=data)))
+    a.solve('measure')
+    ret=[]
+    if mean : ret.append('order_0')
+    if trend : ret.append('order_1')
+    if cycle : ret.extend(['cosAnnual','sinAnnual','cosSemiAnnual','sinSemiAnnual'])
+    
+    if signal : 
+        return a.signal(coefficients=ret)
+    else:
+        return a.climatology(coefficients=ret)
+              
+    """
     use_dask = True if isinstance(data.data, da.Array) else False
     if use_dask:
         data = data.chunk(time=-1)
@@ -138,9 +153,9 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
     X_in = X.values
 
     def solve_least_square(data_in):
-        """
-        For a given 1d time series, returns the coefficients of the fitted climatology
-        """
+    """
+    #For a given 1d time series, returns the coefficients of the fitted climatology
+    """
         Y_in_nona = data_in[~np.isnan(data_in)]
         # If less than 6 non-na elements, climato is not computable
         if len(Y_in_nona) <= 6:
@@ -185,7 +200,8 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
     else:
         return results_out
     
-
+    """
+        
 def generate_climato(time, coeffs, mean=True, trend=False, cycle=True):
 
     tref=coeffs.attrs['time_ref']
