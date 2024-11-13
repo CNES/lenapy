@@ -12,21 +12,34 @@ def lstsq(X,Y,poids=None):
     H = np.linalg.inv(np.dot(X.T,np.dot(C,X)))
     return np.dot(H,np.dot(X.T,np.dot(C,Y)))
 
-        
+ 
+# Fonctions de base
+def annual(x):
+    omega=2*np.pi/LNPY_DAYS_YEAR
+    return xr.concat((np.cos(omega*x),np.sin(omega*x)),dim="coeffs")
+
+def semiannual(x):
+    omega=2*np.pi/LNPY_DAYS_YEAR
+    return xr.concat((np.cos(2*omega*x),np.sin(2*omega*x)),dim="coeffs")
+
+def pol(x,order):
+    return  x**xr.DataArray(np.arange(order+1),dims='coeffs')
+
 class coeffs_clim:
-    def __init__(self,coefficients,func,ds,*args,ref=0.,scale=1.):
+    def __init__(self,coefficients,func,*args,ref=0.,scale=1.,ds=None,**param):
         self.func=func
         self.coefficients=coefficients
         self.ds=ds
         self.ref=ref
         self.scale=scale
         self.args=args
+        self.param=param
         
     def compute(self,x=None):
         if type(x)==type(None):
             x=self.ds
         var=[(x[self.args[0]]-self.ref)/self.scale] + [x[u] for u in self.args[1:]]
-        return self.func(*var).assign_coords(coeffs=self.coefficients)
+        return self.func(*var,**self.param).assign_coords(coeffs=self.coefficients)
         
 
 class Climato:
@@ -40,36 +53,32 @@ class Climato:
         self.Nmin=Nmin
         self.coeffs=[]
         self.coeff_names=[]
+        self.func_attrs=[]
+        
         if cycle:
             self.cycle()
         if order>0:
             self.poly(order)
         
-    def add_coeffs(self,coefficients,func,*args,ref=None,scale=pd.to_timedelta("1D").asm8):
+    def add_coeffs(self,coefficients,func,*args,ref=None,scale=pd.to_timedelta("1D").asm8,**kwargs):
         if type(ref)==type(None):
             ref=self.data[args[0]].min()
-        self.coeffs.append(coeffs_clim(coefficients,func,self.data,*args,ref=ref,scale=scale))
+        self.coeffs.append(coeffs_clim(coefficients,func,*args,ref=ref,scale=scale,ds=self.data,**kwargs))
         if type(coefficients)==str:
             self.coeff_names.append(coefficients)
         else:
             self.coeff_names.extend(coefficients)
+        self.func_attrs.append([func.__name__,ref,scale,coefficients,args,kwargs])
+        
         
     def cycle(self,**kwargs):
-        omega=2*np.pi/LNPY_DAYS_YEAR
-        
-        def annual(x):
-            return xr.concat((np.cos(omega*x),np.sin(omega*x)),dim="coeffs")
-
-        def semiannual(x):
-            return xr.concat((np.cos(2*omega*x),np.sin(2*omega*x)),dim="coeffs")
         
         self.add_coeffs(['cosAnnual','sinAnnual'],annual,self.var,**kwargs)
         self.add_coeffs(['cosSemiAnnual','sinSemiAnnual'],semiannual,self.var,**kwargs)
     
     def poly(self,order=2,**kwargs):
-        def pol(x):
-            return  x**xr.DataArray(np.arange(order+1),dims='coeffs')
-        self.add_coeffs(['order_%i'%i for i in np.arange(order+1)],pol,self.var,**kwargs)
+
+        self.add_coeffs(['order_%i'%i for i in np.arange(order+1)],pol,self.var,order=order,**kwargs)
             
     def expl(self,x=None):
         return xr.concat([u.compute(x) for u in self.coeffs],dim='coeffs').transpose(...,'coeffs')
@@ -115,9 +124,9 @@ class Climato:
             output_dtypes=[float],
             dask_gufunc_kwargs={'output_sizes': {'coeffs': X_in.shape[1]}}
         )
-        self.result=coeffs.assign_coords(coeffs=self.coeff_names)
+        self.result=coeffs.assign_coords(coeffs=self.coeff_names).assign_attrs(functions=self.func_attrs)
         return self
-
+        
     def climatology(self,coefficients=None,x=None):
         res=self.expl(x)*self.result
         if type(coefficients)==type(None):
@@ -157,3 +166,27 @@ class Climato:
         
         return resid_interp + self.climatology(coefficients=coefficients,x=x)
     
+class Generate_climato:
+    def __init__(self,result):
+        self.result=result
+        self.func={}
+        self.add_function(annual)
+        self.add_function(semiannual)
+        self.add_function(pol)
+        
+    def add_function(self,func):
+        self.func[func.__name__]=func
+
+    def climatology(self,x,coefficients=None):
+        self.coeffs=[]
+        for name,ref,scale,coeffs,args,kwargs in self.result.attrs['functions']:
+            self.coeffs.append(coeffs_clim(coeffs,self.func[name],*args,ref=ref,scale=scale,**kwargs))
+
+        expl=xr.concat([u.compute(x) for u in self.coeffs],dim='coeffs').transpose(...,'coeffs')
+        
+        res=expl*self.result
+        
+        if type(coefficients)==type(None):
+            return res.sum('coeffs')
+        else:
+            return res.sel(coeffs=np.ravel(coefficients)).sum('coeffs')
