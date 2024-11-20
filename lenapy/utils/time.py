@@ -109,7 +109,7 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
         Periode de reference sur laquelle est calculee la climato
     """
 
-    a = Coeffs_Climato(xr.Dataset(dict(measure=data)))
+    a = Coeffs_climato(xr.Dataset(dict(measure=data)))
     res = a.solve('measure')
     ret = []
     if mean: ret.append('order_0')
