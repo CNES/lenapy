@@ -137,7 +137,6 @@ class Climato:
         return self.data[self.mesure]-self.climatology(coefficients=coefficients)
     
     def signal(self, x=None, coefficients=None, method='linear'):
-        
         if x is None:
             x = self.data[self.var]
         X_in = self.data[self.var].astype('float').values
@@ -167,41 +166,37 @@ class Climato:
 
 
 class Generate_climato:
-    def __init__(self,result,var='time',cycle=True,order=1,ref=None):
-        self.result=result
-        self.coeffs=[]
-        self.var=var
+    def __init__(self, result, var='time', cycle=True, order=1, ref=None):
+        self.result = result
+        self.coeffs = []
+        self.var = var
         if cycle:
             self.cycle(ref=ref)
-        if order>=0:
+        if order >= 0:
             self.poly(order,ref=ref)
         
-    def add_coeffs(self,coefficients,func,*args,ref=None,scale=pd.to_timedelta("1D").asm8,**kwargs):
+    def add_coeffs(self, coefficients, func, *args, ref=None, scale=pd.to_timedelta("1D").asm8, **kwargs):
         for u in np.ravel(coefficients):
             if not(u in self.result.coeffs):
-                raise('Coefficient %s not in list %s'%(u,self.result.coeffs))
+                raise('Coefficient %s not in list %s'%(u, self.result.coeffs))
                 
         if hasattr(ref,'values'):
-            ref=ref.values
-        self.coeffs.append(coeffs_clim(coefficients,func,*args,ref=ref,scale=scale,**kwargs))
-        if type(coefficients)==str:
-            coefficients=[coefficients]
+            ref = ref.values
+        self.coeffs.append(coeffs_clim(coefficients, func, *args, ref=ref, scale=scale, **kwargs))
 
-    def cycle(self,**kwargs):
-        
-        self.add_coeffs(['cosAnnual','sinAnnual'],annual,self.var,**kwargs)
-        self.add_coeffs(['cosSemiAnnual','sinSemiAnnual'],semiannual,self.var,**kwargs)
+    def cycle(self,**kwargs):        
+        self.add_coeffs(['cosAnnual', 'sinAnnual'], annual, self.var, **kwargs)
+        self.add_coeffs(['cosSemiAnnual', 'sinSemiAnnual'], semiannual, self.var, **kwargs)
     
-    def poly(self,order=2,**kwargs):
-
-        self.add_coeffs(['order_%i'%i for i in np.arange(order+1)],pol,self.var,order=order,**kwargs)
+    def poly(self, order=2, **kwargs):
+        self.add_coeffs(['order_%i'%i for i in np.arange(order+1)], pol, self.var, order=order, **kwargs)
 
     def expl(self,x):
-        return xr.concat([u.compute(x) for u in self.coeffs],dim='coeffs').transpose(...,'coeffs')
+        return xr.concat([u.compute(x) for u in self.coeffs], dim='coeffs').transpose(...,'coeffs')
 
-    def climatology(self,x,coefficients=None):
-        res=self.expl(x)*self.result
-        if type(coefficients)==type(None):
+    def climatology(self, x, coefficients=None):
+        res = self.expl(x)*self.result
+        if coefficients is None:
             return res.sum('coeffs')
         else:
             return res.sel(coeffs=np.ravel(coefficients)).sum('coeffs')
