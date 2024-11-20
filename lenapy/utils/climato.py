@@ -4,11 +4,11 @@ import numpy as np
 from ..constants import *
 from scipy.interpolate import interp1d
 
-def lstsq(X, Y, poids=None):
-    if poids is None:
+def lstsq(X, Y, weight=None):
+    if weight is None:
         C = 1
     else:
-        C = np.diag(poids)
+        C = np.diag(weight)
     H = np.linalg.inv(X.T.dot(np.dot(C, X)))
     return H @ (X.T.dot(np.dot(C, Y)))
 
@@ -83,7 +83,7 @@ class Climato:
     def expl(self, x=None):
         return xr.concat([u.compute(x) for u in self.coeffs], dim='coeffs').transpose(..., 'coeffs')
             
-    def solve(self, mesure, chunk={}, poids=None, t_min=None, t_max=None):
+    def solve(self, mesure, chunk={}, weight=None, t_min=None, t_max=None):
         ok_time = True
         if t_min is not None:
             if type(t_min) is str:
@@ -108,7 +108,7 @@ class Climato:
                 return np.full(X_in.shape[1], np.nan)
             X_in_nona = X_in[ok, :]
             # (coeffs, residus, rank, eig) = np.linalg.lstsq(X_in_nona, Y_in_nona)
-            return lstsq(X_in_nona, Y_in_nona, poids)
+            return lstsq(X_in_nona, Y_in_nona, weight)
 
         # Application de ufunc
         coeffs = xr.apply_ufunc(
