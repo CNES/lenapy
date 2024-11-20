@@ -123,7 +123,7 @@ class Climato:
             output_dtypes=[float],
             dask_gufunc_kwargs={'output_sizes': {'coeffs': X_in.shape[1]}}
         )
-        self.result = coeffs.assign_coords(coeffs=self.coeff_names).assign_attrs(functions=self.func_attrs)
+        self.result = coeffs.assign_coords(coeffs=self.coeff_names)
         return self
         
     def climatology(self, coefficients=None,x=None):
