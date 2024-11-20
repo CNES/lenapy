@@ -23,8 +23,8 @@ class TimeSet:
         if 'time' not in list(xarray_obj.keys())+list(xarray_obj.coords):
             raise AssertionError('The time coordinates does not exist')
 
-    def Climato(self, **kwargs):
-        return Climato(self._obj, **kwargs)
+    def Coeffs_climato(self, **kwargs):
+        return Coeffs_climato(self._obj, **kwargs)
         
     def climato(self, **kwargs):
         """Perform climato analysis on all the variables in a dataset

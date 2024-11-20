@@ -6,7 +6,7 @@ import cftime
 import netCDF4
 from . import filters
 from ..constants import *
-from .climato import Climato
+from .climato import Coeffs_climato
 
 
 def filter(data, filter_name='lanczos', time_coord='time', annual_cycle=False, q=3, **kwargs):
@@ -109,17 +109,17 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
         Periode de reference sur laquelle est calculee la climato
     """
 
-    a = Climato(xr.Dataset(dict(measure=data)))
-    a.solve('measure')
+    a = Coeffs_Climato(xr.Dataset(dict(measure=data)))
+    res = a.solve('measure')
     ret = []
     if mean: ret.append('order_0')
     if trend: ret.append('order_1')
     if cycle: ret.extend(['cosAnnual','sinAnnual','cosSemiAnnual','sinSemiAnnual'])
 
     if signal:
-        return a.signal(coefficients=ret)
+        return res.signal(coefficients=ret)
     else:
-        return a.climatology(coefficients=ret)
+        return res.climatology(coefficients=ret)
 
     """
     use_dask = True if isinstance(data.data, da.Array) else False
