@@ -287,8 +287,7 @@ def diff_2pts(data, dim, interp_na=True, time_unit='1s', **kwargs):
 
 
 def fill_time(data):
-    # Complète les trous de données dans une série temporelle en respectant approximativement l'échantillonnage, 
-    #  et en faisant une interpolation linéaire de la donnée là où il y a des trous.
+    # Complète les trous de données dans une série temporelle en respectant approximativement l'échantillonnage. 
 
     if 'time' not in data.coords:
         raise AssertionError('The time coordinates does not exist')
@@ -309,7 +308,7 @@ def fill_time(data):
     newtime = xr.DataArray(nt, dims='time', coords={'time': nt})
 
     # Return the interpolated data
-    return data.interp(time=newtime)
+    return newtime
 
 
 def JJ_to_date(jj):
