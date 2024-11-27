@@ -47,7 +47,7 @@ class coeffs_clim:
         
 
 class Coeffs_climato:
-    def __init__(self, data, dim='time', var=None, Nmin=0, cycle=True, order=1):
+    def __init__(self, data, dim='time', var=None, Nmin=0, cycle=True, order=1,ref=None):
         self.data = data
         self.dim = dim
         self.var = dim if var is None else var
@@ -56,9 +56,9 @@ class Coeffs_climato:
         self.coeff_names = []
         
         if cycle:
-            self.cycle()
+            self.cycle(ref=ref)
         if order > 0:
-            self.poly(order)
+            self.poly(order,ref=ref)
         
     def add_coeffs(self,coefficients,func,*args,ref=None,scale=pd.to_timedelta("1D").asm8,**kwargs):
         if ref is None:
@@ -82,7 +82,13 @@ class Coeffs_climato:
     def expl(self, x=None):
         return xr.concat([u.compute(x) for u in self.coeffs], dim='coeffs').transpose(..., 'coeffs')
             
-    def solve(self, mesure, chunk={}, weight=None, t_min=None, t_max=None):
+    def solve(self, measure=None, chunk={}, weight=None, t_min=None, t_max=None):
+        
+        if type(self.data) is xr.Dataset:
+            data_mes = self.data[measure]
+        else:
+            data_mes = self.data
+            
         ok_time = True
         if t_min is not None:
             if type(t_min) is str:
@@ -93,7 +99,7 @@ class Coeffs_climato:
                 t_max = pd.to_datetime(t_max)
             ok_time = ok_time & (self.data[self.var] <= t_max)
                     
-        self.mesure = mesure
+        self.measure = measure
         X_in = self.expl().values
         
         def solve_least_square(data_in):
@@ -111,7 +117,7 @@ class Coeffs_climato:
         # Application de ufunc
         coeffs = xr.apply_ufunc(
             solve_least_square, 
-            self.data[mesure].chunk(chunk), 
+            data_mes.chunk(chunk), 
             input_core_dims=[[self.dim]],
             output_core_dims=[['coeffs']],
             exclude_dims=set((self.dim,)),
@@ -121,19 +127,19 @@ class Coeffs_climato:
             dask_gufunc_kwargs={'output_sizes': {'coeffs': X_in.shape[1]}}
         )
         result = coeffs.assign_coords(coeffs=self.coeff_names)
-        clim = Signal_climato(result,dim=self.dim,var=self.var,cycle=False,order=-1,ds=self.data,mesure=self.mesure)
+        clim = Signal_climato(result,dim=self.dim,var=self.var,cycle=False,order=-1,ds=self.data,measure=self.measure)
         clim.coeffs = self.coeffs
         return clim
 
     
 class Signal_climato:
-    def __init__(self, result, dim='time', var=None, cycle=True, order=1, ref=None, ds=None, mesure=None):
+    def __init__(self, result, dim='time', var=None, cycle=True, order=1, ref=None, ds=None, measure=None):
         self.result = result
         self.coeffs = []
         self.dim = dim
         self.var = dim if var is None else var
         self.ds = ds
-        self.mesure = mesure
+        self.measure = measure
         if cycle:
             self.cycle(ref=ref)
         if order >= 0:
@@ -144,8 +150,8 @@ class Signal_climato:
             if not(u in self.result.coeffs):
                 raise('Coefficient %s not in list %s'%(u, self.result.coeffs))
                 
-        if hasattr(ref,'values'):
-            ref = ref.values
+#        if hasattr(ref,'values'):
+#            ref = ref.values
         self.coeffs.append(coeffs_clim(coefficients, func, *args, ref=ref, scale=scale, ds=self.ds, **kwargs))
 
     def cycle(self,**kwargs):        
@@ -166,7 +172,11 @@ class Signal_climato:
             return res.sel(coeffs=np.ravel(coefficients)).sum('coeffs')
            
     def residuals(self, coefficients=None):
-        return self.ds[self.mesure]-self.climatology(coefficients=coefficients)
+        if type(self.ds) is xr.Dataset:
+            return self.ds[self.measure] - self.climatology(coefficients=coefficients)
+        else:
+            return self.ds - self.climatology(coefficients=coefficients)
+
     
     def signal(self, x=None, coefficients=None, method='linear'):
         if x is None:

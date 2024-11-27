@@ -188,6 +188,9 @@ class TimeArray:
         if 'time' not in xarray_obj.coords:
             raise AssertionError('The time coordinates does not exist')
         
+    def Coeffs_climato(self, **kwargs):
+        return Coeffs_climato(self._obj, **kwargs)
+
     def climato(self, **kwargs):
         """
         Perform climato analysis on a dataarray
