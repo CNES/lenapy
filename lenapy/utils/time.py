@@ -317,7 +317,7 @@ def JJ_to_date(jj):
     """
     if jj is None:
         return jj
-    dt = pd.Timedelta(jj, 'D')
+    dt = pd.Timedelta(jj, 'D').asm8
     t0 = np.datetime64('1950-01-01','ns')
     return t0 + dt
 
