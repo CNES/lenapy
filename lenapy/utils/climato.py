@@ -57,7 +57,7 @@ class Coeffs_climato:
         
         if cycle:
             self.cycle(ref=ref)
-        if order > 0:
+        if order >= 0:
             self.poly(order,ref=ref)
         
     def add_coeffs(self,coefficients,func,*args,ref=None,scale=pd.to_timedelta("1D").asm8,**kwargs):
