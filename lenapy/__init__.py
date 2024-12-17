@@ -7,21 +7,14 @@ Accessor modules
 .. autosummary::
     :toctree:
 
-    .. automodule:: lenapy_geo
-       :members:
-    .. automodule:: lenapy_time
-       :members:
-    .. automodule:: lenapy_ocean
-       :members:
-    
     lenapy_geo
     lenapy_time
     lenapy_ocean
-
+    lenapy_harmo
 """
 
 import warnings
-from . import constants, lenapy_geo, lenapy_time
+from . import constants, lenapy_geo, lenapy_time, lenapy_harmo
 try:
     from . import lenapy_ocean
 except:

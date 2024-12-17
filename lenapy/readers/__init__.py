@@ -8,5 +8,6 @@ Reader modules : define specific engines for the xarray.open_dataset() method
     
     geo_reader
     ocean
+    gravi_reader
 
 """

@@ -36,6 +36,7 @@ class estimator:
         self.X = self.expl.values
         self.Y = data.values
         self.cov_matrix=sigma
+        self.type=None
 
     def OLS(self):
         """Compute the Ordinaty Least Square regression on the data
@@ -54,6 +55,7 @@ class estimator:
         H = np.linalg.inv(np.dot(self.X.T,self.X))
         self.beta = np.dot(H,np.dot(self.X.T,self.Y))
         self.params = xr.zeros_like(self.deg)+self.beta
+        self.type='OLS'
         
     def GLS(self):
         """Compute the Generalized Least Square regression on the data, with specified covariance matrix
@@ -73,6 +75,7 @@ class estimator:
         H = np.linalg.inv(np.dot(self.X.T,np.dot(C,self.X)))
         self.beta = np.dot(H,np.dot(self.X.T,np.dot(C,self.Y)))
         self.params = xr.zeros_like(self.deg)+self.beta
+        self.type='GLS'
         
     @property
     def estimate(self):
@@ -94,11 +97,17 @@ class estimator:
     
     @property
     def estimator_covariance(self):
-        """Covariance matrix of the estimator
+        """Covariance matrix of the estimator (OLS or GLS)
         """
-        H = np.linalg.inv(np.dot(self.X.T,self.X))
-        A = np.dot(np.dot(self.X.T,self.cov_matrix),self.X)
-        return np.dot(np.dot(H,A),H)
+        if self.type=='OLS':
+            H = np.linalg.inv(np.dot(self.X.T,self.X))
+            A = np.dot(np.dot(self.X.T,self.cov_matrix),self.X)
+            return np.dot(np.dot(H,A),H)
+        elif self.type=='GLS':
+            C = np.linalg.inv(self.cov_matrix)
+            return np.linalg.inv(np.dot(self.X.T,np.dot(C,self.X)))
+        else:
+            raise ValueError('Type must be OLS or GLS : execute OLS or GLS method before calling')
 
     @property
     def uncertainties(self):

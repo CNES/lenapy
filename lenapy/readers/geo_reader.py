@@ -48,7 +48,7 @@ class lenapyNetcdf(BackendEntrypoint):
     -------
     .. code-block:: python
     
-        data = xr.open_dataset('/home/user/lenapy/data/gohc_2020.nc',engine="lenapyNetcdf")
+        data = xr.open_dataset('/home/user/lenapy/data/gohc_2020.nc', engine="lenapyNetcdf")
     """
     def open_dataset(self, filename,rename={},
                      nan=None,
