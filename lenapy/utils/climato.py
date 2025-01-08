@@ -108,8 +108,9 @@ class Coeffs_climato:
             """
             ok = (~np.isnan(data_in)) & ok_time
             Y_in_nona = data_in[ok]
-            # If less than 6 non-na elements, climato is not computable
-            if len(Y_in_nona) <= self.Nmin + len(self.coeffs):
+            # If less than minimum number of non-na elements, climato is not computable
+            min_elements = np.sum([len(u.coefficients) for u in self.coeffs]) + self.Nmin
+            if len(Y_in_nona) <= min_elements:
                 return np.full(X_in.shape[1], np.nan)
             X_in_nona = X_in[ok, :]
             return lstsq(X_in_nona, Y_in_nona, weight)
@@ -127,7 +128,7 @@ class Coeffs_climato:
             dask_gufunc_kwargs={'output_sizes': {'coeffs': X_in.shape[1]}}
         )
         result = coeffs.assign_coords(coeffs=self.coeff_names)
-        clim = Signal_climato(result,dim=self.dim,var=self.var,cycle=False,order=-1,ds=self.data,measure=self.measure)
+        clim = Signal_climato(result,dim=self.dim,var=self.var,cycle=False,order=0,ds=self.data,measure=self.measure)
         clim.coeffs = self.coeffs
         return clim
 
@@ -142,8 +143,9 @@ class Signal_climato:
         self.measure = measure
         if cycle:
             self.cycle(ref=ref)
-        if order >= 0:
-            self.poly(order,ref=ref)
+        if order < 0:
+            raise ValueError('Order must be >=0')
+        self.poly(order,ref=ref)
         
     def add_coeffs(self, coefficients, func, *args, ref=None, scale=pd.to_timedelta("1D").asm8, **kwargs):
         for u in np.ravel(coefficients):
