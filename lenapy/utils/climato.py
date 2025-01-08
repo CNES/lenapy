@@ -190,7 +190,7 @@ class Signal_climato:
             if sum(ok) > 1:
                 Y_in_nona = data_in[ok]
                 X_in_nona = X_in[ok]
-                return interp1d(X_in_nona, Y_in_nona, kind=method)(x.astype('float').values)
+                return interp1d(X_in_nona, Y_in_nona, kind=method,bounds_error=False)(x.astype('float').values)
             else:
                 return x.astype('float').values+np.nan
 

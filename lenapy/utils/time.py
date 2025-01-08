@@ -81,7 +81,7 @@ def filter(data, filter_name='lanczos', time_coord='time', annual_cycle=False, q
     return data_filtered
 
 
-def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs=False,time_period=slice(None,None),fillna=False):
+def climato(data, signal=True, mean=True, trend=True, cycle=False, Nmin=0):
     """
     Analyse du cycle annuel, bi-annuel et de la tendance
     Decompose les données en entrée en :
@@ -109,7 +109,7 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, return_coeffs
         Periode de reference sur laquelle est calculee la climato
     """
 
-    a = Coeffs_climato(xr.Dataset(dict(measure=data)))
+    a = Coeffs_climato(xr.Dataset(dict(measure=data)),Nmin=Nmin)
     res = a.solve('measure')
     ret = []
     if mean: ret.append('order_0')
