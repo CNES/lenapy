@@ -39,6 +39,7 @@ import xarray as xr
 import numpy as np
 from xarray.backends import BackendEntrypoint
 from lenapy.utils.harmo import mid_month_grace_estimate
+from lenapy.constants import *
 
 
 def read_tn14(filename, rmmean=False):
@@ -206,7 +207,7 @@ class ReadGFC(BackendEntrypoint):
         filename : str | os.PathLike[Any]
             Name/path of the file to open.
         drop_variables : None
-            Variable to align to BackendEntrypoint pattern.
+            Not used; included for compatibility with BackendEntrypoint pattern.
         no_date : bool, optional
             True if the data file contains no date information. Default is False.
         date_regex : str | None, optional
@@ -451,7 +452,7 @@ class ReadGRACEL2(BackendEntrypoint):
         filename : str | os.PathLike[Any]
             Name/path of the file to open.
         drop_variables : None
-            Variable to align to BackendEntrypoint pattern.
+            Not used; included for compatibility with BackendEntrypoint pattern.
 
         Returns
         -------
@@ -583,3 +584,106 @@ class ReadGRACEL2(BackendEntrypoint):
         return ds
 
     description = "Use GRACEL2 product files in xarray"
+
+
+class ReadShLoading(BackendEntrypoint):
+    open_dataset_parameters = ["filename_or_obj", "drop_variables"]
+
+    def open_dataset(self, filename, drop_variables=None):
+        """
+        Read Loading models in ASCII file (or compressed) from http://loading.u-strasbg.fr and
+        format it as a xr.Dataset. The header information are stored in ds.attrs.
+        The dataset contains clm and slm array.
+        'mid_month' is used as the time coordinate.
+
+        Parameters
+        ----------
+        filename : str | os.PathLike[Any]
+            Name/path of the file to open.
+        drop_variables : None
+            Not used; included for compatibility with BackendEntrypoint pattern.
+
+        Returns
+        -------
+        ds : xr.Dataset
+            Information from the file stored in `xr.Dataset` format.
+        """
+        ext = os.path.splitext(filename)[-1]
+
+        if ext != 'tar.gz':
+            file = open(filename, 'r')
+            ds = self._process_file(file, compression=False)
+
+        else:
+            tar = tarfile.open(filename)
+
+            ds_list = []
+            for member in tar:
+                file = tar.extractfile(member.name)
+                ds_list.append(self._process_file(file, compression=True))
+            ds = xr.concat(ds_list, dim='time')
+
+        return ds
+
+    @staticmethod
+    def _process_file(file, compression=False):
+        """
+        Process a single file pointer and return it as a xr.Dataset.
+
+        Parameters
+        ----------
+        file : file-like object
+            Opened file to process.
+        compression : bool
+            Boolean indicating whether to compress the file or not.
+
+        Returns
+        -------
+        ds : xr.Dataset
+            Information from the file stored in `xr.Dataset` format.
+        """
+        header = {}
+        line = True
+        while line:
+            line = file.readline()
+            if compression:
+                line = line.decode()
+            infos = line.split()
+
+            if '! Maximum degree' in line:
+                header['max_degree'] = int(infos[2])
+            if '! Epoch:' in line:
+                header['epoch'] = ' '.join(infos[2:])
+            if '! Model:' in line:
+                header['modelname'] = ' '.join(infos[2:])
+
+            elif '! Comment' in line:
+                break
+
+        lmax = header['max_degree']
+        header['norm'] = '4pi'
+        # Inforation to confirm with Jean-Paul Boy
+        header['earth_gravity_constant'] = LNPY_GM_EARTH
+        header['radius'] = LNPY_A_EARTH_GRS80
+
+        # Compute time
+        time = datetime.strptime(header['epoch'], '%Y %m %d %H %M %S.%f')
+
+        # Load clm and slm data
+        clm, slm = np.zeros((lmax + 1, lmax + 1, 1)), np.zeros((lmax + 1, lmax + 1, 1))
+
+        data = np.genfromtxt(file, dtype=[('degree', int), ('order', int), ('clm', float), ('slm', float)])
+
+        clm[data['degree'], data['order']] = data['clm'][:, np.newaxis]
+        slm[data['degree'], data['order']] = data['slm'][:, np.newaxis]
+
+        ds = xr.Dataset(
+            {'clm': (['l', 'm', 'time'], clm), 'slm': (['l', 'm', 'time'], slm)},
+            coords={'l': np.arange(lmax + 1), 'm': np.arange(lmax + 1), 'time': [time]},
+            attrs=header
+        )
+
+        file.close()
+        return ds
+
+    description = "Use loading models files from http://loading.u-strasbg.fr in xarray"
