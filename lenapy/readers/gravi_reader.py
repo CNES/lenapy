@@ -608,9 +608,7 @@ class ReadShLoading(BackendEntrypoint):
         ds : xr.Dataset
             Information from the file stored in `xr.Dataset` format.
         """
-        ext = os.path.splitext(filename)[-1]
-
-        if ext != 'tar.gz':
+        if '.tar.gz' not in filename:
             file = open(filename, 'r')
             ds = self._process_file(file, compression=False)
 
@@ -651,7 +649,7 @@ class ReadShLoading(BackendEntrypoint):
             infos = line.split()
 
             if '! Maximum degree' in line:
-                header['max_degree'] = int(infos[2])
+                header['max_degree'] = int(infos[3])
             if '! Epoch:' in line:
                 header['epoch'] = ' '.join(infos[2:])
             if '! Model:' in line:
@@ -667,7 +665,7 @@ class ReadShLoading(BackendEntrypoint):
         header['radius'] = LNPY_A_EARTH_GRS80
 
         # Compute time
-        time = datetime.strptime(header['epoch'], '%Y %m %d %H %M %S.%f')
+        time = datetime.datetime.strptime(header['epoch'], '%Y %m %d %H %M %S.%f')
 
         # Load clm and slm data
         clm, slm = np.zeros((lmax + 1, lmax + 1, 1)), np.zeros((lmax + 1, lmax + 1, 1))
