@@ -57,8 +57,9 @@ class Coeffs_climato:
         
         if cycle:
             self.cycle(ref=ref)
-        if order >= 0:
-            self.poly(order,ref=ref)
+        if order < 0:
+            raise ValueError('Order must be >=0')
+        self.poly(order,ref=ref)
         
     def add_coeffs(self,coefficients,func,*args,ref=None,scale=pd.to_timedelta("1D").asm8,**kwargs):
         if ref is None:
@@ -82,7 +83,7 @@ class Coeffs_climato:
     def expl(self, x=None):
         return xr.concat([u.compute(x) for u in self.coeffs], dim='coeffs').transpose(..., 'coeffs')
             
-    def solve(self, measure=None, chunk={}, weight=None, t_min=None, t_max=None):
+    def solve(self, measure=None, weight=None, t_min=None, t_max=None):
         
         if type(self.data) is xr.Dataset:
             data_mes = self.data[measure]
@@ -118,7 +119,7 @@ class Coeffs_climato:
         # Application de ufunc
         coeffs = xr.apply_ufunc(
             solve_least_square, 
-            data_mes.chunk(chunk), 
+            data_mes, 
             input_core_dims=[[self.dim]],
             output_core_dims=[['coeffs']],
             exclude_dims=set((self.dim,)),
@@ -143,9 +144,8 @@ class Signal_climato:
         self.measure = measure
         if cycle:
             self.cycle(ref=ref)
-        if order < 0:
-            raise ValueError('Order must be >=0')
-        self.poly(order,ref=ref)
+        if order >= 0:
+            self.poly(order,ref=ref)
         
     def add_coeffs(self, coefficients, func, *args, ref=None, scale=pd.to_timedelta("1D").asm8, **kwargs):
         for u in np.ravel(coefficients):
