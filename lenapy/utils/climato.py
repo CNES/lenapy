@@ -119,7 +119,7 @@ class Coeffs_climato:
         # Application de ufunc
         coeffs = xr.apply_ufunc(
             solve_least_square, 
-            data_mes, 
+            data_mes,
             input_core_dims=[[self.dim]],
             output_core_dims=[['coeffs']],
             exclude_dims=set((self.dim,)),
@@ -145,25 +145,25 @@ class Signal_climato:
         if cycle:
             self.cycle(ref=ref)
         if order >= 0:
-            self.poly(order,ref=ref)
+            self.poly(order, ref=ref)
         
     def add_coeffs(self, coefficients, func, *args, ref=None, scale=pd.to_timedelta("1D").asm8, **kwargs):
         for u in np.ravel(coefficients):
-            if not(u in self.result.coeffs):
-                raise('Coefficient %s not in list %s'%(u, self.result.coeffs))
+            if u not in self.result.coeffs:
+                raise ValueError('Coefficient %s not in list %s' % (u, self.result.coeffs))
                 
 #        if hasattr(ref,'values'):
 #            ref = ref.values
         self.coeffs.append(coeffs_clim(coefficients, func, *args, ref=ref, scale=scale, ds=self.ds, **kwargs))
 
-    def cycle(self,**kwargs):        
+    def cycle(self, **kwargs):
         self.add_coeffs(['cosAnnual', 'sinAnnual'], annual, self.var, **kwargs)
         self.add_coeffs(['cosSemiAnnual', 'sinSemiAnnual'], semiannual, self.var, **kwargs)
     
     def poly(self, order=2, **kwargs):
         self.add_coeffs(['order_%i'%i for i in np.arange(order+1)], pol, self.var, order=order, **kwargs)
 
-    def expl(self,x=None):
+    def expl(self, x=None):
         return xr.concat([u.compute(x) for u in self.coeffs], dim='coeffs').transpose(...,'coeffs')
 
     def climatology(self, coefficients=None, x=None):
