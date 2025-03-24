@@ -1,3 +1,49 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lenapy"
+version = "0.9"
+description = "Second beta release of lenapy on github"
+readme = "README.md"
+authors = [
+    { name = "Sebastien Fourest & EMC2 team", email = "sebastien.fourest@cnes.fr" }
+]
+license = { text = "GPL-3.0" }
+requires-python = ">=3.7"
+dependencies = [
+    "matplotlib>=3.6",
+    "esmpy>=8.4.0",
+    "xesmf>=0.8.2",
+    "xarray>=2024.2",
+    "gsw>=3.6.16",
+    "netCDF4>=1.6.5",
+    "pyyaml>=6.0",
+    "dask>=2023.6",
+]
+
+[tool.setuptools]
+packages = [
+    "lenapy",
+    "lenapy.utils",
+    "lenapy.readers",
+    "lenapy.writers",
+    "lenapy.plots",
+    "lenapy.resources",
+]
+
+[tool.setuptools.package-data]
+"lenapy.resources" = ["*"]
+
+[project.entry-points."xarray.backends"]
+lenapyNetcdf = "lenapy.readers.geo_reader:lenapyNetcdf"
+lenapyMask = "lenapy.readers.geo_reader:lenapyMask"
+lenapyOceanProducts = "lenapy.readers.ocean:lenapyOceanProducts"
+lenapyGfc = "lenapy.readers.gravi_reader:ReadGFC"
+lenapyGraceL2 = "lenapy.readers.gravi_reader:ReadGRACEL2"
+lenapyShLoading = "lenapy.readers.gravi_reader:ReadShLoading"
+
 [tool.black]
 line-length = 88
 target-version = ['py312']
@@ -5,3 +51,28 @@ target-version = ['py312']
 [tool.isort]
 profile = "black"
 line_length = 88
+
+[project.optional-dependencies]
+formatter = [
+    "black ==24.8.0",
+    "isort ==5.13.2",
+]
+test = [
+    "pytest",
+    "pytest-cov",
+]
+doc = [
+    "sphinx",
+]
+notebook = [
+    "notebook ==7.3.3",
+    "myst-nb ==1.2.0"
+]
+quality = [
+    "pylint",
+    "mccabe",
+]
+dev = [
+    "pre-commit",
+    "lenapy[formatter, test, doc, notebook, quality]",
+]
