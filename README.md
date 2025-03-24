@@ -46,4 +46,3 @@ You can now use all the functionnalities of lenapy by adding the right suffixe a
   ```
   
   
-

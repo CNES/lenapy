@@ -1,6 +1,7 @@
-import xarray as xr
 import numpy as np
-from ..constants import *
+import xarray as xr
+
+from lenapy.constants import *
 
 
 def rename_data(data, **kwargs):
@@ -29,18 +30,18 @@ def rename_data(data, **kwargs):
         ds=xr.open_mfdataset('product.nc', preprocess=rename_data)
     """
     data = data.rename(**kwargs)
-    for coord in ['latitude', 'longitude', 'time', 'depth']:
+    for coord in ["latitude", "longitude", "time", "depth"]:
         try:
             old_name = data.cf[coord].name
             data = data.rename({old_name: coord})
         except KeyError:
             pass
 
-    if 'longitude' in data.variables and 'longitude' not in data.coords:
-        lon = data['longitude']
-        del data['longitude']
-        lat = data['latitude']
-        del data['latitude']    
+    if "longitude" in data.variables and "longitude" not in data.coords:
+        lon = data["longitude"]
+        del data["longitude"]
+        lat = data["latitude"]
+        del data["latitude"]
         data = data.assign_coords(longitude=lon, latitude=lat)
     return data
 
@@ -89,7 +90,7 @@ def isosurface(data, target, dim, coord=None, upper=False):
         raise ValueError(f"Dimension '{dim}' not found in data.")
     if coord not in data.coords:
         raise ValueError(f"Coordinate '{coord}' not found in data.")
-        
+
     slice0 = {dim: slice(None, -1)}
     slice1 = {dim: slice(1, None)}
 
@@ -98,19 +99,14 @@ def isosurface(data, target, dim, coord=None, upper=False):
 
     crossing_mask_decr = (field0 > target) & (field1 <= target)
     crossing_mask_incr = (field0 < target) & (field1 >= target)
-    crossing_mask = xr.where(
-        crossing_mask_decr | crossing_mask_incr, 1, np.nan
-    )
+    crossing_mask = xr.where(crossing_mask_decr | crossing_mask_incr, 1, np.nan)
 
     coords0 = crossing_mask * data[coord].isel(slice0).drop(coord)
     coords1 = crossing_mask * data[coord].isel(slice1).drop(coord)
     field0 = crossing_mask * field0
     field1 = crossing_mask * field1
 
-    iso = (
-        coords0 + (target - field0) * 
-        (coords1 - coords0) / (field1 - field0)
-    )
+    iso = coords0 + (target - field0) * (coords1 - coords0) / (field1 - field0)
     if upper:
         return iso.min(dim, skipna=True)
     else:
@@ -120,11 +116,11 @@ def isosurface(data, target, dim, coord=None, upper=False):
 def split_duplicate_coords(data):
     for v in data.data_vars:
         dims = data[v].dims
-        dup = {x+'_' for x in dims if dims.count(x) > 1}
+        dup = {x + "_" for x in dims if dims.count(x) > 1}
         for d in dup:
             data = data.assign_coords({d: data[d[:-1]].data})
 
-        new_dims = tuple(list(set(dims))+list(dup))
+        new_dims = tuple(list(set(dims)) + list(dup))
 
         if len(dup) > 0:
             data[v] = (new_dims, data[v].data)
@@ -132,11 +128,15 @@ def split_duplicate_coords(data):
 
 
 def longitude_increase(data):
-    if 'longitude' in data.coords:
-        l = xr.where(data.longitude < data.longitude.isel(longitude=0), data.longitude+360, data.longitude)
+    if "longitude" in data.coords:
+        l = xr.where(
+            data.longitude < data.longitude.isel(longitude=0),
+            data.longitude + 360,
+            data.longitude,
+        )
         if l.max() > 360:
             l = l - 360
-        data['longitude'] = l
+        data["longitude"] = l
     return data
 
 
@@ -156,11 +156,13 @@ def reset_longitude(data, orig=-180):
         data = xr.open_dataset('/home/user/lenapy/data/gohc_2020.nc', engine="lenapyNetcdf")
         surface = data.lngeo.surface_cell()
     """
-    i = ((np.mod(data.longitude-orig+180, 360) - 180)**2).argmin().values
+    i = ((np.mod(data.longitude - orig + 180, 360) - 180) ** 2).argmin().values
     return longitude_increase(data.roll(longitude=-i, roll_coords=True))
 
 
-def surface_cell(data, ellipsoidal_earth=True, a_earth=None, f_earth=LNPY_F_EARTH_GRS80):
+def surface_cell(
+    data, ellipsoidal_earth=True, a_earth=None, f_earth=LNPY_F_EARTH_GRS80
+):
     """
     Returns the Earth surface of each cell defined by a longitude/latitude in a xarray object.
     Cells limits are half the distance between each given coordinate. Given coordinates are not necessary the center of
@@ -198,43 +200,75 @@ def surface_cell(data, ellipsoidal_earth=True, a_earth=None, f_earth=LNPY_F_EART
     Example
     -------
     .. code-block:: python
-    
+
         xr.open_dataset('/home/user/lenapy/data/gohc_2020.nc', engine="lenapyNetcdf")
         surface = data.lngeo.surface_cell()
     """
     if a_earth is None:
-        a_earth = float(data.attrs['radius']) if 'radius' in data.attrs else LNPY_A_EARTH_GRS80
+        a_earth = (
+            float(data.attrs["radius"])
+            if "radius" in data.attrs
+            else LNPY_A_EARTH_GRS80
+        )
 
-    dlat = ecarts(data, 'latitude')
-    dlon = ecarts(data, 'longitude')
+    dlat = ecarts(data, "latitude")
+    dlon = ecarts(data, "longitude")
 
     # case of the cell on an ellipsoid
-    if ellipsoidal_earth == 'ellipsoidal' or ellipsoidal_earth is True:
-        ep = np.sqrt((2 * f_earth - f_earth ** 2) / (1 - f_earth) ** 2)  # eccentricity prime
+    if ellipsoidal_earth == "ellipsoidal" or ellipsoidal_earth is True:
+        ep = np.sqrt(
+            (2 * f_earth - f_earth**2) / (1 - f_earth) ** 2
+        )  # eccentricity prime
         # geocentric latitude of the cell border, compute a temporary forced in float64 latitude to reduce numeric error
         tmp_latitude_float64 = data.cf["latitude"].values.astype(np.float64)
-        omega_1 = np.arctan((1 - f_earth)**2 * np.tan(np.radians(tmp_latitude_float64 - dlat/2)))
-        omega_2 = np.arctan((1 - f_earth)**2 * np.tan(np.radians(tmp_latitude_float64 + dlat/2)))
+        omega_1 = np.arctan(
+            (1 - f_earth) ** 2 * np.tan(np.radians(tmp_latitude_float64 - dlat / 2))
+        )
+        omega_2 = np.arctan(
+            (1 - f_earth) ** 2 * np.tan(np.radians(tmp_latitude_float64 + dlat / 2))
+        )
 
-        return np.abs(a_earth**2 * (1 - f_earth) * np.radians(dlon) * (
-                (np.arcsinh(ep * np.sin(omega_2)) - np.arcsinh(ep * np.sin(omega_1))) / ep +
-                (np.sin(omega_2) * np.sqrt(1 + ep**2 * np.sin(omega_2) ** 2) -
-                 np.sin(omega_1) * np.sqrt(1 + ep**2 * np.sin(omega_1) ** 2))) / 2)
+        return np.abs(
+            a_earth**2
+            * (1 - f_earth)
+            * np.radians(dlon)
+            * (
+                (np.arcsinh(ep * np.sin(omega_2)) - np.arcsinh(ep * np.sin(omega_1)))
+                / ep
+                + (
+                    np.sin(omega_2) * np.sqrt(1 + ep**2 * np.sin(omega_2) ** 2)
+                    - np.sin(omega_1) * np.sqrt(1 + ep**2 * np.sin(omega_1) ** 2)
+                )
+            )
+            / 2
+        )
 
     # case of the sphere that approximates the ellipsoid
-    elif ellipsoidal_earth == 'approx':
-        return np.abs(a_earth**2 * np.radians(dlon) * np.cos(np.radians(data.cf["latitude"])) * np.radians(dlat) /
-                      (1 + f_earth * np.cos(2 * np.radians(data.cf["latitude"])))**2)
+    elif ellipsoidal_earth == "approx":
+        return np.abs(
+            a_earth**2
+            * np.radians(dlon)
+            * np.cos(np.radians(data.cf["latitude"]))
+            * np.radians(dlat)
+            / (1 + f_earth * np.cos(2 * np.radians(data.cf["latitude"]))) ** 2
+        )
 
     # case of the spherical cell with a sphere of radius a_earth
-    elif ellipsoidal_earth == 'spherical' or ellipsoidal_earth is False:
-        return np.abs(2 * a_earth**2 * np.radians(dlon) * np.cos(np.radians(data.cf["latitude"])) *
-                      np.sin(np.radians(dlat) / 2))
+    elif ellipsoidal_earth == "spherical" or ellipsoidal_earth is False:
+        return np.abs(
+            2
+            * a_earth**2
+            * np.radians(dlon)
+            * np.cos(np.radians(data.cf["latitude"]))
+            * np.sin(np.radians(dlat) / 2)
+        )
 
     else:
-        raise ValueError('Given argument "ellipsoidal_earth" has to be a boolean '
-                         'or either "ellispoidal", "spherical" or "approx".')
-    
+        raise ValueError(
+            'Given argument "ellipsoidal_earth" has to be a boolean '
+            'or either "ellispoidal", "spherical" or "approx".'
+        )
+
 
 def ecarts(data, dim):
     """
@@ -242,7 +276,7 @@ def ecarts(data, dim):
     Cell limits are half-distance between each given coordinate (that are not necessary the center of each cell).
     Border cells are supposed to have the same size on each side of the given coordinate.
     Ex : coords=[1,2,4,7,9] ==> cells size is [1,1.5,2.5,2.5,2]
-    
+
     Parameters
     ----------
     data : xr.DataArray | xr.Dataset
@@ -255,14 +289,16 @@ def ecarts(data, dim):
     width : xr.DataArray
         xr.DataArray with cell width for each coordinate.
     """
-        
-    i0 = data[dim].isel({dim: slice(None, 2)}).diff(dim, label='lower')
-    i1 = (data[dim] - data[dim].diff(dim, label='upper')/2).diff(dim, label='lower')
-    i2 = data[dim].isel({dim: slice(-2, None)}).diff(dim, label='upper')
+
+    i0 = data[dim].isel({dim: slice(None, 2)}).diff(dim, label="lower")
+    i1 = (data[dim] - data[dim].diff(dim, label="upper") / 2).diff(dim, label="lower")
+    i2 = data[dim].isel({dim: slice(-2, None)}).diff(dim, label="upper")
     return xr.concat([i0, i1, i2], dim=dim)
 
 
-def distance(data, pt, ellipsoidal_earth=False, a_earth=None, f_earth=LNPY_F_EARTH_GRS80):
+def distance(
+    data, pt, ellipsoidal_earth=False, a_earth=None, f_earth=LNPY_F_EARTH_GRS80
+):
     """
     Compute the great-circle/geodetic distance between coordinates on a sphere / ellipsoid.
     The computation of the distance for ellipsoidal_earth=True uses the pyproj librairy that implements the
@@ -297,46 +333,81 @@ def distance(data, pt, ellipsoidal_earth=False, a_earth=None, f_earth=LNPY_F_EAR
         `doi: 10.1007/s00190-012-0578-z <https://doi.org/10.1007/s00190-012-0578-z>`_
     """
     if a_earth is None:
-        a_earth = float(data.attrs['radius']) if 'radius' in data.attrs else LNPY_A_EARTH_GRS80
+        a_earth = (
+            float(data.attrs["radius"])
+            if "radius" in data.attrs
+            else LNPY_A_EARTH_GRS80
+        )
 
     # Verify the format of 'pt' argument, raise Error with verbose in case of an identified problem
-    if 'latitude' in pt.coords or 'longitude' in pt.coords:
-        raise ValueError("Given xr.DataArray to compute distance with must not have latitude and longitude coordinates."
-                         " Use 'id' as a coordinate for example.")
+    if "latitude" in pt.coords or "longitude" in pt.coords:
+        raise ValueError(
+            "Given xr.DataArray to compute distance with must not have latitude and longitude coordinates."
+            " Use 'id' as a coordinate for example."
+        )
     if pt.latitude.dims != pt.longitude.dims:
-        raise ValueError("Given xr.DataArray to compute distance with must have the same dimension along latitude and "
-                         "longitude. Use 'id' as a dimension for latitude and longitude for example.")
+        raise ValueError(
+            "Given xr.DataArray to compute distance with must have the same dimension along latitude and "
+            "longitude. Use 'id' as a dimension for latitude and longitude for example."
+        )
     if len(pt.latitude.dims) != 1:
-        raise ValueError("Given xr.DataArray to compute distance with must have exactly one dimension.")
+        raise ValueError(
+            "Given xr.DataArray to compute distance with must have exactly one dimension."
+        )
 
     if ellipsoidal_earth:
         try:
             import pyproj
         except ModuleNotFoundError:
-            raise ModuleNotFoundError('pyproj module is needed for distance computation on an ellipsoid. '
-                                      'You can still use distance function with the argument ellipsoidal_earth=False.')
+            raise ModuleNotFoundError(
+                "pyproj module is needed for distance computation on an ellipsoid. "
+                "You can still use distance function with the argument ellipsoidal_earth=False."
+            )
 
         # create array input for geod.inv() function, with flat shape (pt.size, data.latitude.size, data.longitude.size)
-        lon1 = pt.cf["longitude"].values.repeat(data.cf["latitude"].size * data.cf["longitude"].size)
-        lat1 = pt.cf["latitude"].values.repeat(data.cf["latitude"].size * data.cf["longitude"].size)
-        lon2 = np.tile(data.cf["longitude"].values, pt.longitude.size * data.cf["latitude"].size)
-        lat2 = np.tile(data.cf["latitude"].values.repeat(data.cf["longitude"].size), pt.latitude.size)
+        lon1 = pt.cf["longitude"].values.repeat(
+            data.cf["latitude"].size * data.cf["longitude"].size
+        )
+        lat1 = pt.cf["latitude"].values.repeat(
+            data.cf["latitude"].size * data.cf["longitude"].size
+        )
+        lon2 = np.tile(
+            data.cf["longitude"].values, pt.longitude.size * data.cf["latitude"].size
+        )
+        lat2 = np.tile(
+            data.cf["latitude"].values.repeat(data.cf["longitude"].size),
+            pt.latitude.size,
+        )
 
         # call the computation of inverse distance and reshape the output
         geod = pyproj.Geod(a=a_earth, f=f_earth)
         geod_dist = geod.inv(lon1, lat1, lon2, lat2)[2]
 
         # reshape for DataArray creation
-        geod_dist_reshape = geod_dist.reshape((pt.latitude.size,
-                                               data.cf["latitude"].size, data.cf["longitude"].size))
-        return xr.DataArray(geod_dist_reshape,
-                            coords={pt.latitude.dims[0]: pt[pt.latitude.dims[0]],  # pt.latitude.dims[0] is the pt dim
-                                    'latitude': data['latitude'], 'longitude': data['longitude']},
-                            dims=['id', 'latitude', 'longitude'])
+        geod_dist_reshape = geod_dist.reshape(
+            (pt.latitude.size, data.cf["latitude"].size, data.cf["longitude"].size)
+        )
+        return xr.DataArray(
+            geod_dist_reshape,
+            coords={
+                pt.latitude.dims[0]: pt[
+                    pt.latitude.dims[0]
+                ],  # pt.latitude.dims[0] is the pt dim
+                "latitude": data["latitude"],
+                "longitude": data["longitude"],
+            },
+            dims=["id", "latitude", "longitude"],
+        )
     else:
-        return a_earth*np.real(np.arccos(np.cos(np.deg2rad(pt.cf["latitude"]))*np.cos(np.deg2rad(data.cf["latitude"])) *
-                                         np.cos(np.deg2rad(data.cf["longitude"] - pt.cf["longitude"])) +
-                                         np.sin(np.deg2rad(pt.cf["latitude"]))*np.sin(np.deg2rad(data.cf["latitude"]))))
+        return a_earth * np.real(
+            np.arccos(
+                np.cos(np.deg2rad(pt.cf["latitude"]))
+                * np.cos(np.deg2rad(data.cf["latitude"]))
+                * np.cos(np.deg2rad(data.cf["longitude"] - pt.cf["longitude"]))
+                + np.sin(np.deg2rad(pt.cf["latitude"]))
+                * np.sin(np.deg2rad(data.cf["latitude"]))
+            )
+        )
 
 
 def assert_grid(ds):
@@ -358,15 +429,20 @@ def assert_grid(ds):
     AssertionError
         This function raises AssertionError is self._obj is not a xr.Dataset corresponding to spherical harmonics.
     """
-    if 'latitude' not in ds.coords:
-        raise AssertionError("The latitude coordinates that should be named 'latitude' does not exist")
-    if 'longitude' not in ds.coords:
-        raise AssertionError("The longitude coordinates that should be named 'longitude' does not exist")
+    if "latitude" not in ds.coords:
+        raise AssertionError(
+            "The latitude coordinates that should be named 'latitude' does not exist"
+        )
+    if "longitude" not in ds.coords:
+        raise AssertionError(
+            "The longitude coordinates that should be named 'longitude' does not exist"
+        )
     return True
 
-def surface_grid(da,type='nan',**kwargs):
-    if type=='nan':
-        sel=da.notnull()
-    elif type=='bool':
-        sel=da
-    return surface_cell(da,**kwargs).where(sel).sum(['latitude','longitude'])
+
+def surface_grid(da, type="nan", **kwargs):
+    if type == "nan":
+        sel = da.notnull()
+    elif type == "bool":
+        sel = da
+    return surface_cell(da, **kwargs).where(sel).sum(["latitude", "longitude"])

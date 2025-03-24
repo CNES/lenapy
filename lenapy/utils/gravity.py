@@ -27,11 +27,18 @@ Examples
 
 import numpy as np
 import xarray as xr
+
 from lenapy.constants import *
 
 
-def change_reference(ds, new_radius=LNPY_A_EARTH_GRS80, new_earth_gravity_constant=LNPY_GM_EARTH,
-                     old_radius=None, old_earth_gravity_constant=None, apply=False):
+def change_reference(
+    ds,
+    new_radius=LNPY_A_EARTH_GRS80,
+    new_earth_gravity_constant=LNPY_GM_EARTH,
+    old_radius=None,
+    old_earth_gravity_constant=None,
+    apply=False,
+):
     """
     Spherical Harmonics dataset are associated with an earth radius *a* and *µ* or *GM* the earth gravity constant.
     This function return the dataset updated with the new constants associated to it in input
@@ -71,14 +78,19 @@ def change_reference(ds, new_radius=LNPY_A_EARTH_GRS80, new_earth_gravity_consta
     >>> ds_new_ref = change_reference(ds, new_radius=6378137.0, new_earth_gravity_constant=3.986004418e14)
     """
     try:
-        old_radius = ds.attrs['radius'] if old_radius is None else old_radius
-        old_earth_gravity_constant = ds.attrs['earth_gravity_constant'] if old_earth_gravity_constant is None \
+        old_radius = ds.attrs["radius"] if old_radius is None else old_radius
+        old_earth_gravity_constant = (
+            ds.attrs["earth_gravity_constant"]
+            if old_earth_gravity_constant is None
             else old_earth_gravity_constant
+        )
 
     except KeyError:
-        raise KeyError("If you provide no information about the current reference constants of your ds dataset using "
-                       "'old_radius' and 'old_earth_gravity_constant' parameters, those information need to be "
-                       "contained in ds.attrs dict as ds.attrs['radius'] and ds.attrs['earth_gravity_constant'].")
+        raise KeyError(
+            "If you provide no information about the current reference constants of your ds dataset using "
+            "'old_radius' and 'old_earth_gravity_constant' parameters, those information need to be "
+            "contained in ds.attrs dict as ds.attrs['radius'] and ds.attrs['earth_gravity_constant']."
+        )
 
     gravity_constant_ratio = old_earth_gravity_constant / new_earth_gravity_constant
     update_factor = gravity_constant_ratio * (old_radius / new_radius) ** ds.l
@@ -87,12 +99,12 @@ def change_reference(ds, new_radius=LNPY_A_EARTH_GRS80, new_earth_gravity_consta
     ds_out = ds if apply else ds.copy(deep=True)
 
     # Update the clm and slm values
-    ds_out['clm'] *= update_factor
-    ds_out['slm'] *= update_factor
+    ds_out["clm"] *= update_factor
+    ds_out["slm"] *= update_factor
 
     # Update the attributes in the output dataset
-    ds_out.attrs['radius'] = new_radius
-    ds_out.attrs['earth_gravity_constant'] = new_earth_gravity_constant
+    ds_out.attrs["radius"] = new_radius
+    ds_out.attrs["earth_gravity_constant"] = new_earth_gravity_constant
 
     return ds_out
 
@@ -143,13 +155,17 @@ def change_tide_system(ds, new_tide, old_tide=None, k20=None, apply=False):
         `link to archive <https://www.ngs.noaa.gov/PUBS_LIB/EGM96_GEOID_PAPER/egm96_geoid_paper.html>`_
     """
     if old_tide is None:
-        if 'tide_system' in ds.attrs:
-            old_tide = ds.attrs['tide_system']
-            if ds.attrs['tide_system'] == 'missing':
-                raise ValueError("No information about tide in ds.attrs['tide_system'], the info is 'missing'. "
-                                 "You need to provide 'old_tide' param")
+        if "tide_system" in ds.attrs:
+            old_tide = ds.attrs["tide_system"]
+            if ds.attrs["tide_system"] == "missing":
+                raise ValueError(
+                    "No information about tide in ds.attrs['tide_system'], the info is 'missing'. "
+                    "You need to provide 'old_tide' param"
+                )
         else:
-            raise ValueError("No information ds.attrs['tide_system'] in dataset, you need to provide 'old_tide' param")
+            raise ValueError(
+                "No information ds.attrs['tide_system'] in dataset, you need to provide 'old_tide' param"
+            )
 
     # -- Define IERS 2010 constants
     A0 = 4.4228e-8
@@ -158,17 +174,17 @@ def change_tide_system(ds, new_tide, old_tide=None, k20=None, apply=False):
         k20 = 0.30190
 
     # -- conversion for each tidal system
-    if new_tide == 'zero_tide' and 'mean' in old_tide:
+    if new_tide == "zero_tide" and "mean" in old_tide:
         conv = -1
-    elif new_tide == 'mean_tide' and ('zero' in old_tide or 'inclusive' in old_tide):
+    elif new_tide == "mean_tide" and ("zero" in old_tide or "inclusive" in old_tide):
         conv = 1
-    elif new_tide == 'tide_free' and 'mean' in old_tide:
+    elif new_tide == "tide_free" and "mean" in old_tide:
         conv = -(1 + k20)
-    elif new_tide == 'mean_tide' and 'free' in old_tide:
-        conv = (1 + k20)
-    elif new_tide == 'tide_free' and ('zero' in old_tide or 'inclusive' in old_tide):
+    elif new_tide == "mean_tide" and "free" in old_tide:
+        conv = 1 + k20
+    elif new_tide == "tide_free" and ("zero" in old_tide or "inclusive" in old_tide):
         conv = -k20
-    elif new_tide == 'zero_tide' and ('free' in old_tide or 'exclusive' in old_tide):
+    elif new_tide == "zero_tide" and ("free" in old_tide or "exclusive" in old_tide):
         conv = k20
     else:
         conv = 0
@@ -177,7 +193,7 @@ def change_tide_system(ds, new_tide, old_tide=None, k20=None, apply=False):
     ds_out = ds if apply else ds.copy(deep=True)
 
     ds_out.clm.loc[dict(l=2, m=0)] += conv * A0 * H0
-    ds_out.attrs['tide_system'] = new_tide
+    ds_out.attrs["tide_system"] = new_tide
 
     # -- return ds
     return ds_out
@@ -225,23 +241,23 @@ def change_love_reference_frame(ds, new_frame, old_frame, apply=False):
     ds_love = ds if apply else ds.copy(deep=True)
 
     # compute k1, h1 and l1 into CE
-    if old_frame == 'CE':
+    if old_frame == "CE":
         k1 = ds_love.kl.sel(l=1).values
         h1 = ds_love.hl.sel(l=1).values
         l1 = ds_love.ll.sel(l=1).values
-    elif old_frame == 'CM':
+    elif old_frame == "CM":
         k1 = ds_love.kl.sel(l=1).values + 1
         h1 = ds_love.hl.sel(l=1).values + 1
         l1 = ds_love.ll.sel(l=1).values + 1
-    elif old_frame == 'CF':
+    elif old_frame == "CF":
         k1 = 0
         h1 = ds_love.hl.sel(l=1).values + ds_love.kl.sel(l=1).values
-        l1 = -ds_love.hl.sel(l=1).values/2 - ds_love.kl.sel(l=1).values
-    elif old_frame == 'CL':
+        l1 = -ds_love.hl.sel(l=1).values / 2 - ds_love.kl.sel(l=1).values
+    elif old_frame == "CL":
         k1 = 0
         h1 = ds_love.hl.sel(l=1).values - ds_love.kl.sel(l=1).values
         l1 = -ds_love.kl.sel(l=1).values
-    elif old_frame == 'CH':
+    elif old_frame == "CH":
         k1 = 0
         h1 = -ds_love.kl.sel(l=1).values
         l1 = ds_love.ll.sel(l=1).values - ds_love.kl.sel(l=1).values
@@ -249,26 +265,26 @@ def change_love_reference_frame(ds, new_frame, old_frame, apply=False):
         raise ValueError
 
     # compute new_frame degree 1 love numbers from CE
-    if new_frame == 'CE':
-        ds_love.kl.loc[{'l': 1}] = k1
-        ds_love.hl.loc[{'l': 1}] = h1
-        ds_love.ll.loc[{'l': 1}] = l1
-    elif new_frame == 'CM':
-        ds_love.kl.loc[{'l': 1}] = k1 - 1
-        ds_love.hl.loc[{'l': 1}] = h1 - 1
-        ds_love.ll.loc[{'l': 1}] = l1 - 1
-    elif new_frame == 'CF':
-        ds_love.kl.loc[{'l': 1}] = -h1/3 - 2*l1/3
-        ds_love.hl.loc[{'l': 1}] = 2*(h1 - l1)/3
-        ds_love.ll.loc[{'l': 1}] = (l1 - h1)/3
-    elif new_frame == 'CL':
-        ds_love.kl.loc[{'l': 1}] = -l1
-        ds_love.hl.loc[{'l': 1}] = h1 - l1
-        ds_love.ll.loc[{'l': 1}] = 0
-    elif new_frame == 'CH':
-        ds_love.kl.loc[{'l': 1}] = -h1
-        ds_love.hl.loc[{'l': 1}] = 0
-        ds_love.ll.loc[{'l': 1}] = l1 - h1
+    if new_frame == "CE":
+        ds_love.kl.loc[{"l": 1}] = k1
+        ds_love.hl.loc[{"l": 1}] = h1
+        ds_love.ll.loc[{"l": 1}] = l1
+    elif new_frame == "CM":
+        ds_love.kl.loc[{"l": 1}] = k1 - 1
+        ds_love.hl.loc[{"l": 1}] = h1 - 1
+        ds_love.ll.loc[{"l": 1}] = l1 - 1
+    elif new_frame == "CF":
+        ds_love.kl.loc[{"l": 1}] = -h1 / 3 - 2 * l1 / 3
+        ds_love.hl.loc[{"l": 1}] = 2 * (h1 - l1) / 3
+        ds_love.ll.loc[{"l": 1}] = (l1 - h1) / 3
+    elif new_frame == "CL":
+        ds_love.kl.loc[{"l": 1}] = -l1
+        ds_love.hl.loc[{"l": 1}] = h1 - l1
+        ds_love.ll.loc[{"l": 1}] = 0
+    elif new_frame == "CH":
+        ds_love.kl.loc[{"l": 1}] = -h1
+        ds_love.hl.loc[{"l": 1}] = 0
+        ds_love.ll.loc[{"l": 1}] = l1 - h1
     else:
         raise ValueError
 
@@ -315,16 +331,20 @@ def gauss_weights(radius, lmax, a_earth=LNPY_A_EARTH_GRS80, cutoff=1e-10):
     a = np.log(2) / (1 - np.cos(radius / a_earth))
     # Initialize weight for degree 0 and 1
     gaussian_weights[0] = 1
-    gaussian_weights[1] = gaussian_weights[0] * ((1 + np.exp(-2 * a)) / (1 - np.exp(-2 * a)) - 1 / a)
+    gaussian_weights[1] = gaussian_weights[0] * (
+        (1 + np.exp(-2 * a)) / (1 - np.exp(-2 * a)) - 1 / a
+    )
 
     for l in range(2, lmax + 1):
         # recursion with the two previous terms
-        gaussian_weights[l] = gaussian_weights[l - 1] * (1 - 2 * l) / a + gaussian_weights[l - 2]
+        gaussian_weights[l] = (
+            gaussian_weights[l - 1] * (1 - 2 * l) / a + gaussian_weights[l - 2]
+        )
 
         # test if weight is less than cutoff
         if gaussian_weights[l] < cutoff:
             # set all weights after the current l to cutoff
-            gaussian_weights[l: lmax + 1] = cutoff
+            gaussian_weights[l : lmax + 1] = cutoff
             break
 
-    return xr.DataArray(gaussian_weights, dims=['l'], coords={'l': np.arange(lmax + 1)})
+    return xr.DataArray(gaussian_weights, dims=["l"], coords={"l": np.arange(lmax + 1)})
