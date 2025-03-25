@@ -60,13 +60,15 @@ formatter = [
 test = [
     "pytest",
     "pytest-cov",
+    "nbmake",
 ]
 doc = [
     "sphinx",
 ]
 notebook = [
     "notebook ==7.3.3",
-    "myst-nb ==1.2.0"
+    "myst-nb ==1.2.0",
+    "cartopy"
 ]
 quality = [
     "pylint",
