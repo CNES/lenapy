@@ -80,6 +80,15 @@ pytest:
       - ./.ci-reports/
     expire_in: 1 day
 
+test_notebooks:
+  stage: quality
+  image: ${ARTIFACTORY_HOST}/${TAG_IMAGE_CONDA}
+  script:
+    - source activate lenapy_env
+    - pip install -e .[test]
+    - pip install -e .[notebook]
+    - pytest --nbmake --nbmake-kernel=python3 doc/tutorials/
+
 pylint_analysis:
   stage: quality
   image: ${ARTIFACTORY_HOST}/${TAG_IMAGE_CONDA}
