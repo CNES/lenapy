@@ -74,10 +74,12 @@ pytest:
   script:
     - source activate lenapy_env
     - pip install -e .[test]
-    - pytest -s tests -m ci --cov=lenapy --cov-report=xml:.ci-reports/coverage.xml --cov-report=term --junitxml=.ci-reports/junit-report.xml
+    - pytest -s tests --cov=lenapy --cov-report=xml:.ci-reports/coverage.xml --cov-report html:cov_html --cov-report=term --junitxml=.ci-reports/junit-report.xml
   artifacts:
+    when: always
     paths:
       - ./.ci-reports/
+      - ./cov_html/
     expire_in: 1 day
 
 test_notebooks:
