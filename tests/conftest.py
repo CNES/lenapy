@@ -28,6 +28,14 @@ def air_temperature_data():
 
 
 @pytest.fixture(scope="session")
+def ohc_data():
+    return xr.open_dataset(
+        LenapyTestsPath(Path(__file__).parent.parent).data / "ecco.nc",
+        engine="lenapyNetcdf",
+    )
+
+
+@pytest.fixture(scope="session")
 def ersstv5_data():
     """Fixture session to load et rename data from xarray tutorials."""
     dataset = xr.tutorial.open_dataset("ersstv5")
