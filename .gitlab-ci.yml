@@ -71,6 +71,10 @@ formater:
 pytest:
   stage: quality
   image: ${ARTIFACTORY_HOST}/${TAG_IMAGE_CONDA}
+  before_script:
+    - export no_proxy=$NO_PROXY
+    - export http_proxy=$HTTP_PROXY
+    - export https_proxy=$HTTP_PROXY
   script:
     - source activate lenapy_env
     - pip install -e .[test]
