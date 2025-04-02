@@ -76,9 +76,6 @@ def test_distance(air_temperature_data):
     air_temperature_data.lngeo.distance(pt_coords)
 
 
-@pytest.mark.skip(reason="data isas.nc is missing")
-def test_isosurface(lenapy_paths):
+def test_isosurface(ohc_data):
     # TODO : asserts
-    input_data = lenapy_paths.data / "isas.nc"
-    data = xr.open_dataset(input_data, engine="lenapyNetcdf").temp
-    data.isosurface(3, "depth")
+    depth = ohc_data.lnocean.sigma0.lngeo.isosurface(27, "depth")
