@@ -64,6 +64,9 @@ test = [
 ]
 doc = [
     "sphinx",
+    "sphinx-rtd-theme",
+    "sphinx-mdinclude",
+    "nbsphinx",
 ]
 notebook = [
     "notebook ==7.3.3",
