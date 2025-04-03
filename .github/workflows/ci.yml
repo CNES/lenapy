@@ -194,3 +194,4 @@ jobs:
           name: doc-build
           path: |
             doc/build
+          retention-days: 7
