@@ -74,7 +74,7 @@ jobs:
         shell: bash -l {0}
         run: |
           pip install -e .[test]
-          pytest -s tests --cov=lenapy --cov-report=xml:.ci-reports/coverage.xml --cov-report html:cov_html --cov-report=term
+          pytest -s tests --cov=lenapy --cov-report=xml:.ci-reports/coverage.xml --cov-report html:cov_html --cov-report=term --junitxml=pytest-results.xml
 
       - name: Upload Coverage Report
         uses: actions/upload-artifact@v4
@@ -83,6 +83,11 @@ jobs:
           path: |
             .ci-reports/
             cov_html/
+            pytest-results.xml
+      - name: Publish test results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: pytest-results.xml
 
   test_notebooks:
     name: Test Jupyter Notebooks
