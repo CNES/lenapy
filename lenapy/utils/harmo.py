@@ -12,23 +12,46 @@ This module includes functions to:
 
 """
 
-
 import datetime
-import pathlib
 import inspect
+import pathlib
+
+import cf_xarray as cfxr
 import numpy as np
+import pandas as pd
 import scipy as sc
 import xarray as xr
-import pandas as pd
-import cf_xarray as cfxr
+
 from lenapy.constants import *
 
 
-def sh_to_grid(data, unit='mewh', errors=False,
-               lmax=None, mmax=None, lmin=None, mmin=None, used_l=None, used_m=None,
-               lonmin=-180, lonmax=180, latmin=-90, latmax=90, bounds=None,
-               dlon=1, dlat=1, longitude=None, latitude=None, radians_in=False, force_mass_conservation=False,
-               ellipsoidal_earth=False, include_elastic=True, plm=None, normalization_plm='4pi', **kwargs):
+def sh_to_grid(
+    data,
+    unit="mewh",
+    errors=False,
+    lmax=None,
+    mmax=None,
+    lmin=None,
+    mmin=None,
+    used_l=None,
+    used_m=None,
+    lonmin=-180,
+    lonmax=180,
+    latmin=-90,
+    latmax=90,
+    bounds=None,
+    dlon=1,
+    dlat=1,
+    longitude=None,
+    latitude=None,
+    radians_in=False,
+    force_mass_conservation=False,
+    ellipsoidal_earth=False,
+    include_elastic=True,
+    plm=None,
+    normalization_plm="4pi",
+    **kwargs,
+):
     """
     Transform Spherical Harmonics (SH) dataset into spatial DataArray.
     With choice for constants, unit, love numbers, degree/order, spatial grid latitude and longitude, Earth hypothesis.
@@ -123,7 +146,9 @@ def sh_to_grid(data, unit='mewh', errors=False,
         used_l.sort()
         used_l = used_l[1:]
     elif force_mass_conservation and 0 in used_l and len(used_l) == 1:
-        force_mass_conservation = False  # no need of mass conservation with only coefficient C0,0
+        force_mass_conservation = (
+            False  # no need of mass conservation with only coefficient C0,0
+        )
     else:
         use_czero_coef = False
 
@@ -137,7 +162,9 @@ def sh_to_grid(data, unit='mewh', errors=False,
         if len(bounds) != 4:
             raise TypeError
     except TypeError:
-        raise TypeError('Given argument "bounds" has to be a list with 4 elements [lonmin, lonmax, latmin, latmax]')
+        raise TypeError(
+            'Given argument "bounds" has to be a list with 4 elements [lonmin, lonmax, latmin, latmax]'
+        )
 
     # Convert bounds in radians if necessary
     # work only if bounds or all lonmin, lonmax, latmin, latmax are given in the announced unit
@@ -166,56 +193,97 @@ def sh_to_grid(data, unit='mewh', errors=False,
 
     cos_latitude = np.cos(np.deg2rad(latitude))
     sin_latitude = np.sin(np.deg2rad(latitude))
-    f_earth = kwargs['f_earth'] if 'f_earth' in kwargs else LNPY_F_EARTH_GRS80
-    geocentric_colat = xr.DataArray(np.arctan2(cos_latitude, (1 - f_earth) ** 2 * sin_latitude), dims=['latitude'],
-                                    coords={'latitude': latitude})
+    f_earth = kwargs["f_earth"] if "f_earth" in kwargs else LNPY_F_EARTH_GRS80
+    geocentric_colat = xr.DataArray(
+        np.arctan2(cos_latitude, (1 - f_earth) ** 2 * sin_latitude),
+        dims=["latitude"],
+        coords={"latitude": latitude},
+    )
 
     # -- beginning of computation
     # Computing plm for converting to spatial domain
     if plm is None:
         if ellipsoidal_earth:
-            plm = compute_plm(lmax, np.cos(geocentric_colat),
-                              mmax=mmax, normalization=normalization_plm)
+            plm = compute_plm(
+                lmax,
+                np.cos(geocentric_colat),
+                mmax=mmax,
+                normalization=normalization_plm,
+            )
         else:
-            plm = compute_plm(lmax, sin_latitude,
-                              mmax=mmax, normalization=normalization_plm)
-        plm = xr.DataArray(plm, dims=['l', 'm', 'latitude'],
-                           coords={'l': np.arange(lmax + 1), 'm': np.arange(mmax + 1), 'latitude': latitude})
+            plm = compute_plm(
+                lmax, sin_latitude, mmax=mmax, normalization=normalization_plm
+            )
+        plm = xr.DataArray(
+            plm,
+            dims=["l", "m", "latitude"],
+            coords={
+                "l": np.arange(lmax + 1),
+                "m": np.arange(mmax + 1),
+                "latitude": latitude,
+            },
+        )
 
     else:
         # Verify plm integrity
-        if (not isinstance(plm, xr.DataArray) or
-                'l' not in plm.coords or 'm' not in plm.coords or 'latitude' not in plm.coords):
-            raise TypeError('Given argument "plm" has to be a DataArray with 3 coordinates [l, m, latitude]')
+        if (
+            not isinstance(plm, xr.DataArray)
+            or "l" not in plm.coords
+            or "m" not in plm.coords
+            or "latitude" not in plm.coords
+        ):
+            raise TypeError(
+                'Given argument "plm" has to be a DataArray with 3 coordinates [l, m, latitude]'
+            )
         elif plm.l.max() < lmax:
-            raise AssertionError('Given argument "plm" maximal degree is too small ', plm.l.max(), '<', lmax)
+            raise AssertionError(
+                'Given argument "plm" maximal degree is too small ',
+                plm.l.max(),
+                "<",
+                lmax,
+            )
         elif (plm.latitude.values != latitude).all():
-            raise AssertionError('Given argument "plm" latitude does not correspond to the wanted latitude ', latitude)
+            raise AssertionError(
+                'Given argument "plm" latitude does not correspond to the wanted latitude ',
+                latitude,
+            )
 
     # scale factor for each degree
-    lfactor, cst = l_factor_conv(used_l, unit=unit, include_elastic=include_elastic,
-                                 ellipsoidal_earth=ellipsoidal_earth, geocentric_colat=geocentric_colat,
-                                 attrs=data.attrs, **kwargs)
+    lfactor, cst = l_factor_conv(
+        used_l,
+        unit=unit,
+        include_elastic=include_elastic,
+        ellipsoidal_earth=ellipsoidal_earth,
+        geocentric_colat=geocentric_colat,
+        attrs=data.attrs,
+        **kwargs,
+    )
 
     # convolve unit over degree
     plm_lfactor = plm.sel(l=used_l, m=used_m) * lfactor
 
     # Calculating cos(m*phi) and sin(m*phi)
-    c_cos = xr.DataArray(np.cos(used_m[:, np.newaxis] @ np.deg2rad(longitude)[np.newaxis, :]),
-                         dims=['m', 'longitude'], coords={'m': used_m, 'longitude': longitude})
-    s_sin = xr.DataArray(np.sin(used_m[:, np.newaxis] @ np.deg2rad(longitude)[np.newaxis, :]),
-                         dims=['m', 'longitude'], coords={'m': used_m, 'longitude': longitude})
+    c_cos = xr.DataArray(
+        np.cos(used_m[:, np.newaxis] @ np.deg2rad(longitude)[np.newaxis, :]),
+        dims=["m", "longitude"],
+        coords={"m": used_m, "longitude": longitude},
+    )
+    s_sin = xr.DataArray(
+        np.sin(used_m[:, np.newaxis] @ np.deg2rad(longitude)[np.newaxis, :]),
+        dims=["m", "longitude"],
+        coords={"m": used_m, "longitude": longitude},
+    )
 
     # summation over all spherical harmonic degrees
     if not errors:
-        d_clm = (plm_lfactor * data.sel(l=used_l, m=used_m).clm).sum(dim='l')
-        d_slm = (plm_lfactor * data.sel(l=used_l, m=used_m).slm).sum(dim='l')
+        d_clm = (plm_lfactor * data.sel(l=used_l, m=used_m).clm).sum(dim="l")
+        d_slm = (plm_lfactor * data.sel(l=used_l, m=used_m).slm).sum(dim="l")
 
         # Final calcul on the grid
         xgrid = c_cos.dot(d_clm) + s_sin.dot(d_slm)
     else:
-        d_clm = (plm_lfactor**2 * data.sel(l=used_l, m=used_m).clm**2).sum(dim='l')
-        d_slm = (plm_lfactor**2 * data.sel(l=used_l, m=used_m).slm**2).sum(dim='l')
+        d_clm = (plm_lfactor**2 * data.sel(l=used_l, m=used_m).clm ** 2).sum(dim="l")
+        d_slm = (plm_lfactor**2 * data.sel(l=used_l, m=used_m).slm ** 2).sum(dim="l")
 
         # Final calcul of sigma on the grid
         xgrid = np.sqrt((c_cos**2).dot(d_clm) + (s_sin**2).dot(d_slm))
@@ -225,32 +293,53 @@ def sh_to_grid(data, unit='mewh', errors=False,
     # force mass conservation by removing the global mass computed without C0 coefficient (generated by C2n,0 coeffs)
     if force_mass_conservation and not errors:
         if ellipsoidal_earth:
-            raise ValueError('Mass conservation set to True with argument "force_mass_conservation" cannot be'
-                             ' forced on ellipsoidal Earth')
+            raise ValueError(
+                'Mass conservation set to True with argument "force_mass_conservation" cannot be'
+                " forced on ellipsoidal Earth"
+            )
 
-        int_fact = xgrid.lngeo.surface_cell(ellipsoidal_earth=False, a_earth=1) / (4*np.pi)
+        int_fact = xgrid.lngeo.surface_cell(ellipsoidal_earth=False, a_earth=1) / (
+            4 * np.pi
+        )
         # remove the mass on the whole grid
-        xgrid = xgrid - (xgrid * int_fact).sum(dim=['latitude', 'longitude']) / int_fact.sum()
+        xgrid = (
+            xgrid
+            - (xgrid * int_fact).sum(dim=["latitude", "longitude"]) / int_fact.sum()
+        )
 
         # restore C0 mass
         if use_czero_coef:
-            lfactor_zero = l_factor_conv(np.array([0]), unit=unit, attrs=data.attrs, **kwargs)[0]
-            xgrid = xgrid + (lfactor_zero*data.clm.sel(l=0, m=0)).values
+            lfactor_zero = l_factor_conv(
+                np.array([0]), unit=unit, attrs=data.attrs, **kwargs
+            )[0]
+            xgrid = xgrid + (lfactor_zero * data.clm.sel(l=0, m=0)).values
 
     xgrid = xgrid.transpose("latitude", "longitude", ...)
 
-    xgrid.attrs = {'units': unit, 'max_degree': int(lmax)}
-    if 'radius' in data.attrs:
-        xgrid.attrs['radius'] = data.attrs['radius']
-    if 'earth_gravity_constant' in data.attrs:
-        xgrid.attrs['earth_gravity_constant'] = data.attrs['earth_gravity_constant']
+    xgrid.attrs = {"units": unit, "max_degree": int(lmax)}
+    if "radius" in data.attrs:
+        xgrid.attrs["radius"] = data.attrs["radius"]
+    if "earth_gravity_constant" in data.attrs:
+        xgrid.attrs["earth_gravity_constant"] = data.attrs["earth_gravity_constant"]
 
     return xgrid
 
 
-def grid_to_sh(grid, lmax, unit='mewh',
-               mmax=None, lmin=0, mmin=0, used_l=None, used_m=None,
-               ellipsoidal_earth=False, include_elastic=True, plm=None, normalization_plm='4pi', **kwargs):
+def grid_to_sh(
+    grid,
+    lmax,
+    unit="mewh",
+    mmax=None,
+    lmin=0,
+    mmin=0,
+    used_l=None,
+    used_m=None,
+    ellipsoidal_earth=False,
+    include_elastic=True,
+    plm=None,
+    normalization_plm="4pi",
+    **kwargs,
+):
     """
     Transform gravity field spatial representation DataArray into Spherical Harmonics (SH) dataset.
     With choice for constants, unit of the spatial DataArray, love_numbers, degree/order, Earth hypothesis.
@@ -312,9 +401,12 @@ def grid_to_sh(grid, lmax, unit='mewh',
     cos_latitude = np.cos(np.deg2rad(grid.cf["latitude"].values))
     sin_latitude = np.sin(np.deg2rad(grid.cf["latitude"].values))
 
-    f_earth = kwargs['f_earth'] if 'f_earth' in kwargs else LNPY_F_EARTH_GRS80
-    geocentric_colat = xr.DataArray(np.arctan2(cos_latitude, (1 - f_earth) ** 2 * sin_latitude), dims=['latitude'],
-                                    coords={'latitude': grid.cf["latitude"]})
+    f_earth = kwargs["f_earth"] if "f_earth" in kwargs else LNPY_F_EARTH_GRS80
+    geocentric_colat = xr.DataArray(
+        np.arctan2(cos_latitude, (1 - f_earth) ** 2 * sin_latitude),
+        dims=["latitude"],
+        coords={"latitude": grid.cf["latitude"]},
+    )
 
     # create DataArray corresponding to the integration factor for each cell
     # case for ellipsoidal earth where integration over ellipsoidal cell
@@ -324,69 +416,115 @@ def grid_to_sh(grid, lmax, unit='mewh',
 
     # case for spherical earth where integration over spherical cell
     else:
-        int_fact = grid.lngeo.surface_cell(ellipsoidal_earth=False, a_earth=1) / (4*np.pi)
+        int_fact = grid.lngeo.surface_cell(ellipsoidal_earth=False, a_earth=1) / (
+            4 * np.pi
+        )
 
     # Create a readable cf_xarray DataArray
-    int_fact['latitude'].attrs = dict(standard_name='latitude')
-    int_fact['longitude'].attrs = dict(standard_name='longitude')
+    int_fact["latitude"].attrs = dict(standard_name="latitude")
+    int_fact["longitude"].attrs = dict(standard_name="longitude")
 
     # scale factor for each degree
-    lfactor, cst = l_factor_conv(used_l, unit=unit, include_elastic=include_elastic,
-                                 ellipsoidal_earth=ellipsoidal_earth, geocentric_colat=geocentric_colat,
-                                 attrs=grid.attrs, **kwargs)
+    lfactor, cst = l_factor_conv(
+        used_l,
+        unit=unit,
+        include_elastic=include_elastic,
+        ellipsoidal_earth=ellipsoidal_earth,
+        geocentric_colat=geocentric_colat,
+        attrs=grid.attrs,
+        **kwargs,
+    )
 
     # -- prepare variables for the computation of SH
     # Computing plm for converting to spatial domain
     if plm is None:
         if ellipsoidal_earth:
-            plm = compute_plm(lmax, np.cos(geocentric_colat),
-                              mmax=mmax, normalization=normalization_plm)
+            plm = compute_plm(
+                lmax,
+                np.cos(geocentric_colat),
+                mmax=mmax,
+                normalization=normalization_plm,
+            )
         else:
-            plm = compute_plm(lmax, sin_latitude,
-                              mmax=mmax, normalization=normalization_plm)
-        plm = xr.DataArray(plm, dims=['l', 'm', 'latitude'],
-                           coords={'l': np.arange(lmax + 1), 'm': np.arange(lmax + 1), 'latitude': grid.cf["latitude"]})
+            plm = compute_plm(
+                lmax, sin_latitude, mmax=mmax, normalization=normalization_plm
+            )
+        plm = xr.DataArray(
+            plm,
+            dims=["l", "m", "latitude"],
+            coords={
+                "l": np.arange(lmax + 1),
+                "m": np.arange(lmax + 1),
+                "latitude": grid.cf["latitude"],
+            },
+        )
 
     else:
         # Verify plm integrity
-        align = xr.align(plm.latitude, grid.cf["latitude"])  # return the intersection of latitudes for each input
-        if (not isinstance(plm, xr.DataArray) or
-                'l' not in plm.coords or 'm' not in plm.coords or 'latitude' not in plm.coords):
-            raise TypeError('Given argument "plm" has to be a DataArray with 3 coordinates [l, m, latitude]')
+        align = xr.align(
+            plm.latitude, grid.cf["latitude"]
+        )  # return the intersection of latitudes for each input
+        if (
+            not isinstance(plm, xr.DataArray)
+            or "l" not in plm.coords
+            or "m" not in plm.coords
+            or "latitude" not in plm.coords
+        ):
+            raise TypeError(
+                'Given argument "plm" has to be a DataArray with 3 coordinates [l, m, latitude]'
+            )
         elif plm.l.max() < lmax:
-            raise AssertionError('Given argument "plm" maximal degree is too small ', plm.l.max(), '<', lmax)
+            raise AssertionError(
+                'Given argument "plm" maximal degree is too small ',
+                plm.l.max(),
+                "<",
+                lmax,
+            )
         elif align[0] != plm.latitude.size or align[1].size != grid.cf["latitude"].size:
-            raise AssertionError('Given argument "plm" latitude does not correspond to the grid latitude')
+            raise AssertionError(
+                'Given argument "plm" latitude does not correspond to the grid latitude'
+            )
 
     # convolve unit over degree
     plm_lfactor = plm.sel(l=used_l, m=used_m) / lfactor
 
     # Calculating cos/sin of phi arrays, [m,phi]
-    c_cos = xr.DataArray(np.cos(used_m[:, np.newaxis] @ np.deg2rad(grid.cf["longitude"].values)[np.newaxis, :]),
-                         dims=['m', 'longitude'], coords={'m': used_m, 'longitude': grid.cf["longitude"]})
-    s_sin = xr.DataArray(np.sin(used_m[:, np.newaxis] @ np.deg2rad(grid.longitude.values)[np.newaxis, :]),
-                         dims=['m', 'longitude'], coords={'m': used_m, 'longitude': grid.cf["longitude"]})
+    c_cos = xr.DataArray(
+        np.cos(
+            used_m[:, np.newaxis]
+            @ np.deg2rad(grid.cf["longitude"].values)[np.newaxis, :]
+        ),
+        dims=["m", "longitude"],
+        coords={"m": used_m, "longitude": grid.cf["longitude"]},
+    )
+    s_sin = xr.DataArray(
+        np.sin(
+            used_m[:, np.newaxis] @ np.deg2rad(grid.longitude.values)[np.newaxis, :]
+        ),
+        dims=["m", "longitude"],
+        coords={"m": used_m, "longitude": grid.cf["longitude"]},
+    )
 
     # -- Computation of SH
     # Multiplying data and integral factor with sin/cos of m*longitude. This will sum over longitude, [m,theta]
-    dcos = c_cos.dot(grid.cf.rename_like(int_fact) * int_fact, dim=['longitude'])
-    dsin = s_sin.dot(grid.cf.rename_like(int_fact) * int_fact, dim=['longitude'])
+    dcos = c_cos.dot(grid.cf.rename_like(int_fact) * int_fact, dim=["longitude"])
+    dsin = s_sin.dot(grid.cf.rename_like(int_fact) * int_fact, dim=["longitude"])
 
     # Multiplying plm and degree scale factors with last variable to sum over latitude, [l, m, ...]
-    clm = plm_lfactor.dot(dcos, dim=['latitude'])
-    slm = plm_lfactor.dot(dsin, dim=['latitude'])
+    clm = plm_lfactor.dot(dcos, dim=["latitude"])
+    slm = plm_lfactor.dot(dsin, dim=["latitude"])
 
     # add name for the merge into xr.Dataset
-    clm.name = 'clm'
-    slm.name = 'slm'
+    clm.name = "clm"
+    slm.name = "slm"
 
-    ds_out = xr.merge([clm, slm], join='exact')
-    cst.update({'max_degree': lmax, 'norm': normalization_plm})
+    ds_out = xr.merge([clm, slm], join="exact")
+    cst.update({"max_degree": lmax, "norm": normalization_plm})
     ds_out.attrs = cst
     return ds_out
 
 
-def compute_plm(lmax, z, mmax=None, normalization='4pi'):
+def compute_plm(lmax, z, mmax=None, normalization="4pi"):
     """
     Compute all the associated Legendre functions up to a maximum degree and
     order using the recursion relation from [Holmes2002]_
@@ -438,7 +576,7 @@ def compute_plm(lmax, z, mmax=None, normalization='4pi'):
     p = np.zeros(((lmax + 1) * (lmax + 2) // 2, len(z)))
 
     k = 2
-    if normalization in ('4pi', 'ortho'):
+    if normalization in ("4pi", "ortho"):
         norm_p10 = np.sqrt(3)
 
         for l in range(2, lmax + 1):
@@ -447,17 +585,25 @@ def compute_plm(lmax, z, mmax=None, normalization='4pi'):
             f2[k] = (l - 1) * np.sqrt(2 * l + 1) / (np.sqrt(2 * l - 3) * l)
             for m in range(1, l - 1):
                 k += 1
-                f1[k] = np.sqrt(2 * l + 1) * np.sqrt(2 * l - 1) / (np.sqrt(l + m) * np.sqrt(l - m))
-                f2[k] = (np.sqrt(2 * l + 1) * np.sqrt(l - m - 1) * np.sqrt(l + m - 1) /
-                         (np.sqrt(2 * l - 3) * np.sqrt(l + m) * np.sqrt(l - m)))
+                f1[k] = (
+                    np.sqrt(2 * l + 1)
+                    * np.sqrt(2 * l - 1)
+                    / (np.sqrt(l + m) * np.sqrt(l - m))
+                )
+                f2[k] = (
+                    np.sqrt(2 * l + 1)
+                    * np.sqrt(l - m - 1)
+                    * np.sqrt(l + m - 1)
+                    / (np.sqrt(2 * l - 3) * np.sqrt(l + m) * np.sqrt(l - m))
+                )
             k += 2
 
-        if normalization == '4pi':
+        if normalization == "4pi":
             norm_4pi = 1
         else:
             norm_4pi = 4 * np.pi
 
-    elif normalization == 'schmidt':
+    elif normalization == "schmidt":
         norm_p10 = 1
         norm_4pi = 1
 
@@ -468,15 +614,22 @@ def compute_plm(lmax, z, mmax=None, normalization='4pi'):
             for m in range(1, l - 1):
                 k += 1
                 f1[k] = (2 * l - 1) / (np.sqrt(l + m) * np.sqrt(l - m))
-                f2[k] = np.sqrt(l - m - 1) * np.sqrt(l + m - 1) / (np.sqrt(l + m) * np.sqrt(l - m))
+                f2[k] = (
+                    np.sqrt(l - m - 1)
+                    * np.sqrt(l + m - 1)
+                    / (np.sqrt(l + m) * np.sqrt(l - m))
+                )
             k += 2
 
     else:
-        raise AssertionError("Unknown normalization given: ", normalization, ". It should be either "
-                                                                             "'4pi', 'ortho' or 'schmidt'")
+        raise AssertionError(
+            "Unknown normalization given: ",
+            normalization,
+            ". It should be either " "'4pi', 'ortho' or 'schmidt'",
+        )
 
     # u is sine of colatitude (cosine of latitude), for z=cos(th): u=sin(th)
-    u = np.sqrt(1 - z ** 2)
+    u = np.sqrt(1 - z**2)
     # update where u==0 to minimal numerical precision different from 0 to prevent invalid divisions
     u[u == 0] = np.finfo(np.float64).eps
 
@@ -499,17 +652,17 @@ def compute_plm(lmax, z, mmax=None, normalization='4pi'):
         # Calculate P(m,m)
         kstart += m + 1
         pmm = pmm * np.sqrt(2 * m + 1) / np.sqrt(2 * m)
-        if normalization in ('4pi', 'ortho'):
+        if normalization in ("4pi", "ortho"):
             p[kstart, :] = pmm
-        elif normalization == 'schmidt':
+        elif normalization == "schmidt":
             p[kstart, :] = pmm / np.sqrt(2 * m + 1)
 
         if m != lmax:  # test if P(m+1,m) exist
             # Calculate P(m+1,m)
             k = kstart + m + 1
-            if normalization in ('4pi', 'ortho'):
+            if normalization in ("4pi", "ortho"):
                 p[k, :] = z * np.sqrt(2 * m + 3) * pmm
-            elif normalization == 'schmidt':
+            elif normalization == "schmidt":
                 p[k, :] = z * pmm
         else:
             # set up k for rescale P(lmax,lmax)
@@ -532,7 +685,7 @@ def compute_plm(lmax, z, mmax=None, normalization='4pi'):
     plm[ind] = p
 
     # return the legendre polynomials and truncating orders to mmax
-    return plm[:, :mmax + 1, :]
+    return plm[:, : mmax + 1, :]
 
 
 def mid_month_grace_estimate(begin_time, end_time):
@@ -556,18 +709,25 @@ def mid_month_grace_estimate(begin_time, end_time):
     # to compute mid_month, need to round begin_time to the 1st of the month
     # deal with GRACE month when the begin date is not between 16 of month before and 15 of the month
     # it includes May 2015, Dec 2011 (JPL), Mar 2017 and Oct 2018 that cover second half of month
-    if ((begin_time.day <= 15 and begin_time.strftime('%Y%j') != '2015102') or
-            begin_time.strftime('%Y%j') == '2011351' or begin_time.strftime('%Y%j') == '2017076' or
-            begin_time.strftime('%Y%j') == '2018295'):
+    if (
+        (begin_time.day <= 15 and begin_time.strftime("%Y%j") != "2015102")
+        or begin_time.strftime("%Y%j") == "2011351"
+        or begin_time.strftime("%Y%j") == "2017076"
+        or begin_time.strftime("%Y%j") == "2018295"
+    ):
         tmp_begin = begin_time.replace(day=1)
     else:
-        tmp_begin = (begin_time.replace(day=1) + datetime.timedelta(days=32)).replace(day=1)
+        tmp_begin = (begin_time.replace(day=1) + datetime.timedelta(days=32)).replace(
+            day=1
+        )
 
     # to compute mid_month, need to round end_time to the 1st of the month after
     # deal with GRACE month when the end date is not between 16 of month and 15 of the month after
     # it includes Janv 2004, Nov 2011 (CSR, GFZ) and May 2015 and Dec 2011 for TN14
-    if ((end_time.day <= 15 and end_time.strftime('%Y%j') not in ('2004014', '2011320', '2015132')) or
-            end_time.strftime('%Y%j') == '2012016'):
+    if (
+        end_time.day <= 15
+        and end_time.strftime("%Y%j") not in ("2004014", "2011320", "2015132")
+    ) or end_time.strftime("%Y%j") == "2012016":
         tmp_end = end_time.replace(day=1)
     else:
         tmp_end = (end_time.replace(day=1) + datetime.timedelta(days=32)).replace(day=1)
@@ -575,7 +735,9 @@ def mid_month_grace_estimate(begin_time, end_time):
     return tmp_begin + (tmp_end - tmp_begin) / 2
 
 
-def change_normalization(ds, new_normalization='4pi', old_normalization=None, apply=False):
+def change_normalization(
+    ds, new_normalization="4pi", old_normalization=None, apply=False
+):
     """
     Spherical Harmonics (SH) dataset are associated with a Legendre polynomial normalization.
     This function return the dataset updated with the new normalization asked in input (as a deep copy by default).
@@ -605,38 +767,57 @@ def change_normalization(ds, new_normalization='4pi', old_normalization=None, ap
     >>> ds_new_norm = change_normalization(ds, new_normalization='schmidt')
     """
     try:
-        old_normalization = ds.attrs['norm'] if old_normalization is None else old_normalization
+        old_normalization = (
+            ds.attrs["norm"] if old_normalization is None else old_normalization
+        )
 
     except ValueError:
-        raise ValueError("If you provide no information about the current normalization of your ds dataset using "
-                         "'old_normalization' parameters, those information need to be contained in ds.attrs dict as "
-                         "ds.attrs['norm'].")
+        raise ValueError(
+            "If you provide no information about the current normalization of your ds dataset using "
+            "'old_normalization' parameters, those information need to be contained in ds.attrs dict as "
+            "ds.attrs['norm']."
+        )
 
     # -- conversion for each tidal system
-    if new_normalization == '4pi' and old_normalization == 'schmidt':
-        update_factor = 1/np.sqrt(2*ds.l + 1)
-    elif new_normalization == 'schmidt' and old_normalization == '4pi':
-        update_factor = np.sqrt(2*ds.l + 1)
-    elif new_normalization == 'ortho' and old_normalization == 'schmidt':
-        update_factor = np.sqrt((4*np.pi) / (2*ds.l + 1))
-    elif new_normalization == 'schmidt' and old_normalization == 'ortho':
-        update_factor = np.sqrt((2*ds.l + 1) / (4*np.pi))
-    elif new_normalization == 'ortho' and old_normalization == '4pi':
-        update_factor = np.sqrt(4*np.pi)
-    elif new_normalization == '4pi' and old_normalization == 'ortho':
-        update_factor = 1/np.sqrt(4*np.pi)
-    elif old_normalization == 'unnorm':
+    if new_normalization == "4pi" and old_normalization == "schmidt":
+        update_factor = 1 / np.sqrt(2 * ds.l + 1)
+    elif new_normalization == "schmidt" and old_normalization == "4pi":
+        update_factor = np.sqrt(2 * ds.l + 1)
+    elif new_normalization == "ortho" and old_normalization == "schmidt":
+        update_factor = np.sqrt((4 * np.pi) / (2 * ds.l + 1))
+    elif new_normalization == "schmidt" and old_normalization == "ortho":
+        update_factor = np.sqrt((2 * ds.l + 1) / (4 * np.pi))
+    elif new_normalization == "ortho" and old_normalization == "4pi":
+        update_factor = np.sqrt(4 * np.pi)
+    elif new_normalization == "4pi" and old_normalization == "ortho":
+        update_factor = 1 / np.sqrt(4 * np.pi)
+    elif old_normalization == "unnorm":
         fact_l_minus_m = xr.apply_ufunc(sc.special.factorial, ds.l - ds.m)
-        fact_l_minus_m = fact_l_minus_m.where(fact_l_minus_m != 0, float('NaN'))
-        if new_normalization == '4pi':
-            update_factor = np.sqrt(xr.apply_ufunc(sc.special.factorial, ds.l + ds.m) / fact_l_minus_m
-                                    / (2*ds.l + 1) / (2 - (0 == ds.m).astype(int)))
-        elif new_normalization == 'ortho':
-            update_factor = np.sqrt(xr.apply_ufunc(sc.special.factorial, ds.l + ds.m) * 4*np.pi / fact_l_minus_m
-                                    / (2*ds.l + 1) / (2 - (0 == ds.m).astype(int)))
-        elif new_normalization == 'schmidt':
-            update_factor = np.sqrt(xr.apply_ufunc(sc.special.factorial, ds.l + ds.m) * 4*np.pi / fact_l_minus_m
-                                    / (2 - (0 == ds.m).astype(int)))
+        fact_l_minus_m = fact_l_minus_m.where(fact_l_minus_m != 0, float("NaN"))
+        if new_normalization == "4pi":
+            update_factor = np.sqrt(
+                xr.apply_ufunc(sc.special.factorial, ds.l + ds.m)
+                / fact_l_minus_m
+                / (2 * ds.l + 1)
+                / (2 - (0 == ds.m).astype(int))
+            )
+        elif new_normalization == "ortho":
+            update_factor = np.sqrt(
+                xr.apply_ufunc(sc.special.factorial, ds.l + ds.m)
+                * 4
+                * np.pi
+                / fact_l_minus_m
+                / (2 * ds.l + 1)
+                / (2 - (0 == ds.m).astype(int))
+            )
+        elif new_normalization == "schmidt":
+            update_factor = np.sqrt(
+                xr.apply_ufunc(sc.special.factorial, ds.l + ds.m)
+                * 4
+                * np.pi
+                / fact_l_minus_m
+                / (2 - (0 == ds.m).astype(int))
+            )
         update_factor = update_factor.fillna(0)
     else:
         update_factor = 1
@@ -645,18 +826,28 @@ def change_normalization(ds, new_normalization='4pi', old_normalization=None, ap
     ds_out = ds if apply else ds.copy(deep=True)
 
     # Update the clm and slm values
-    ds_out['clm'] *= update_factor
-    ds_out['slm'] *= update_factor
+    ds_out["clm"] *= update_factor
+    ds_out["slm"] *= update_factor
 
     # Update the attributes in the output dataset
-    ds_out.attrs['norm'] = new_normalization
+    ds_out.attrs["norm"] = new_normalization
 
     return ds_out
 
 
-def l_factor_conv(l, unit='mewh', include_elastic=True, ellipsoidal_earth=False, geocentric_colat=None,
-                  ds_love=None, a_earth=None, gm_earth=None, f_earth=LNPY_F_EARTH_GRS80, rho_earth=LNPY_RHO_EARTH,
-                  attrs=None):
+def l_factor_conv(
+    l,
+    unit="mewh",
+    include_elastic=True,
+    ellipsoidal_earth=False,
+    geocentric_colat=None,
+    ds_love=None,
+    a_earth=None,
+    gm_earth=None,
+    f_earth=LNPY_F_EARTH_GRS80,
+    rho_earth=LNPY_RHO_EARTH,
+    attrs=None,
+):
     """
     Compute a scale factor for a transformation between spherical harmonics and grid data.
     Spatial data over the grid are associated with a specific unit.
@@ -712,11 +903,15 @@ def l_factor_conv(l, unit='mewh', include_elastic=True, ellipsoidal_earth=False,
     if attrs is None:
         attrs = {}
     if a_earth is None:
-        a_earth = float(attrs['radius']) if 'radius' in attrs else LNPY_A_EARTH_GRS80
+        a_earth = float(attrs["radius"]) if "radius" in attrs else LNPY_A_EARTH_GRS80
     if gm_earth is None:
-        gm_earth = float(attrs['earth_gravity_constant']) if 'earth_gravity_constant' in attrs else LNPY_GM_EARTH
+        gm_earth = (
+            float(attrs["earth_gravity_constant"])
+            if "earth_gravity_constant" in attrs
+            else LNPY_GM_EARTH
+        )
 
-    l = xr.DataArray(l, dims=['l'], coords={'l': l})
+    l = xr.DataArray(l, dims=["l"], coords={"l": l})
     fraction = xr.ones_like(l)
 
     # include elastic redistribution with kl Love numbers
@@ -724,9 +919,13 @@ def l_factor_conv(l, unit='mewh', include_elastic=True, ellipsoidal_earth=False,
         if ds_love is None:
             current_file = inspect.getframeinfo(inspect.currentframe()).filename
             folderpath = pathlib.Path(current_file).absolute().parent.parent
-            default_love_file = folderpath.joinpath('resources', 'LoveNumbers_Gegout97.txt')
-            ds_love = xr.Dataset.from_dataframe(pd.read_csv(default_love_file, names=['kl']))
-            ds_love = ds_love.rename({'index': 'l'})
+            default_love_file = folderpath.joinpath(
+                "resources", "LoveNumbers_Gegout97.txt"
+            )
+            ds_love = xr.Dataset.from_dataframe(
+                pd.read_csv(default_love_file, names=["kl"])
+            )
+            ds_love = ds_love.rename({"index": "l"})
 
         fraction = fraction + ds_love.kl
 
@@ -734,73 +933,77 @@ def l_factor_conv(l, unit='mewh', include_elastic=True, ellipsoidal_earth=False,
     if ellipsoidal_earth:
         # test if geocentric_colat is set
         if geocentric_colat is None:
-            raise ValueError("For ellipsoidal Earth, you need to set "
-                             "the parameter 'geocentric_colat' in l_factor_conv function")
+            raise ValueError(
+                "For ellipsoidal Earth, you need to set "
+                "the parameter 'geocentric_colat' in l_factor_conv function"
+            )
 
         # compute variable for ellipsoidal_earth
         # e = sqrt(2f - f**2)
-        e_earth = np.sqrt(2 * f_earth - f_earth ** 2)
+        e_earth = np.sqrt(2 * f_earth - f_earth**2)
         # a_div_r_lat = a / r(theta)  with r(theta) = a(1-f)/sqrt(1 - e**2*sin(theta)**2)
-        a_div_r_lat = np.sqrt(1 - e_earth ** 2 * np.sin(geocentric_colat) ** 2) / (1 - f_earth)
+        a_div_r_lat = np.sqrt(1 - e_earth**2 * np.sin(geocentric_colat) ** 2) / (
+            1 - f_earth
+        )
 
     # l_factor is degree dependant
-    if unit == 'norm':
+    if unit == "norm":
         # norm, fully normalized spherical harmonics
         l_factor = xr.ones_like(l)
         if ellipsoidal_earth:
             l_factor = l_factor * a_div_r_lat**l
 
-    elif unit == 'mewh':
+    elif unit == "mewh":
         # mewh, meters equivalent water height [kg.m-2]
         # the exact formula is l_factor*(1 - f) (see [Ditmar2018]_ after eq. 17)
         # it is an approximation of the order of 0.3% to be coherent with the common formula from Wahr 1998
-        l_factor = rho_earth * a_earth * (2*l + 1) / (3 * fraction * 1e3)
+        l_factor = rho_earth * a_earth * (2 * l + 1) / (3 * fraction * 1e3)
         if ellipsoidal_earth:
-            l_factor = l_factor * a_div_r_lat**(l + 2)
+            l_factor = l_factor * a_div_r_lat ** (l + 2)
 
-    elif unit == 'mmgeoid':
+    elif unit == "mmgeoid":
         # mmgeoid, millimeters geoid height
         l_factor = xr.ones_like(l) * a_earth * 1e3
         if ellipsoidal_earth:
-            l_factor = l_factor * a_div_r_lat**(l + 1)
+            l_factor = l_factor * a_div_r_lat ** (l + 1)
 
-    elif unit == 'microGal':
+    elif unit == "microGal":
         # microGal, microGal gravity perturbations
-        l_factor = gm_earth * (l + 1) / (a_earth ** 2) * 1e8
+        l_factor = gm_earth * (l + 1) / (a_earth**2) * 1e8
         if ellipsoidal_earth:
-            l_factor = l_factor * a_div_r_lat**(l + 2)
+            l_factor = l_factor * a_div_r_lat ** (l + 2)
 
-    elif unit == 'potential':
+    elif unit == "potential":
         # potential, meters².seconds⁻²
         l_factor = gm_earth / a_earth
         if ellipsoidal_earth:
-            l_factor = l_factor * a_div_r_lat**(l + 1)
+            l_factor = l_factor * a_div_r_lat ** (l + 1)
 
-    elif unit == 'pascal':
+    elif unit == "pascal":
         # pascal, equivalent surface pressure
-        l_factor = LNPY_G_WMO * rho_earth * a_earth * (2*l + 1) / (3 * fraction)
+        l_factor = LNPY_G_WMO * rho_earth * a_earth * (2 * l + 1) / (3 * fraction)
         if ellipsoidal_earth:
-            l_factor = l_factor * a_div_r_lat**(l + 1)
+            l_factor = l_factor * a_div_r_lat ** (l + 1)
 
-    elif unit == 'mvcu':
+    elif unit == "mvcu":
         # mvcu, meters viscoelastic crustal uplift
-        l_factor = a_earth * (2*l + 1) / 2
+        l_factor = a_earth * (2 * l + 1) / 2
         if ellipsoidal_earth:
-            l_factor = l_factor * a_div_r_lat**(l + 1)
+            l_factor = l_factor * a_div_r_lat ** (l + 1)
 
-    elif unit == 'mecu':
+    elif unit == "mecu":
         # mecu, meters elastic crustal deformation (uplift)
         l_factor = a_earth * ds_love.hl / fraction
         if ellipsoidal_earth:
-            l_factor = l_factor * a_div_r_lat**(l - 1)
+            l_factor = l_factor * a_div_r_lat ** (l - 1)
 
-    elif unit == 'int_radial_mag':
+    elif unit == "int_radial_mag":
         # internal radial magnetic field in nT
         l_factor = l + 1
         if ellipsoidal_earth:
             pass
 
-    elif unit == 'ext_radial_mag':
+    elif unit == "ext_radial_mag":
         # external radial magnetic field in nT
         l_factor = -l
         if ellipsoidal_earth:
@@ -809,10 +1012,12 @@ def l_factor_conv(l, unit='mewh', include_elastic=True, ellipsoidal_earth=False,
     # Gt, Gigatonnes ?
 
     else:
-        raise ValueError("Invalid 'unit' parameter value in l_factor_conv function, valid values are: "
-                         "(norm, mewh, mmgeoid, microGal, bar, mvcu)")
+        raise ValueError(
+            "Invalid 'unit' parameter value in l_factor_conv function, valid values are: "
+            "(norm, mewh, mmgeoid, microGal, bar, mvcu)"
+        )
 
-    cst = {'gm_earth': gm_earth, 'a_earth': a_earth}
+    cst = {"gm_earth": gm_earth, "a_earth": a_earth}
     return l_factor, cst
 
 
@@ -836,12 +1041,16 @@ def assert_sh(ds):
     AssertionError
         This function raise AssertionError is ds is not a xr.Dataset corresponding to spherical harmonics
     """
-    if 'l' not in ds.coords:
-        raise AssertionError("The degree coordinates that should be named 'l' does not exist")
-    if 'm' not in ds.coords:
-        raise AssertionError("The order coordinates that should be named 'm' does not exist")
-    if 'clm' not in ds.keys():
+    if "l" not in ds.coords:
+        raise AssertionError(
+            "The degree coordinates that should be named 'l' does not exist"
+        )
+    if "m" not in ds.coords:
+        raise AssertionError(
+            "The order coordinates that should be named 'm' does not exist"
+        )
+    if "clm" not in ds.keys():
         raise AssertionError("The Dataset have to contain 'clm' variable")
-    if 'slm' not in ds.keys():
+    if "slm" not in ds.keys():
         raise AssertionError("The Dataset have to contain 'slm' variable")
     return True

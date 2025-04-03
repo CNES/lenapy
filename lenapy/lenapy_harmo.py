@@ -21,14 +21,15 @@ Examples
 >>> ds.lnharmo.plot_hs()
 """
 
-# -*- coding: utf-8 -*-
-import operator
 import numbers
+import operator
+
 import xarray as xr
-from lenapy.utils.geo import assert_grid
-from lenapy.utils.harmo import *
-from lenapy.utils.gravity import change_reference, change_tide_system
+
 from lenapy.plots.plotting import plot_hs, plot_power
+from lenapy.utils.geo import assert_grid
+from lenapy.utils.gravity import change_reference, change_tide_system
+from lenapy.utils.harmo import *
 from lenapy.writers.gravi_writer import dataset_to_gfc
 
 
@@ -79,8 +80,8 @@ class HarmoSet:
         self.ds = self._obj.copy(deep=True)
 
         assert_sh(self._obj)
-        self.ds['clm'] = self._obj.clm.__neg__()
-        self.ds['slm'] = self._obj.slm.__neg__()
+        self.ds["clm"] = self._obj.clm.__neg__()
+        self.ds["slm"] = self._obj.slm.__neg__()
 
         return self.ds
 
@@ -116,38 +117,52 @@ class HarmoSet:
 
         # case where other is a number (int, float, complex)
         if isinstance(other, numbers.Number):
-            self.ds['clm'] = op(self._obj.clm, other)
-            self.ds['slm'] = op(self._obj.slm, other)
+            self.ds["clm"] = op(self._obj.clm, other)
+            self.ds["slm"] = op(self._obj.slm, other)
 
         # case where other is another xr.Dataset with spherical harmonics info
         elif isinstance(other, xr.Dataset):
             assert_sh(other)
 
             # change clm and slm size if other.l or other.m are different
-            common_l = self._obj.l.where(self._obj.l.isin(other.l)).dropna(dim='l')
-            common_m = self._obj.m.where(self._obj.m.isin(other.m)).dropna(dim='m')
+            common_l = self._obj.l.where(self._obj.l.isin(other.l)).dropna(dim="l")
+            common_m = self._obj.m.where(self._obj.m.isin(other.m)).dropna(dim="m")
             self.ds = self._obj.sel(l=common_l, m=common_m)
 
             # case where other does not have a time dimension
-            if 'time' not in other.coords:
-                self.ds['clm'] = op(self.ds.clm, other.clm.sel(l=common_l, m=common_m))
-                self.ds['slm'] = op(self.ds.slm, other.slm.sel(l=common_l, m=common_m))
+            if "time" not in other.coords:
+                self.ds["clm"] = op(self.ds.clm, other.clm.sel(l=common_l, m=common_m))
+                self.ds["slm"] = op(self.ds.slm, other.slm.sel(l=common_l, m=common_m))
 
-            elif 'time' not in self._obj.coords:  # if the previous test, other has time dimension
-                raise AssertionError("Cannot operate on a HarmoSet with time dimension to a Harmoset without it. "
-                                     "Inverse the order of the HarmoSet in the operation.")
+            elif (
+                "time" not in self._obj.coords
+            ):  # if the previous test, other has time dimension
+                raise AssertionError(
+                    "Cannot operate on a HarmoSet with time dimension to a Harmoset without it. "
+                    "Inverse the order of the HarmoSet in the operation."
+                )
 
             # case where both xr.Dataset have a time dimension
             else:
-                common_times = self._obj.time.where(self._obj.time.isin(other.time)).dropna(dim='time')
+                common_times = self._obj.time.where(
+                    self._obj.time.isin(other.time)
+                ).dropna(dim="time")
                 self.ds = self.ds.sel(time=common_times)
 
                 # change clm and slm on similar time
-                self.ds['clm'] = op(self.ds.clm, other.clm.sel(time=common_times, l=common_l, m=common_m))
-                self.ds['slm'] = op(self.ds.slm, other.slm.sel(time=common_times, l=common_l, m=common_m))
+                self.ds["clm"] = op(
+                    self.ds.clm,
+                    other.clm.sel(time=common_times, l=common_l, m=common_m),
+                )
+                self.ds["slm"] = op(
+                    self.ds.slm,
+                    other.slm.sel(time=common_times, l=common_l, m=common_m),
+                )
 
         else:
-            raise AssertionError("Variable used for the operation need to be a number or a xr.Dataset / xr.DataArray.")
+            raise AssertionError(
+                "Variable used for the operation need to be a number or a xr.Dataset / xr.DataArray."
+            )
 
         return self.ds
 
@@ -168,8 +183,14 @@ class HarmoSet:
         """
         return sh_to_grid(self._obj, **kwargs)
 
-    def change_reference(self, new_radius, new_earth_gravity_constant, old_radius=None, old_earth_gravity_constant=None,
-                         apply=False):
+    def change_reference(
+        self,
+        new_radius,
+        new_earth_gravity_constant,
+        old_radius=None,
+        old_earth_gravity_constant=None,
+        apply=False,
+    ):
         """
         Update the reference frame for spherical harmonics.
         For details on the function, see :func:`lenapy.utils.gravity.change_reference` documentation.
@@ -193,8 +214,14 @@ class HarmoSet:
         ds_out : xr.Dataset
             Updated dataset with the new constants.
         """
-        return change_reference(self._obj, new_radius, new_earth_gravity_constant, old_radius=old_radius,
-                                old_earth_gravity_constant=old_earth_gravity_constant, apply=apply)
+        return change_reference(
+            self._obj,
+            new_radius,
+            new_earth_gravity_constant,
+            old_radius=old_radius,
+            old_earth_gravity_constant=old_earth_gravity_constant,
+            apply=apply,
+        )
 
     def change_tide_system(self, new_tide, old_tide=None, k20=None, apply=False):
         """
@@ -217,9 +244,13 @@ class HarmoSet:
         ds_out : xr.Dataset
             Updated dataset with the new tidal system.
         """
-        return change_tide_system(self._obj, new_tide, old_tide=old_tide, k20=k20, apply=apply)
+        return change_tide_system(
+            self._obj, new_tide, old_tide=old_tide, k20=k20, apply=apply
+        )
 
-    def change_normalization(self, new_normalization, old_normalization=None, apply=False):
+    def change_normalization(
+        self, new_normalization, old_normalization=None, apply=False
+    ):
         """
         Apply a C20 offset to the dataset to change the tide system.
         For details on the function, see :func:`lenapy.utils.gravity.change_tide_system` documentation.
@@ -239,7 +270,12 @@ class HarmoSet:
         ds_out : xr.Dataset
             Updated dataset with the new normalization.
         """
-        return change_normalization(self._obj, new_normalization, old_normalization=old_normalization, apply=apply)
+        return change_normalization(
+            self._obj,
+            new_normalization,
+            old_normalization=old_normalization,
+            apply=apply,
+        )
 
     def plot_hs(self, **kwargs):
         """

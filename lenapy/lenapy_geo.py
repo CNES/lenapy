@@ -6,8 +6,9 @@ This module implements some usuals functions to be applied on gridded data (lat/
 import numpy as np
 import xarray as xr
 import xesmf as xe
-from .utils.geo import *
-from .utils.time import *
+
+from lenapy.utils.geo import *
+from lenapy.utils.time import *
 
 
 @xr.register_dataset_accessor("lngeo")
@@ -16,6 +17,7 @@ class GeoSet:
     This class implements an extension of any dataset to add some usefull methods often used on gridded data
     in earth science data handling.
     """
+
     def __init__(self, xarray_obj):
         assert_grid(xarray_obj)
         self._obj = xarray_obj
@@ -40,16 +42,16 @@ class GeoSet:
             Replace NaN values by zeros. The averaging is then applyed on all data, and not only valid ones.
         **kwargs : keyword arguments
             Any keyword arguments given to the native xr.mean function.
-            
+
         Returns
         -------
         averaged : xr.Dataset
             Dataset with all variables averaged according to specified options.
-            
+
         Example
         -------
         .. code-block:: python
-        
+
             data = lngeo.open_geodata('/home/user/lenapy/data/gohc_2020.nc')
             avg = data.lngeo.mean(['latitude', 'longitude'], weights=['latitude'], na_eq_zero=True)
         """
@@ -61,7 +63,7 @@ class GeoSet:
     def sum(self, *args, **kwargs):
         """
         Returns the sum for all variables in dataset along specified dimension, applying specified weights.
-        
+
         Parameters
         ----------
         *args : list
@@ -76,16 +78,16 @@ class GeoSet:
             Mask to be applied before summing up.
         **kwargs : keyword arguments
             Any keyword arguments given to the native xr.sum function.
-            
+
         Returns
         -------
         averaged : xr.Dataset
             Dataset with all variables summed according to specified options.
-            
+
         Example
         -------
         .. code-block:: python
-        
+
             data = xr.open_dataset('/home/user/lenapy/data/isas.nc', engine="lenapyNetcdf")
             avg = data.lngeo.sum(['latitude','longitude'],weights=['latitude'])
         """
@@ -102,7 +104,7 @@ class GeoSet:
         Data is supposed to be monotonic along the chosen dimension. If not, the first fitting value encountered is
         retained, starting from the end (bottom) if upper=False, or from the beggining (top) if upper=True.
         Use :func:`lenapy.utils.geo.isosurface` on each DataArray.
-        
+
         Parameters
         ----------
         criterion : dict
@@ -115,7 +117,7 @@ class GeoSet:
         upper : bool (default=False)
             Order to perform the research of the criterion value. If True, returns the highest point of the isosurface,
             else the lowest.
-            
+
         Returns
         -------
         isosurface : dataset
@@ -127,7 +129,7 @@ class GeoSet:
         -------
         isosurface : xr.DataArray
             Dataarray containing the isosurface along the dimension dim on which data=target.
-                
+
         Example
         -------
         .. code-block:: python
@@ -146,7 +148,7 @@ class GeoSet:
             #     depth_iso  (latitude, longitude) float64 918.6 745.8 704.8 ... 912.2 920.0
             #     temp       (latitude, longitude) float64 3.0 3.0 3.0 3.0 ... 3.0 3.0 3.0 3.0
             #     SA         (latitude, longitude) float64 34.48 34.39 34.39 ... 34.53 34.52
-                
+
         """
         # Compute the isosurface along coord 'dim' for the field define in the dict **kwargs (ex : temp=10)
         # Return interpolated field on the isosurface (for those with a "dim" coord) and the isosurface itself
@@ -182,7 +184,7 @@ class GeoSet:
             Mask to be applied on the data to regrid.
         mask_out : None | xr.DataArray
             Mask of the output Dataset to regrid.
-        *kwargs : 
+        *kwargs :
             Any keyword argument passed to xesmf.Regridder method.
 
         Returns
@@ -194,11 +196,16 @@ class GeoSet:
 
         ds = self._obj
         if type(mask_in) is xr.DataArray:
-            ds['mask'] = mask_in
+            ds["mask"] = mask_in
 
-        ds_out = xr.Dataset({"latitude": gr_out.latitude, "longitude": gr_out.longitude, })
+        ds_out = xr.Dataset(
+            {
+                "latitude": gr_out.latitude,
+                "longitude": gr_out.longitude,
+            }
+        )
         if mask_out is not None:
-            ds_out['mask'] = mask_out
+            ds_out["mask"] = mask_out
 
         return xe.Regridder(ds, ds_out, *args, **kwargs)
 
@@ -210,9 +217,9 @@ class GeoSet:
         ----------
         regridder : xesmf.Regridder instance
             regridder set with the lngeo.regridder method.
-        *args : 
+        *args :
             Any argument passed to xesmf regridder method.
-        *kwargs : 
+        *kwargs :
             Any keyword argument passed to xesmf regridder method.
 
         Returns
@@ -231,7 +238,9 @@ class GeoSet:
         """
         return regridder(self._obj, *args, **kwargs)
 
-    def surface_cell(self, ellipsoidal_earth=True, a_earth=None, f_earth=LNPY_F_EARTH_GRS80):
+    def surface_cell(
+        self, ellipsoidal_earth=True, a_earth=None, f_earth=LNPY_F_EARTH_GRS80
+    ):
         """
         Returns the surface of each cell defined by a longitude/latitude in a xarray object.
         For details on the function, see :func:`lenapy.utils.geo.surface_cell` documentation.
@@ -248,9 +257,16 @@ class GeoSet:
             data = xr.open_dataset('/home/user/lenapy/data/gohc_2020.nc', engine="lenapyNetcdf")
             surface = data.lngeo.surface_cell()
         """
-        return surface_cell(self._obj, ellipsoidal_earth=ellipsoidal_earth, a_earth=a_earth, f_earth=f_earth)
+        return surface_cell(
+            self._obj,
+            ellipsoidal_earth=ellipsoidal_earth,
+            a_earth=a_earth,
+            f_earth=f_earth,
+        )
 
-    def distance(self, pt, ellipsoidal_earth=False, a_earth=None, f_earth=LNPY_F_EARTH_GRS80):
+    def distance(
+        self, pt, ellipsoidal_earth=False, a_earth=None, f_earth=LNPY_F_EARTH_GRS80
+    ):
         """
         Returns the great-circle/geodetic distance between coordinates on a sphere/ellipsoid.
         For details on the function, see :func:`lenapy.utils.geo.distance` documentation.
@@ -276,7 +292,13 @@ class GeoSet:
             The final coordinates are latitude, longitude + coordinates of pt.
 
         """
-        return distance(self._obj, pt, ellipsoidal_earth=ellipsoidal_earth, a_earth=a_earth, f_earth=f_earth)
+        return distance(
+            self._obj,
+            pt,
+            ellipsoidal_earth=ellipsoidal_earth,
+            a_earth=a_earth,
+            f_earth=f_earth,
+        )
 
     def reset_longitude(self, origin=-180):
         """
@@ -303,6 +325,7 @@ class GeoArray:
     This class implements an extension of any dataArray to add some usefull methods often used on gridded data
     in earth science data handling.
     """
+
     def __init__(self, xarray_obj):
         assert_grid(xarray_obj)
         self._obj = xarray_obj
@@ -343,7 +366,7 @@ class GeoArray:
         argmean = set(np.ravel(*args)).intersection(list(self._obj.coords))
         data = self._obj.where(mask)
         if na_eq_zero:
-            data = data.fillna(0.)
+            data = data.fillna(0.0)
 
         if len(argmean) == 0:
             argmean = None
@@ -352,24 +375,42 @@ class GeoArray:
             return data.mean(argmean, **kwargs)  # simple mean
         elif type(weights) is list or type(weights) is str:
             w = 1
-            if 'latitude' in weights and 'latitude' in self._obj.coords:  # weight = cos(latitude)
+            if (
+                "latitude" in weights and "latitude" in self._obj.coords
+            ):  # weight = cos(latitude)
                 w = np.cos(np.radians(self._obj.latitude))
-            if 'latitude_ellipsoid' in weights and 'latitude' in self._obj.coords:  # weight = cos(latitude)*oblat fact
-                w = np.cos(np.radians(self._obj.latitude)) / (1 + LNPY_F_EARTH_GRS80 *
-                                                              np.cos(2*np.radians(self._obj.latitude)))**2
-            if 'depth' in weights and 'depth' in self._obj.coords:
+            if (
+                "latitude_ellipsoid" in weights and "latitude" in self._obj.coords
+            ):  # weight = cos(latitude)*oblat fact
+                w = (
+                    np.cos(np.radians(self._obj.latitude))
+                    / (
+                        1
+                        + LNPY_F_EARTH_GRS80
+                        * np.cos(2 * np.radians(self._obj.latitude))
+                    )
+                    ** 2
+                )
+            if "depth" in weights and "depth" in self._obj.coords:
                 # poids *= épaisseur des couches (l'épaisseur de la première couche est la première profondeur)
-                w = w*xr.concat((self._obj.depth.isel(depth=0), self._obj.depth.diff(dim='depth')), dim='depth')
+                w = w * xr.concat(
+                    (self._obj.depth.isel(depth=0), self._obj.depth.diff(dim="depth")),
+                    dim="depth",
+                )
             return data.weighted(w).mean(argmean, **kwargs)
         elif type(weights) is xr.DataArray:
-            return data.weighted(weights).mean(argmean, **kwargs)  # weight DataArray provided
+            return data.weighted(weights).mean(
+                argmean, **kwargs
+            )  # weight DataArray provided
         else:
-            raise ValueError("Given weights argument can not be handle, it has to be either str, list or xr.DataArray.")
+            raise ValueError(
+                "Given weights argument can not be handle, it has to be either str, list or xr.DataArray."
+            )
 
     def sum(self, *args, weights=None, mask=True, **kwargs):
         """
         Returns the sum of the xr.DataArray along specified dimension, applying specified weights.
-        
+
         Parameters
         ----------
         *args : list
@@ -384,12 +425,12 @@ class GeoArray:
             Mask to be applied before summing up.
         **kwargs : keyword arguments
             Any keyword arguments given to the native xr.sum() function.
-            
+
         Returns
         -------
         summed : xr.DataArray
             DataArray summed according to specified options.
-            
+
         Example
         -------
         .. code-block:: python
@@ -404,19 +445,37 @@ class GeoArray:
             return data.sum(argsum, **kwargs)  # simple sum()
         elif type(weights) is list or type(weights) is str:
             w = 1
-            if 'latitude' in weights and 'latitude' in self._obj.coords:  # weight = cos(latitude)
+            if (
+                "latitude" in weights and "latitude" in self._obj.coords
+            ):  # weight = cos(latitude)
                 w = np.cos(np.radians(self._obj.latitude))
-            if 'latitude_ellipsoid' in weights and 'latitude' in self._obj.coords:  # weight = cos(latitude)*oblat fact
-                w = np.cos(np.radians(self._obj.latitude)) / (1 + LNPY_F_EARTH_GRS80 *
-                                                              np.cos(2*np.radians(self._obj.latitude)))**2
-            if 'depth' in weights and 'depth' in self._obj.coords:
+            if (
+                "latitude_ellipsoid" in weights and "latitude" in self._obj.coords
+            ):  # weight = cos(latitude)*oblat fact
+                w = (
+                    np.cos(np.radians(self._obj.latitude))
+                    / (
+                        1
+                        + LNPY_F_EARTH_GRS80
+                        * np.cos(2 * np.radians(self._obj.latitude))
+                    )
+                    ** 2
+                )
+            if "depth" in weights and "depth" in self._obj.coords:
                 # poids *= épaisseur des couches (l'épaisseur de la première couche est la première profondeur)
-                w = w*xr.concat((self._obj.depth.isel(depth=0), self._obj.depth.diff(dim='depth')), dim='depth')
+                w = w * xr.concat(
+                    (self._obj.depth.isel(depth=0), self._obj.depth.diff(dim="depth")),
+                    dim="depth",
+                )
             return data.weighted(w).sum(argsum, **kwargs)
         elif type(weights) is xr.DataArray:
-            return data.weighted(weights).sum(argsum, **kwargs)  # weight DataArray provided
+            return data.weighted(weights).sum(
+                argsum, **kwargs
+            )  # weight DataArray provided
         else:
-            raise ValueError("Given weights argument can not be handle, it has to be either str, list or xr.DataArray.")
+            raise ValueError(
+                "Given weights argument can not be handle, it has to be either str, list or xr.DataArray."
+            )
 
     def isosurface(self, target, dim, coord=None, upper=False):
         """
@@ -425,7 +484,7 @@ class GeoArray:
         Data is supposed to be monotonic along the chosen dimension. If not, the first fitting value encountered is
         retained, starting from the end (bottom) if upper=False, or from the beggining (top) if upper=True.
         Use :func:`lenapy.utils.geo.isosurface` with an equivalent documentation.
-        
+
         Parameters
         ----------
         target : float
@@ -437,12 +496,12 @@ class GeoArray:
         upper : bool (default=False)
             Order to perform the research of the criterion value. If True, returns the highest point of the isosurface,
             else the lowest.
-            
+
         Returns
         -------
         isosurface : xr.DataArray
             Dataarray containing the isosurface along the dimension dim on which data=target.
-                
+
         Example
         -------
         .. code-block:: python
@@ -483,8 +542,10 @@ class GeoArray:
         regridder : xesmf.Regridder object
             regridder to be used with lngeo.regrid to perform regridding from dataset coordinates to gr_out coordinates.
         """
-        ds = xr.Dataset({'data': self._obj})
-        return ds.lngeo.regridder(gr_out, *args, mask_in=mask_in, mask_out=mask_out, **kwargs)
+        ds = xr.Dataset({"data": self._obj})
+        return ds.lngeo.regridder(
+            gr_out, *args, mask_in=mask_in, mask_out=mask_out, **kwargs
+        )
 
     def regrid(self, regridder, *args, **kwargs):
         """
@@ -515,7 +576,9 @@ class GeoArray:
         """
         return regridder(self._obj, *args, **kwargs)
 
-    def surface_cell(self, ellipsoidal_earth=True, a_earth=None, f_earth=LNPY_F_EARTH_GRS80):
+    def surface_cell(
+        self, ellipsoidal_earth=True, a_earth=None, f_earth=LNPY_F_EARTH_GRS80
+    ):
         """
         Returns the surface of each cell defined by a longitude/latitude in a xarray object.
         For details on the function, see :func:`lenapy.utils.geo.surface_cell` documentation.
@@ -532,9 +595,16 @@ class GeoArray:
             data = xr.open_dataset('/home/user/lenapy/data/gohc_2020.nc', engine="lenapyNetcdf")
             surface = data.lngeo.surface_cell()
         """
-        return surface_cell(self._obj, ellipsoidal_earth=ellipsoidal_earth, a_earth=a_earth, f_earth=f_earth)
+        return surface_cell(
+            self._obj,
+            ellipsoidal_earth=ellipsoidal_earth,
+            a_earth=a_earth,
+            f_earth=f_earth,
+        )
 
-    def distance(self, pt, ellipsoidal_earth=False, a_earth=None, f_earth=LNPY_F_EARTH_GRS80):
+    def distance(
+        self, pt, ellipsoidal_earth=False, a_earth=None, f_earth=LNPY_F_EARTH_GRS80
+    ):
         """
         Returns the great-circle/geodetic distance between coordinates on a sphere/ellipsoid.
         For details on the function, see :func:`lenapy.utils.geo.distance` documentation.
@@ -560,7 +630,13 @@ class GeoArray:
             The final coordinates are latitude, longitude + coordinates of pt.
 
         """
-        return distance(self._obj, pt, ellipsoidal_earth=ellipsoidal_earth, a_earth=a_earth, f_earth=f_earth)
+        return distance(
+            self._obj,
+            pt,
+            ellipsoidal_earth=ellipsoidal_earth,
+            a_earth=a_earth,
+            f_earth=f_earth,
+        )
 
     def reset_longitude(self, origin=-180):
         """
@@ -581,7 +657,7 @@ class GeoArray:
         return reset_longitude(self._obj, origin)
 
     def geomean(self):
-        return self.mean(['latitude', 'longitude'], weights='latitude')
+        return self.mean(["latitude", "longitude"], weights="latitude")
 
-    def surface_grid(self,type='nan',**kwargs):
-        return surface_grid(self._obj,type=type,**kwargs)
+    def surface_grid(self, type="nan", **kwargs):
+        return surface_grid(self._obj, type=type, **kwargs)

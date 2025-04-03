@@ -53,13 +53,14 @@ References
     .. [WMO1988] World Meteorological Organization
         *WMO Technical Regulations*, 49, (1988).
 """
+
 from numpy import pi
 
 LNPY_DAYS_YEAR = 365.24219  # d/y
-LNPY_SECONDS_DAY = 86400.  # s/d
+LNPY_SECONDS_DAY = 86400.0  # s/d
 
-LNPY_A_EARTH_GRS80 = 6378137.  # m, Earth semi-major axis [GRS80]_
-LNPY_F_EARTH_GRS80 = 1/298.257222101  # Earth flattening [GRS80]_
+LNPY_A_EARTH_GRS80 = 6378137.0  # m, Earth semi-major axis [GRS80]_
+LNPY_F_EARTH_GRS80 = 1 / 298.257222101  # Earth flattening [GRS80]_
 
 LNPY_EARTH_SURFACE = 510065621718491.4  # m²
 # equals to 2*np.pi*LNPY_A_EARTH_GRS80**2 + np.pi*(LNPY_A_EARTH_GRS80 - LNPY_A_EARTH_GRS80*LNPY_F_EARTH_GRS80)**2/
@@ -70,13 +71,19 @@ LNPY_EARTH_SURFACE = 510065621718491.4  # m²
 LNPY_G = 6.67430e-11  # m³.kg⁻¹.s⁻² [CODATA2018]_
 # GM value is consistent with Terrestrial Time (TT) as the time argument, TT(TAI) = TAI + 32.184 seconds
 LNPY_GM_EARTH = 3.986004415e14  # m³.s⁻², IERS-2010 Standards [IERS2010]_
-LNPY_GM_ATMO = 3.436e8  # m³.s⁻², mass of the atmosphere from [Trenberth2005]_ multiplied by LNPY_G
+LNPY_GM_ATMO = (
+    3.436e8  # m³.s⁻², mass of the atmosphere from [Trenberth2005]_ multiplied by LNPY_G
+)
 LNPY_G_WMO = 9.80665  # m.s², standard gravitational acceleration from [WMO1988]_
 
 # Radius of the Earth for which spherical Earth volume equals the ellipsoidal Earth volume
-LNPY_RAVERAGE_EARTH = LNPY_A_EARTH_GRS80*(1 - LNPY_F_EARTH_GRS80)**(1/3)  # m, Average radius of the Earth
+LNPY_RAVERAGE_EARTH = LNPY_A_EARTH_GRS80 * (1 - LNPY_F_EARTH_GRS80) ** (
+    1 / 3
+)  # m, Average radius of the Earth
 
 # Deduced from LNPY other constants with rho = 3*M_Earth / 4*pi*R**3 approx equals to 5513.4
-LNPY_RHO_EARTH = 0.75*(LNPY_GM_EARTH - LNPY_GM_ATMO)/(LNPY_G * pi * LNPY_RAVERAGE_EARTH**3)  # kg.m-3 , Earth density
+LNPY_RHO_EARTH = (
+    0.75 * (LNPY_GM_EARTH - LNPY_GM_ATMO) / (LNPY_G * pi * LNPY_RAVERAGE_EARTH**3)
+)  # kg.m-3 , Earth density
 
 LNPY_SSO = 35.16404  # psu - ref TEOS10 seawater equations (gsw)
