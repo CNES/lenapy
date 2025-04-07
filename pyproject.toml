@@ -51,6 +51,12 @@ target-version = ['py312']
 profile = "black"
 line_length = 88
 
+[tool.coverage.run]
+omit = [
+    "lenapy/readers/ocean.py",
+    "lenapy/plots/*.py"
+]
+
 [project.optional-dependencies]
 formatter = [
     "black ==24.8.0",
