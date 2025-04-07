@@ -13,6 +13,7 @@ class LenapyTestsPath:
 
     def __post_init__(self):
         self.data = self.project_dir / "data"
+        self.ref_data = self.project_dir / "tests" / "ref_data"
 
 
 @pytest.fixture
