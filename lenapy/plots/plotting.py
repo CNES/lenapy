@@ -7,6 +7,7 @@ from xarray.plot.dataarray_plot import _infer_line_data
 from lenapy.utils.harmo import l_factor_conv
 
 
+# pylint: disable=too-many-statements
 def plot_timeseries_uncertainty(
     xgeo_data,
     thick_line="median",
