@@ -25,6 +25,178 @@ import xarray as xr
 from lenapy.constants import *
 
 
+def _generate_grid(
+    bounds: list[float],
+    dlon: float,
+    dlat: float,
+    longitude: np.ndarray | None,
+    latitude: np.ndarray | None,
+    radians_in: bool,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Generate longitude and latitude arrays for the grid.
+
+    load longitude and latitude if given
+    if not : compute longitude and latitude in degrees between given or defaults bounds
+
+    Parameters
+    ----------
+    bounds : list of float
+        [lonmin, lonmax, latmin, latmax]
+    dlon, dlat : float
+        Grid spacing in degrees.
+    longitude, latitude : np.ndarray or None
+        Optionally provided coordinate arrays.
+    radians_in : bool
+        Whether the input arrays are in radians.
+
+    Returns
+    -------
+    longitude : np.ndarray
+        Array of longitudes in degrees.
+    latitude : np.ndarray
+        Array of latitudes in degrees.
+    """
+    if longitude is None:
+        longitude = np.arange(bounds[0] + dlon / 2.0, bounds[1] + dlon / 2.0, dlon)
+    elif radians_in:
+        longitude = np.rad2deg(longitude)
+
+    if latitude is None:
+        latitude = np.arange(bounds[2] + dlat / 2.0, bounds[3] + dlat / 2.0, dlat)
+    elif radians_in:
+        latitude = np.rad2deg(latitude)
+
+    return longitude, latitude
+
+
+def _init_bounds_and_grid(
+    bounds: list[float] | None,
+    lonmin: float,
+    lonmax: float,
+    latmin: float,
+    latmax: float,
+    dlon: float,
+    dlat: float,
+    radians_in: bool,
+) -> tuple[list[float], float, float]:
+    """
+    Initialize bounds and grid resolution.
+
+    Parameters
+    ----------
+    bounds: list of float or None
+        [lonmin, lonmax, latmin, latmax]
+    lonmin, lonmax, latmin, latmax: float
+        Default bounds if `bounds` is None.
+    dlon, dlat: float
+        Grid resolution in degrees or radians.
+    radians_in: bool
+        Whether the inputs are in radians.
+
+    Returns
+    -------
+    bounds: list of float
+        Bounds in degrees.
+    dlon: float
+        Longitude resolution in degrees.
+    dlat: float
+        Latitude resolution in degrees.
+    """
+    if bounds is None:
+        bounds = [lonmin, lonmax, latmin, latmax]
+    if not isinstance(bounds, list) or len(bounds) != 4:
+        raise TypeError('"bounds" must be a list of 4 elements')
+
+    if radians_in:
+        bounds = [np.rad2deg(b) for b in bounds]
+        if dlon != 1:
+            dlon = np.rad2deg(dlon)
+        if dlat != 1:
+            dlat = np.rad2deg(dlat)
+    return bounds, dlon, dlat
+
+
+def _handle_mass_conservation(
+    used_l: np.ndarray,
+    force_mass_conservation: bool,
+) -> tuple[np.ndarray, bool, bool]:
+    """
+    Test if mass conservation has to be forced to remove mass induced by the projection of C2n,0 coefficients
+
+    Parameters
+    ----------
+    used_l: np.ndarray
+        Degrees used in the computation.
+    force_mass_conservation: bool
+        Whether to enforce mass conservation.
+
+    Returns
+    -------
+    used_l: np.ndarray
+        Possibly modified degrees list.
+    use_czero_coef: bool
+        Whether to re-add degree 0 later.
+    force_mass_conservation: bool
+        Updated flag (can be False if nothing to conserve).
+    """
+    if force_mass_conservation and 0 in used_l:
+        if len(used_l) > 1:
+            return used_l[1:], True, force_mass_conservation
+        elif len(used_l) == 1:
+            return used_l, False, False
+    return used_l, False, force_mass_conservation
+
+
+def _init_degrees(
+    data: xr.Dataset,
+    lmin: int = None,
+    lmax: int = None,
+    mmin: int = None,
+    mmax: int = None,
+    used_l: np.ndarray = None,
+    used_m: np.ndarray = None,
+) -> tuple[np.ndarray, np.ndarray, int, int, int, int]:
+    """
+    Initialize spherical harmonic degrees and orders to be used.
+
+    It prioritizes used_l and used_m if given over lmin, lmax, mmin and mmax
+
+    Parameters
+    ----------
+    data : xr.Dataset
+        Spherical harmonics dataset with 'l' and 'm' dimensions.
+    lmin, lmax : int or None
+        Minimum and maximum degrees.
+    mmin, mmax : int or None
+        Minimum and maximum orders.
+    used_l, used_m : np.ndarray or None
+        Explicit list of degrees and orders to use.
+
+    Returns
+    -------
+    used_l: np.ndarray
+        Degrees to use.
+    used_m: np.ndarray
+        Orders to use.
+    lmin: int
+        Minimum degree
+    lmax: int
+        Maximum degree.
+    mmin:
+        Minimum order.
+    mmax:
+        Maximum order.
+    """
+    lmax = int(data.l.max()) if lmax is None else lmax
+    mmax = int(min(lmax, data.m.max())) if mmax is None else mmax
+    lmin = int(data.l.min()) if lmin is None else lmin
+    mmin = int(data.m.min()) if mmin is None else mmin
+    used_l = np.arange(lmin, lmax + 1) if used_l is None else used_l
+    used_m = np.arange(mmin, mmax + 1) if used_m is None else used_m
+    return used_l, used_m, lmin, lmax, mmin, mmax
+
+
 def sh_to_grid(
     data,
     unit="mewh",
@@ -131,65 +303,18 @@ def sh_to_grid(
     """
     # addition error propagation, add mask in output variable
 
-    # -- set degree and order default parameters
-    # it prioritizes used_l and used_m if given over lmin, lmax, mmin and mmax
-    lmax = int(data.l.max()) if lmax is None else lmax
-    mmax = int(min(lmax, data.m.max())) if mmax is None else mmax
-    lmin = int(data.l.min()) if lmin is None else lmin
-    mmin = int(data.m.min()) if mmin is None else mmin
-    used_l = np.arange(lmin, lmax + 1) if used_l is None else used_l
-    used_m = np.arange(mmin, mmax + 1) if used_m is None else used_m
-
-    # test if mass conservation has to be forced to remove mass induced by the projection of C2n,0 coefficients
-    if force_mass_conservation and 0 in used_l and len(used_l) > 1:
-        use_czero_coef = True
-        used_l.sort()
-        used_l = used_l[1:]
-    elif force_mass_conservation and 0 in used_l and len(used_l) == 1:
-        force_mass_conservation = (
-            False  # no need of mass conservation with only coefficient C0,0
-        )
-    else:
-        use_czero_coef = False
-
-    # -- set grid output latitude and longitude
-    # Verify input variable to create bounds of grid information
-    bounds = [lonmin, lonmax, latmin, latmax] if bounds is None else bounds
-
-    # verify integrity of the argument "bounds" if given
-    try:
-        test_iter = iter(bounds)
-        if len(bounds) != 4:
-            raise TypeError
-    except TypeError:
-        raise TypeError(
-            'Given argument "bounds" has to be a list with 4 elements [lonmin, lonmax, latmin, latmax]'
-        )
-
-    # Convert bounds in radians if necessary
-    # work only if bounds or all lonmin, lonmax, latmin, latmax are given in the announced unit
-    if radians_in:
-        bounds = [np.rad2deg(i) for i in bounds]
-
-    # convert dlon, dlat from radians to degree if necessary
-    if radians_in and dlon != 1:
-        dlon = np.rad2deg(dlon)
-    if radians_in and dlat != 1:
-        dlat = np.rad2deg(dlat)
-
-    # load longitude and latitude if given
-    # if not : compute longitude and latitude in degrees between given or defaults bounds
-    if longitude is None:
-        longitude = np.arange(bounds[0] + dlon / 2.0, bounds[1] + dlon / 2.0, dlon)
-    else:
-        if radians_in:
-            longitude = np.rad2deg(longitude)
-
-    if latitude is None:
-        latitude = np.arange(bounds[2] + dlat / 2.0, bounds[3] + dlat / 2.0, dlat)
-    else:
-        if radians_in:
-            latitude = np.rad2deg(latitude)
+    used_l, used_m, lmin, lmax, mmin, mmax = _init_degrees(
+        data, lmin, lmax, mmin, mmax, used_l, used_m
+    )
+    used_l, use_czero_coef, force_mass_conservation = _handle_mass_conservation(
+        used_l, force_mass_conservation
+    )
+    bounds, dlon, dlat = _init_bounds_and_grid(
+        bounds, lonmin, lonmax, latmin, latmax, dlon, dlat, radians_in
+    )
+    longitude, latitude = _generate_grid(
+        bounds, dlon, dlat, longitude, latitude, radians_in
+    )
 
     cos_latitude = np.cos(np.deg2rad(latitude))
     sin_latitude = np.sin(np.deg2rad(latitude))
