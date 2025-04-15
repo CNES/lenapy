@@ -137,7 +137,8 @@ class lenapyOceanProducts(BackendEntrypoint):
             fics = filtered_list(
                 glob(os.path.join(directory, "**", "*.nc")), year, ymin, ymax, filter
             )
-
+            # On force l'engine a netcdf4 car les fichiers ne sont pas compatibles hdf5
+            open_kw['engine']='netcdf4'
             data = xr.open_mfdataset(fics, **open_kw)
 
             return xr.Dataset({"temp": data.TEMP, "psal": data.PSAL})
@@ -174,7 +175,7 @@ class lenapyOceanProducts(BackendEntrypoint):
                 engine="lenapyNetcdf",
                 decode_times=False,
                 time_type="360_day",
-                **open_kw,
+                open_dataset_kwargs=open_kw,
             ).s_an
             fics_climsal = glob(os.path.join(directory, "climato", "*s1[3-6]_01.nc"))
             climsal = xr.open_mfdataset(
@@ -182,7 +183,7 @@ class lenapyOceanProducts(BackendEntrypoint):
                 engine="lenapyNetcdf",
                 decode_times=False,
                 time_type="360_day",
-                **open_kw,
+                open_dataset_kwargs=open_kw,
             ).s_an
 
             # Temperature
@@ -198,7 +199,7 @@ class lenapyOceanProducts(BackendEntrypoint):
                 engine="lenapyNetcdf",
                 decode_times=False,
                 time_type="360_day",
-                **open_kw,
+                open_dataset_kwargs=open_kw,
             ).t_an
             fics_climtemp = glob(os.path.join(directory, "climato", "*t1[3-6]_01.nc"))
             climtemp = xr.open_mfdataset(
@@ -206,7 +207,7 @@ class lenapyOceanProducts(BackendEntrypoint):
                 engine="lenapyNetcdf",
                 decode_times=False,
                 time_type="360_day",
-                **open_kw,
+                open_dataset_kwargs=open_kw,
             ).t_an
 
             return xr.Dataset(
@@ -253,10 +254,10 @@ class lenapyOceanProducts(BackendEntrypoint):
                 engine="lenapyNetcdf",
                 decode_times=False,
                 time_type="360_day",
-                **open_kw,
+                open_dataset_kwargs=open_kw,
             )
             clim = xr.open_mfdataset(
-                fics_clim, engine="lenapyNetcdf", **open_kw
+                fics_clim, engine="lenapyNetcdf", open_dataset_kwargs=open_kw
             )
 
             temp = anom.ARGO_TEMPERATURE_ANOMALY + clim.ARGO_TEMPERATURE_MEAN
@@ -307,7 +308,7 @@ class lenapyOceanProducts(BackendEntrypoint):
                 filter,
             )
             data = xr.open_mfdataset(
-                fics, engine="lenapyNetcdf", preprocess=set_time, **open_kw
+                fics, engine="lenapyNetcdf", preprocess=set_time, open_dataset_kwargs=open_kw
             )
 
             return xr.Dataset({"temp": data.TEMP, "psal": data.SALT})
@@ -338,7 +339,7 @@ class lenapyOceanProducts(BackendEntrypoint):
                     "VAR_10_4_201_P0_L160_GLL0",
                     "VAR_10_4_202_P0_L160_GLL0",
                 ],
-                **open_kw,
+                open_dataset_kwargs=open_kw,
             )
 
             return xr.Dataset({"temp": data.temperature, "psal": data.salinity})
@@ -376,7 +377,7 @@ class lenapyOceanProducts(BackendEntrypoint):
             )
 
             data = xr.open_mfdataset(
-                fics, engine="lenapyNetcdf", preprocess=set_time, **open_kw
+                fics, engine="lenapyNetcdf", preprocess=set_time, open_dataset_kwargs=open_kw
             )
 
             return xr.Dataset({"temp": data.temp, "SA": data.salinity})
@@ -406,7 +407,7 @@ class lenapyOceanProducts(BackendEntrypoint):
                 filter,
             )
 
-            data = xr.open_mfdataset(fics, engine="lenapyNetcdf", **open_kw)
+            data = xr.open_mfdataset(fics, engine="lenapyNetcdf", open_dataset_kwargs=open_kw)
 
             return xr.Dataset({"PT": data.temperature - 273.15, "psal": data.salinity})
 
@@ -438,7 +439,7 @@ class lenapyOceanProducts(BackendEntrypoint):
             )
 
             data = xr.open_mfdataset(
-                fics, engine="lenapyNetcdf", preprocess=set_time, **open_kw
+                fics, engine="lenapyNetcdf", preprocess=set_time, open_dataset_kwargs=open_kw
             )
 
             depth = -gsw.z_from_p(data.PRES, 90)
@@ -505,7 +506,7 @@ class lenapyOceanProducts(BackendEntrypoint):
             fics = glob(os.path.join(directory, "*.nc"))
 
             data = xr.open_mfdataset(
-                fics, engine="lenapyNetcdf", preprocess=preproc, **open_kw
+                fics, engine="lenapyNetcdf", preprocess=preproc, open_dataset_kwargs=open_kw
             ).sel(time=slice(str(ymin), str(ymax)))
 
             depth = -gsw.z_from_p(data.pressure, 0)
