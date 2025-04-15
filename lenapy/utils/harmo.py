@@ -15,6 +15,7 @@ This module includes functions to:
 import datetime
 import inspect
 import pathlib
+from typing import Literal
 
 import cf_xarray as cfxr
 import numpy as np
@@ -23,6 +24,83 @@ import scipy as sc
 import xarray as xr
 
 from lenapy.constants import *
+
+
+def _compute_factors(
+    lmax: int, normalization: Literal["4pi", "ortho", "schmidt"]
+) -> tuple[np.ndarray, np.ndarray, float, float]:
+    """Compute recurrence coefficients f1 and f2 for the Legendre recursion.
+
+    Parameters
+    ----------
+    lmax : int
+        Maximum degree.
+    normalization : {'4pi', 'ortho', 'schmidt'}
+        Normalization scheme.
+
+    Returns
+    -------
+    f1 : np.ndarray
+        Recurrence factor f1.
+    f2 : np.ndarray
+        Recurrence factor f2.
+    norm_p10 : float
+        Normalization for P(1,0).
+    norm_4pi : float
+        Overall normalization factor.
+    """
+    size = (lmax + 1) * (lmax + 2) // 2
+    f1 = np.zeros(size)
+    f2 = np.zeros(size)
+
+    k = 2
+    if normalization in ("4pi", "ortho"):
+        norm_p10 = np.sqrt(3)
+        norm_4pi = 1 if normalization == "4pi" else 4 * np.pi
+        for l in range(2, lmax + 1):
+            k += 1
+            f1[k] = np.sqrt(2 * l - 1) * np.sqrt(2 * l + 1) / l
+            f2[k] = (l - 1) * np.sqrt(2 * l + 1) / (np.sqrt(2 * l - 3) * l)
+            for m in range(1, l - 1):
+                k += 1
+                f1[k] = (
+                    np.sqrt(2 * l + 1)
+                    * np.sqrt(2 * l - 1)
+                    / (np.sqrt(l + m) * np.sqrt(l - m))
+                )
+                f2[k] = (
+                    np.sqrt(2 * l + 1)
+                    * np.sqrt(l - m - 1)
+                    * np.sqrt(l + m - 1)
+                    / (np.sqrt(2 * l - 3) * np.sqrt(l + m) * np.sqrt(l - m))
+                )
+            k += 2
+    elif normalization == "schmidt":
+        norm_p10 = 1
+        norm_4pi = 1
+        for l in range(2, lmax + 1):
+            k += 1
+            f1[k] = (2 * l - 1) / l
+            f2[k] = (l - 1) / l
+            for m in range(1, l - 1):
+                k += 1
+                f1[k] = (2 * l - 1) / (np.sqrt(l + m) * np.sqrt(l - m))
+                f2[k] = (
+                    np.sqrt(l - m - 1)
+                    * np.sqrt(l + m - 1)
+                    / (np.sqrt(l + m) * np.sqrt(l - m))
+                )
+            k += 2
+    else:
+        raise ValueError(
+            (
+                f"Unknown normalization '{normalization}'. "
+                "It should be either "
+                "'4pi', 'ortho' or 'schmidt'"
+            )
+        )
+
+    return f1, f2, norm_p10, norm_4pi
 
 
 def _generate_grid(
@@ -685,74 +763,18 @@ def compute_plm(lmax, z, mmax=None, normalization="4pi"):
         `doi: 10.1029/2018GC007529 <https://doi.org/10.1029/2018GC007529>`_
     """
     # removing singleton dimensions of x
-    z = np.atleast_1d(z).flatten()
     # update type to provide more memory for computation (np.float32 create some problems)
-    z = z.astype(np.float128)
+    z = np.atleast_1d(z).flatten().astype(np.float128)
 
     # if default mmax, set mmax to be maximal degree
     mmax = lmax if mmax is None else mmax
 
+    f1, f2, norm_p10, norm_4pi = _compute_factors(lmax, normalization)
+
     # scale factor based on Holmes2002
     scalef = 1e-280
 
-    # create multiplicative factors and p
-    f1 = np.zeros(((lmax + 1) * (lmax + 2) // 2))
-    f2 = np.zeros(((lmax + 1) * (lmax + 2) // 2))
     p = np.zeros(((lmax + 1) * (lmax + 2) // 2, len(z)))
-
-    k = 2
-    if normalization in ("4pi", "ortho"):
-        norm_p10 = np.sqrt(3)
-
-        for l in range(2, lmax + 1):
-            k += 1
-            f1[k] = np.sqrt(2 * l - 1) * np.sqrt(2 * l + 1) / l
-            f2[k] = (l - 1) * np.sqrt(2 * l + 1) / (np.sqrt(2 * l - 3) * l)
-            for m in range(1, l - 1):
-                k += 1
-                f1[k] = (
-                    np.sqrt(2 * l + 1)
-                    * np.sqrt(2 * l - 1)
-                    / (np.sqrt(l + m) * np.sqrt(l - m))
-                )
-                f2[k] = (
-                    np.sqrt(2 * l + 1)
-                    * np.sqrt(l - m - 1)
-                    * np.sqrt(l + m - 1)
-                    / (np.sqrt(2 * l - 3) * np.sqrt(l + m) * np.sqrt(l - m))
-                )
-            k += 2
-
-        if normalization == "4pi":
-            norm_4pi = 1
-        else:
-            norm_4pi = 4 * np.pi
-
-    elif normalization == "schmidt":
-        norm_p10 = 1
-        norm_4pi = 1
-
-        for l in range(2, lmax + 1):
-            k += 1
-            f1[k] = (2 * l - 1) / l
-            f2[k] = (l - 1) / l
-            for m in range(1, l - 1):
-                k += 1
-                f1[k] = (2 * l - 1) / (np.sqrt(l + m) * np.sqrt(l - m))
-                f2[k] = (
-                    np.sqrt(l - m - 1)
-                    * np.sqrt(l + m - 1)
-                    / (np.sqrt(l + m) * np.sqrt(l - m))
-                )
-            k += 2
-
-    else:
-        raise AssertionError(
-            "Unknown normalization given: ",
-            normalization,
-            ". It should be either " "'4pi', 'ortho' or 'schmidt'",
-        )
-
     # u is sine of colatitude (cosine of latitude), for z=cos(th): u=sin(th)
     u = np.sqrt(1 - z**2)
     # update where u==0 to minimal numerical precision different from 0 to prevent invalid divisions

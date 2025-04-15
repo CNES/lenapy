@@ -55,7 +55,7 @@ def test_plm_invalid_normalization():
     """Test compute_plm with an invalid normalization type"""
     lmax = 5
     z = np.linspace(-1, 1, 10)
-    with pytest.raises(AssertionError):
+    with pytest.raises(ValueError):
         compute_plm(lmax, z, normalization="invalid")
 
 
