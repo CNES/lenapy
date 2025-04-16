@@ -623,6 +623,107 @@ class ReadGFC(BackendEntrypoint):
 class ReadGRACEL2(BackendEntrypoint):
     open_dataset_parameters = ["filename_or_obj", "drop_variables"]
 
+    @staticmethod
+    def _open_file(filename: str | os.PathLike) -> any:
+        """
+        Open a file, supporting gzip-compressed files.
+
+        Parameters
+        ----------
+        filename: str or os.PathLike
+            Path to the file to open
+
+        Returns
+        -------
+        file: file-like
+            Opened file object
+        """
+        ext = os.path.splitext(filename)[-1]
+        if ext in (".gz", ".gzip"):
+            return gzip.open(filename, "rb")
+        return open(filename, "r")
+
+    @staticmethod
+    def _read_cnes_header(file: any, ext: str) -> dict:
+        """
+        Read header from CNES, GRGS, or TUGRZ formatted files.
+
+        Parameters
+        ----------
+        file: file-like
+            Opened file object
+        ext: str
+            File extension
+
+        Returns
+        -------
+        header: dict
+            Parsed header information
+        """
+        header = {}
+        while True:
+            line = file.readline()
+            if ext in (".gz", ".gzip"):
+                line = line.decode()
+            infos = line.split()
+            if line[:5] == "EARTH":
+                header["earth_gravity_constant"] = float(infos[1])
+                header["radius"] = float(infos[2])
+            elif line[:3] == "SHM":
+                header["max_degree"] = int(infos[1])
+                header["norm"] = " ".join(infos[4:6])
+                header["tide_system"] = " ".join(infos[6:])
+            elif "GRCOF2  " in line:
+                break
+        return header
+
+    @staticmethod
+    def _read_yaml_header(file: any, ext: str, filename: str) -> dict:
+        """
+        Read header from COST-G, UTCSR, JPL, or GFZ formatted files using YAML.
+
+        Parameters
+        ----------
+        file: file-like
+            Opened file object
+        ext: str
+            File extension
+        filename: str
+            File name for error reporting
+
+        Returns
+        -------
+        header: dict
+            Parsed header information
+        """
+        yaml_header_text = []
+        while True:
+            line = file.readline()
+            if ext in (".gz", ".gzip"):
+                line = line.decode()
+            if "End of YAML header" in line:
+                break
+            elif "GRCOF2  " in line:
+                raise ValueError(f"No 'End of YAML header' line in file {filename}")
+            elif "date_issued" in line or "acknowledgement" in line:
+                continue
+            yaml_header_text.append(line)
+        yaml_header = yaml.safe_load("".join(yaml_header_text))["header"]
+        header = {
+            "earth_gravity_constant": float(
+                yaml_header["non-standard_attributes"]["earth_gravity_param"]["value"]
+            ),
+            "radius": float(
+                yaml_header["non-standard_attributes"]["mean_equator_radius"]["value"]
+            ),
+            "max_degree": int(yaml_header["dimensions"]["degree"]),
+            "norm": yaml_header["non-standard_attributes"]["normalization"],
+            "tide_system": yaml_header["non-standard_attributes"].get(
+                "permanent_tide_flag", "missing"
+            ),
+        }
+        return header
+
     def open_dataset(self, filename, drop_variables=None):
         """
         Read a GRACE Level-2 gravity field product ASCII file (or compressed) from processing centers and
@@ -645,88 +746,16 @@ class ReadGRACEL2(BackendEntrypoint):
         """
         # -- Create a pointer to the file
         ext = os.path.splitext(filename)[-1]
+        file = self._open_file(filename)
 
-        if ext in (".gz", ".gzip"):
-            file = gzip.open(filename, "rb")
-        else:
-            file = open(filename, "r")
-
-        line = True
         # read CNES level 2 products (or GRAZ reprocessed by CNES)
-        if (
-            "CNES" in os.path.basename(filename)
-            or "GRGS" in os.path.basename(filename)
-            or "TUGRZ" in os.path.basename(filename)
-        ):
-            header = {}
-            while line:
-                line = file.readline()
-                if ext in (".gz", ".gzip"):
-                    line = line.decode()
-                infos = line.split()
-
-                if line[:5] == "EARTH":  # line with GM and a
-                    header["earth_gravity_constant"] = float(infos[1])
-                    header["radius"] = float(infos[2])
-                elif line[:3] == "SHM":  # line with lmax, norm and tide
-                    header["max_degree"] = int(infos[1])
-                    header["norm"] = " ".join(infos[4:6])
-                    header["tide_system"] = " ".join(infos[6:])
-
-                # first line with C00 = 1 (because no end of header information to deal with)
-                elif "GRCOF2  " in line:
-                    break
-
-        # Read other L2 products (COST-G, CSR, JPL or GFZ) where header follows the yaml format
+        if any(key in os.path.basename(filename) for key in ["CNES", "GRGS", "TUGRZ"]):
+            header = self._read_cnes_header(file, ext)
         elif any(
-            [
-                name in os.path.basename(filename)
-                for name in ("COSTG", "UTCSR", "JPLEM", "GFZOP")
-            ]
+            key in os.path.basename(filename)
+            for key in ["COSTG", "UTCSR", "JPLEM", "GFZOP"]
         ):
-            yaml_header_text = []
-            while line:
-                line = file.readline()
-                if ext in (".gz", ".gzip"):
-                    line = line.decode()
-                # test to break when end of header
-                if "End of YAML header" in line:
-                    break
-
-                # try to intercept case where no end_of_head (starting with degree and order 0)
-                elif "GRCOF2  " in line:
-                    raise ValueError(f"No 'End of YAML header' line in file {filename}")
-
-                # deal with case where file is weirdly filled with 'date_issued:0000-00-00T00:00:00' to avoid yaml crash
-                # deal also with acknowledgement line from GFZ on GRACE-FO periods that crash the yaml parser
-                elif "date_issued" in line or "acknowledgement" in line:
-                    continue
-                yaml_header_text.append(line)
-
-            # read yaml header to create a dict
-            yaml_header = yaml.safe_load("".join(yaml_header_text))["header"]
-
-            header = {
-                "earth_gravity_constant": float(
-                    yaml_header["non-standard_attributes"]["earth_gravity_param"][
-                        "value"
-                    ]
-                ),
-                "radius": float(
-                    yaml_header["non-standard_attributes"]["mean_equator_radius"][
-                        "value"
-                    ]
-                ),
-                "max_degree": int(yaml_header["dimensions"]["degree"]),
-                "norm": yaml_header["non-standard_attributes"]["normalization"],
-            }
-            try:
-                header["tide_system"] = yaml_header["non-standard_attributes"][
-                    "permanent_tide_flag"
-                ]
-            except KeyError:
-                header["tide_system"] = "missing"
-
+            header = self._read_yaml_header(file, ext, filename)
         else:
             raise ValueError(
                 "Name of the file does not corresponds to GRACE L2 products (https://archive.podaac."
