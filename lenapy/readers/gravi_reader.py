@@ -34,6 +34,7 @@ import os
 import re
 import tarfile
 import zipfile
+from typing import IO
 
 import numpy as np
 import xarray as xr
@@ -255,6 +256,136 @@ class ReadGFC(BackendEntrypoint):
         "date_format",
     ]
 
+    @staticmethod
+    def _parse_header(fileIO: IO, ext: str) -> tuple[dict, str]:
+        """
+        Parse the header of a .gfc file and extract relevant metadata.
+
+        Parameters
+        ----------
+        fileIO : IO
+            File object.
+        ext : str
+            File extension.
+
+        Returns
+        -------
+        header : dict
+            Parsed header metadata.
+        legend_line : str
+            Last header line before 'end_of_head'.
+
+        Raises
+        ------
+        ValueError
+            If required header keys are missing or malformed.
+        """
+        header_parameters = [
+            "modelname",
+            "product_name",
+            "earth_gravity_constant",
+            "radius",
+            "max_degree",
+            "errors",
+            "norm",
+            "tide_system",
+        ]
+        regex = "(" + "|".join(header_parameters) + ")"
+        header = {}
+        legend_before_end_header = ""
+        while True:
+            line = fileIO.readline()
+            if ext.lower() in [".gz", ".gzip", ".zip", ".tar", ".ZIP"]:
+                line = line.decode()
+            if re.match(regex, line):
+                header[line.split()[0]] = line.split()[1]
+            if "end_of_head" in line:
+                break
+            elif "0    0" in line:
+                raise ValueError(f"Missing 'end_of_head' in header of file {fileIO}")
+            legend_before_end_header = line
+
+        # case for COSTG header where 'modelname' is created as 'product_name'
+        header["modelname"] = header.get("product_name", header.get("modelname"))
+        # default norm is fully_normalized, change it to 4pi if needed to be coherent with lenapy functions
+        header["norm"] = "4pi" if "norm" not in header else header["norm"]
+        header["norm"] = (
+            "4pi" if header["norm"] == "fully_normalized" else header["norm"]
+        )
+        header["norm"] = (
+            "unnorm" if header["norm"] == "unnormalized" else header["norm"]
+        )
+        header["tide_system"] = header.get("tide_system", "missing")
+
+        # test for mandatory keywords (https://icgem.gfz-potsdam.de/docs/ICGEM-Format-2023.pdf)
+        required = [
+            "modelname",
+            "earth_gravity_constant",
+            "radius",
+            "max_degree",
+            "errors",
+        ]
+        if not all(k in header for k in required):
+            raise ValueError(
+                (
+                    "File header does not contains mandatory keywords"
+                    " (https://icgem.gfz-potsdam.de/docs/ICGEM-Format-2023.pdf)"
+                )
+            )
+
+        header["max_degree"] = int(header["max_degree"])
+        header["earth_gravity_constant"] = float(header["earth_gravity_constant"])
+        header["radius"] = float(header["radius"])
+        return header, legend_before_end_header
+
+    def _open_file(self, filename: str | os.PathLike) -> tuple[IO, str, bool]:
+        """
+        Open a .gfc file or a compressed archive containing a .gfc file.
+
+        Parameters
+        ----------
+        filename : str or os.PathLike
+            Path to the .gfc file or archive.
+
+        Returns
+        -------
+        file : IO
+            Opened file object.
+        ext : str
+            Original file extension.
+        is_binary : bool
+            Whether the file should be read as binary.
+
+        Raises
+        ------
+        ValueError
+            If the file extension is unsupported or no .gfc is found in archive.
+        """
+        ext = os.path.splitext(filename)[-1]
+        compress_extensions = [".gz", ".zip", ".tar", ".gzip", ".ZIP"]
+
+        if ext.lower() == ".gfc":
+            return open(filename, "r"), ext, False
+
+        if ext in (".gz", ".gzip"):
+            return gzip.open(filename, "rb"), ext, True
+
+        if ext in (".zip", ".ZIP"):
+            zip_file = zipfile.ZipFile(filename, "r")
+            gfc_files = [f for f in zip_file.namelist() if f.lower().endswith(".gfc")]
+            if not gfc_files:
+                raise ValueError("No .gfc file found in ZIP archive.")
+            return zip_file.open(gfc_files[0], "r"), ext, True
+
+        if ext == ".tar":
+            tar_file = tarfile.open(filename, "r")
+            gfc_files = [f for f in tar_file.getnames() if f.lower().endswith(".gfc")]
+            if not gfc_files:
+                raise ValueError("No .gfc file found in TAR archive.")
+            return tar_file.extractfile(gfc_files[0]), ext, True
+
+        raise ValueError("Unsupported file extension.")
+
     def open_dataset(
         self,
         filename,
@@ -308,113 +439,13 @@ class ReadGFC(BackendEntrypoint):
         No date information in the file:
         >>> ds = xr.open_mfdataset('path/to/file.gfc', engine='lenapyGfc', no_date=True)
         """
-        # -- Create a pointer to the '.gfc' file
-        ext = os.path.splitext(filename)[-1]
-        compress_extensions = [".gz", ".zip", ".tar", ".gzip", ".ZIP"]
+        file, ext, is_binary = self._open_file(filename)
+        header, legend = self._parse_header(file, ext)
 
-        if ext in (".gfc", ".GFC"):
-            file = open(filename, "r")
-
-        elif ext in compress_extensions:
-            if ext in (".gz", ".gzip"):
-                file = gzip.open(filename, "rb")
-            elif ext in (".zip", ".ZIP"):
-                zip_file = zipfile.ZipFile(filename, "r")
-                filenamezip = [
-                    file
-                    for file in zip_file.namelist()
-                    if file.endswith(".gfc") or file.endswith(".GFC")
-                ][0]
-                file = zip_file.open(filenamezip, "r")
-            elif ext == ".tar":
-                tar_file = tarfile.open(filename, "r")
-                filenametar = [
-                    file
-                    for file in tar_file.getnames()
-                    if file.endswith(".gfc") or file.endswith(".GFC")
-                ][0]
-                file = tar_file.extractfile(filenametar)
-
-        else:
-            raise ValueError(
-                "File does not have the good extension. "
-                "Should be .gfc or a compress format with a .gfc file in it."
-            )
-
-        # -- Extract parameters from '.gfc' header
-        header_parameters = [
-            "modelname",
-            "product_name",
-            "earth_gravity_constant",
-            "radius",
-            "max_degree",
-            "errors",
-            "norm",
-            "tide_system",
-        ]
-        parameters_regex = "(" + "|".join(header_parameters) + ")"
-        header = {}
-        line = True
-
-        # goes while up to end of header or end of file
-        while line:
-            line = file.readline()
-            if ext in compress_extensions:
-                line = line.decode()
-            if re.match(parameters_regex, line):
-                header[line.split()[0]] = line.split()[1]
-
-            # test to break when end of header
-            if "end_of_head" in line:
-                break
-            # try to intercept case where no end_of_head to raise Error (if file is starting with degree 0 and order 0)
-            elif "0    0" in line:
-                raise ValueError("No 'end_of_head' line in file ", filename)
-            # keep keys information from the line before end_of_head (to know if there is a time key or not)
-            legend_before_end_header = line
-
-        # case for COSTG header where 'modelname' is created as 'product_name'
-        header["modelname"] = (
-            header["product_name"] if "product_name" in header else header["modelname"]
-        )
-
-        # default norm is fully_normalized, change it to 4pi if needed to be coherent with lenapy functions
-        header["norm"] = "4pi" if "norm" not in header else header["norm"]
-        header["norm"] = (
-            "4pi" if header["norm"] == "fully_normalized" else header["norm"]
-        )
-        header["norm"] = (
-            "unnorm" if header["norm"] == "unnormalized" else header["norm"]
-        )
-
-        header["tide_system"] = (
-            "missing" if "tide_system" not in header else header["tide_system"]
-        )
-
-        # test for mandatory keywords (https://icgem.gfz-potsdam.de/docs/ICGEM-Format-2023.pdf)
-        if not all(
-            key in header
-            for key in [
-                "modelname",
-                "earth_gravity_constant",
-                "radius",
-                "max_degree",
-                "errors",
-            ]
-        ):
-            raise ValueError(
-                "File header does not contains mandatory keywords"
-                " (https://icgem.gfz-potsdam.de/docs/ICGEM-Format-2023.pdf)"
-            )
-
-        # convert str to numbers for adapted header info
-        header["max_degree"] = int(header["max_degree"])
-        header["earth_gravity_constant"] = float(header["earth_gravity_constant"])
-        header["radius"] = float(header["radius"])
         lmax = header["max_degree"]
 
         # test if gfct key then have to deal with time
-        if "t" not in legend_before_end_header:
+        if "t" not in legend:
             # -- Compute time
             if not no_date:
                 if (
@@ -538,10 +569,6 @@ class ReadGFC(BackendEntrypoint):
             ds["exact_time"] = xr.DataArray([exact_time], dims=["time"])
 
         # -- Close all file pointers
-        if ext in (".zip", ".ZIP"):
-            zip_file.close()
-        elif ext == ".tar":
-            tar_file.close()
         file.close()
 
         return ds
