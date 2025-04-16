@@ -45,7 +45,6 @@ jobs:
         run: pip install -e .[formatter]
 
       - name: Run Black & Isort
-        shell: bash -l {0}
         run: |
           black --check --diff lenapy
           isort lenapy --check --diff
