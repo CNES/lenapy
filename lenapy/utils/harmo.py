@@ -982,6 +982,75 @@ def change_normalization(
     return ds_out
 
 
+def get_earth_parameters(
+    attrs: dict | None, a_earth: float | None, gm_earth: float | None
+) -> tuple[float, float]:
+    """
+    Retrieve Earth parameters from inputs or fallback constants.
+
+    Parameters
+    ----------
+    attrs : dict or None
+        Attributes potentially containing Earth parameters.
+    a_earth : float or None
+        Semi-major axis.
+    gm_earth : float or None
+        Gravitational constant.
+
+    Returns
+    -------
+    a_earth : float
+        Resolved semi-major axis.
+    gm_earth : float
+        Resolved gravitational constant.
+    """
+    if attrs is None:
+        attrs = {}
+
+    resolved_a = a_earth or float(attrs.get("radius", LNPY_A_EARTH_GRS80))
+    resolved_gm = gm_earth or float(attrs.get("earth_gravity_constant", LNPY_GM_EARTH))
+    return resolved_a, resolved_gm
+
+
+def load_default_love_numbers() -> xr.Dataset:
+    """
+    Load default Love numbers dataset.
+
+    Returns
+    -------
+    ds_love : xr.Dataset
+        Love numbers dataset.
+    """
+    current_file = inspect.getframeinfo(inspect.currentframe()).filename
+    folderpath = pathlib.Path(current_file).absolute().parent.parent
+    default_love_file = folderpath / "resources" / "LoveNumbers_Gegout97.txt"
+
+    df = pd.read_csv(default_love_file, names=["kl"])
+    ds = xr.Dataset.from_dataframe(df).rename({"index": "l"})
+    return ds
+
+
+def compute_a_div_r_lat(geocentric_colat: np.ndarray, f_earth: float) -> np.ndarray:
+    """
+    Compute a/r(θ) for ellipsoidal Earth correction.
+
+    Parameters
+    ----------
+    geocentric_colat : np.ndarray
+        Geocentric colatitudes in radians.
+    f_earth : float
+        Earth flattening.
+
+    Returns
+    -------
+    a_div_r_lat : np.ndarray
+    """
+    # e = sqrt(2f - f**2)
+    e_earth = np.sqrt(2 * f_earth - f_earth**2)
+    # a_div_r_lat = a / r(theta)  with r(theta) = a(1-f)/sqrt(1 - e**2*sin(theta)**2)
+    return np.sqrt(1 - e_earth**2 * np.sin(geocentric_colat) ** 2) / (1 - f_earth)
+
+
 def l_factor_conv(
     l,
     unit="mewh",
@@ -1046,17 +1115,8 @@ def l_factor_conv(
         *Journal of Geodesy*, 92, 1401--1412, (2018).
         `doi: 10.1007/s00190-018-1128-0 <https://doi.org/10.1007/s00190-018-1128-0>`_
     """
-    # -- define constants
-    if attrs is None:
-        attrs = {}
-    if a_earth is None:
-        a_earth = float(attrs["radius"]) if "radius" in attrs else LNPY_A_EARTH_GRS80
-    if gm_earth is None:
-        gm_earth = (
-            float(attrs["earth_gravity_constant"])
-            if "earth_gravity_constant" in attrs
-            else LNPY_GM_EARTH
-        )
+
+    a_earth, gm_earth = get_earth_parameters(attrs, a_earth, gm_earth)
 
     l = xr.DataArray(l, dims=["l"], coords={"l": l})
     fraction = xr.ones_like(l)
@@ -1064,19 +1124,10 @@ def l_factor_conv(
     # include elastic redistribution with kl Love numbers
     if include_elastic:
         if ds_love is None:
-            current_file = inspect.getframeinfo(inspect.currentframe()).filename
-            folderpath = pathlib.Path(current_file).absolute().parent.parent
-            default_love_file = folderpath.joinpath(
-                "resources", "LoveNumbers_Gegout97.txt"
-            )
-            ds_love = xr.Dataset.from_dataframe(
-                pd.read_csv(default_love_file, names=["kl"])
-            )
-            ds_love = ds_love.rename({"index": "l"})
-
+            ds_love = load_default_love_numbers()
         fraction = fraction + ds_love.kl
 
-    # test for ellipsoidal_earth
+    a_div_r_lat = None
     if ellipsoidal_earth:
         # test if geocentric_colat is set
         if geocentric_colat is None:
@@ -1085,14 +1136,64 @@ def l_factor_conv(
                 "the parameter 'geocentric_colat' in l_factor_conv function"
             )
 
-        # compute variable for ellipsoidal_earth
-        # e = sqrt(2f - f**2)
-        e_earth = np.sqrt(2 * f_earth - f_earth**2)
-        # a_div_r_lat = a / r(theta)  with r(theta) = a(1-f)/sqrt(1 - e**2*sin(theta)**2)
-        a_div_r_lat = np.sqrt(1 - e_earth**2 * np.sin(geocentric_colat) ** 2) / (
-            1 - f_earth
-        )
+        a_div_r_lat = compute_a_div_r_lat(geocentric_colat, f_earth)
 
+    l_factor = compute_l_factor(
+        a_div_r_lat,
+        a_earth,
+        ds_love,
+        ellipsoidal_earth,
+        fraction,
+        gm_earth,
+        l,
+        rho_earth,
+        unit,
+    )
+
+    cst = {"gm_earth": gm_earth, "a_earth": a_earth}
+    return l_factor, cst
+
+
+def compute_l_factor(
+    a_div_r_lat: np.ndarray | None,
+    a_earth: float,
+    ds_love: xr.Dataset | None,
+    ellipsoidal_earth: bool,
+    fraction: xr.DataArray,
+    gm_earth: float,
+    l: np.ndarray | xr.DataArray,
+    rho_earth,
+    unit,
+):
+    """
+    Compute the degree-dependent scale factor.
+
+    Parameters
+    ----------
+    a_div_r_lat: np.ndarray or None
+        Ellipsoidal correction factor
+    a_earth: float
+        Earth radius
+    ds_love: xr.Dataset, optional
+        Love numbers
+    ellipsoidal_earth: bool
+        Whether to apply ellipsoidal correction
+    fraction: xr.DataArray
+        Redistribution factor
+    gm_earth: float
+        Earth gravitational constant
+    l: np.ndarray or xr.DataArray
+        Degrees
+    rho_earth: float
+        Earth density
+    unit: str
+        Unit type for conversion
+
+    Returns
+    -------
+    l_factor : xr.DataArray
+        Degree-dependent conversion factor.
+    """
     # l_factor is degree dependant
     if unit == "norm":
         # norm, fully normalized spherical harmonics
@@ -1163,9 +1264,7 @@ def l_factor_conv(
             "Invalid 'unit' parameter value in l_factor_conv function, valid values are: "
             "(norm, mewh, mmgeoid, microGal, bar, mvcu)"
         )
-
-    cst = {"gm_earth": gm_earth, "a_earth": a_earth}
-    return l_factor, cst
+    return l_factor
 
 
 def assert_sh(ds):
