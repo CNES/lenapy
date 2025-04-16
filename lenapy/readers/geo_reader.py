@@ -67,11 +67,13 @@ class lenapyNetcdf(BackendEntrypoint):
         set_time=None,
         open_dataset_kwargs={},
     ):
-        
-        open_kw=open_dataset_kwargs.copy()
+
+        open_kw = open_dataset_kwargs.copy()
         # If available and not specified, use 'h5netcdf' as engine, which is more dask-friendly than netcdf4
-        if not('engine' in open_dataset_kwargs.keys()) and ('h5netcdf' in xr.backends.list_engines()):
-            open_kw['engine']='h5netcdf'
+        if not ("engine" in open_dataset_kwargs.keys()) and (
+            "h5netcdf" in xr.backends.list_engines()
+        ):
+            open_kw["engine"] = "h5netcdf"
 
         res = rename_data(
             xr.open_dataset(

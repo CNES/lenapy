@@ -96,7 +96,16 @@ def filter(
     return data_filtered
 
 
-def climato(data, signal=True, mean=True, trend=True, cycle=False, Nmin=0,t_min=None,t_max=None):
+def climato(
+    data,
+    signal=True,
+    mean=True,
+    trend=True,
+    cycle=False,
+    Nmin=0,
+    t_min=None,
+    t_max=None,
+):
     """
     Analyse du cycle annuel, bi-annuel et de la tendance
     Decompose les données en entrée en :
@@ -125,7 +134,7 @@ def climato(data, signal=True, mean=True, trend=True, cycle=False, Nmin=0,t_min=
     """
 
     a = Coeffs_climato(xr.Dataset(dict(measure=data)), Nmin=Nmin)
-    res = a.solve("measure",t_min=t_min,t_max=t_max)
+    res = a.solve("measure", t_min=t_min, t_max=t_max)
     ret = []
     if mean:
         ret.append("order_0")
