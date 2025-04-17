@@ -139,8 +139,6 @@ class lenapyOceanProducts(BackendEntrypoint):
             fics = filtered_list(
                 glob(os.path.join(directory, "**", "*.nc")), year, ymin, ymax, filter
             )
-            # On force l'engine a netcdf4 car les fichiers ne sont pas compatibles hdf5
-            open_kw["engine"] = "netcdf4"
             data = xr.open_mfdataset(fics, **open_kw)
 
             return xr.Dataset({"temp": data.TEMP, "psal": data.PSAL})
