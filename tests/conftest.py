@@ -7,6 +7,21 @@ import xarray as xr
 import lenapy
 
 
+def pytest_addoption(parser):
+    parser.addoption(
+        "--overwrite_references",
+        action="store_true",
+        default=False,
+        help="Set to True to overwrite existing reference data with new values during this test run. "
+        "Useful when updating expected outputs",
+    )
+
+
+@pytest.fixture
+def overwrite_references(request):
+    return request.config.getoption("--overwrite_references")
+
+
 @dataclass
 class LenapyTestsPath:
     project_dir: Path

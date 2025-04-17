@@ -39,12 +39,15 @@ def test_sh_to_grid(lenapy_paths):
         (5, np.linspace(-1, 1, 10), "schmidt", "plm_schmidt.npy"),
     ],
 )
-def test_plm_normalization(lenapy_paths, lmax, z, normalization, ref_filename):
+def test_plm_normalization(
+    overwrite_references, lenapy_paths, lmax, z, normalization, ref_filename
+):
     """Test compute_plm with different normalization methods"""
     ref_file = lenapy_paths.ref_data / "utils" / ref_filename
-    ref_plm = np.load(ref_file)
-
     plm = compute_plm(lmax, z, normalization=normalization)
+    if overwrite_references:
+        np.save(ref_file, plm)
+    ref_plm = np.load(ref_file)
     assert np.allclose(ref_plm, plm), f"Failed for normalization {normalization}"
 
 
