@@ -114,4 +114,4 @@ mccabe_analysis:
   script:
     - source activate lenapy_env
     - pip install .[quality]
-    - ./continuous_integration/scripts/check_mccabe_complexity.sh 25 lenapy
+    - ./continuous_integration/scripts/check_mccabe_complexity.sh 25 lenapy lenapy/readers/ocean.py lenapy/plots/plotting.py

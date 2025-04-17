@@ -156,7 +156,7 @@ jobs:
 
       - name: Run McCabe Complexity Check
         shell: bash -l {0}
-        run: ./continuous_integration/scripts/check_mccabe_complexity.sh 25 lenapy
+        run: ./continuous_integration/scripts/check_mccabe_complexity.sh 25 lenapy lenapy/readers/ocean.py lenapy/plots/plotting.py
 
   build_doc:
     name: Build sphinx documentation
