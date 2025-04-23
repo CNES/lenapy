@@ -379,9 +379,7 @@ def JJ_to_date(jj):
     return t0 + dt
 
 
-def fillna_climato(data, time_period=slice(None, None)):
+def fillna_climato(data):
     #
-    val = climato(
-        data, signal=False, mean=True, trend=True, cycle=True, time_period=time_period
-    )
+    val = climato(data, signal=False, mean=True, trend=True, cycle=True)
     return xr.where(data.isnull(), val, data)
