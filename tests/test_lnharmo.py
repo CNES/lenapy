@@ -30,5 +30,5 @@ def test_lenapy_gfc(lenapy_paths, op):
     gsm_harmo_1 = gsm.copy(deep=True).lnharmo
     out = op(gsm_harmo_1)
     assert np.allclose(
-        op(gsm.clm.values), out.clm.values + 1
+        op(gsm.clm.values), out.clm.values
     ), f"operator {lambda_source(op)} failed"
