@@ -1,8 +1,21 @@
+import inspect
+import textwrap
 from pathlib import Path
 
 import numpy as np
 import xarray as xr
 from PIL import Image
+
+
+def lambda_source(func):
+    """Return the one‑line source of a lambda (trimmed)."""
+    try:
+        src = inspect.getsource(func)
+        src = textwrap.dedent(src).strip()
+        return src.replace("\n", " ")
+    except OSError:
+        # Fallback if source not found (e.g. in interactive)
+        return "<lambda source unavailable>"
 
 
 def compare_pngs(
