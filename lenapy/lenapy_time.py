@@ -451,12 +451,12 @@ class TimeArray:
 
         return xr.corr(r1, r2, **kwargs)
 
-    def fillna_climato(self, time_period=slice(None, None)):
+    def fillna_climato(self):
         """
         Returns a DataArray with all NaN values replaced by climatology and trend
         Climatology is computed over the optional time_period slice
         """
-        return fillna_climato(self._obj, time_period=time_period)
+        return fillna_climato(self._obj)
 
     def EOF(self, dim, k):
         """
