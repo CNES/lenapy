@@ -2,7 +2,7 @@ import numpy as np
 import xarray as xr
 
 
-def lanczos(cutoff, order):
+def lanczos(cutoff: int, order: int):
     """
     Lanczos Filter
     Implementation of a filter whose spectral response is a door with a temporal width specified by "cutoff",
