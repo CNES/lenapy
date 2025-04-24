@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
-from tests.utilities import compare_pngs
+from tests.utilities import compare_pngs, result_to_dataset
 
 
 def test_lntime_climato(overwrite_references, lenapy_paths):
@@ -129,3 +129,14 @@ def test_lntime_fillna_climato(overwrite_references, lenapy_paths):
         result.to_netcdf(ref_file)
     ref_fillna_climato = xr.open_dataarray(ref_file)
     xr.testing.assert_equal(ref_fillna_climato, result)
+
+
+def test_lntime_gls(overwrite_references, lenapy_paths):
+    ref_file = lenapy_paths.ref_data / "lenapy_time" / "lntime_gls.nc"
+    ohc = xr.open_dataset(lenapy_paths.data / "ohc.nc")
+    result = ohc.gohc.lntime.GLS(degree=1)
+    data = result_to_dataset(result)
+    if overwrite_references:
+        data.to_netcdf(ref_file)
+    ref_gls = xr.open_dataset(ref_file)
+    xr.testing.assert_equal(ref_gls, data)

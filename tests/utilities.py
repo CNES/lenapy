@@ -7,6 +7,53 @@ import xarray as xr
 from PIL import Image
 
 
+def result_to_dataset(res) -> xr.Dataset:
+    """
+    Build a single xr.Dataset from every xarray / numpy attribute in *res*,
+    making sure dimensions do not clash.
+
+    Any unnamed dimension like 'dim_0' is renamed to '<attr>_dim'.
+    """
+    data_vars = []
+
+    for attr in dir(res):
+        if attr.startswith("_"):
+            continue
+
+        value = getattr(res, attr)
+
+        # xarray.DataArray
+        if isinstance(value, xr.DataArray):
+            # give the array a name if none
+            da = value if value.name else value.rename(attr)
+
+            # rename generic dims ('dim_0', ...) to unique names
+            new_dims = {d: f"{attr}_{d}" for d in da.dims if d.startswith("dim_")}
+            da = da.rename(new_dims)
+
+            data_vars.append(da)
+
+        # xarray.Dataset
+        elif isinstance(value, xr.Dataset):
+            # recursively tidy each var
+            tidied = {}
+            for vname, v in value.data_vars.items():
+                new = v.rename(attr + "_" + vname)
+                new_dims = {d: f"{attr}_{d}" for d in new.dims if d.startswith("dim_")}
+                tidied[attr + "_" + vname] = new.rename(new_dims)
+            data_vars.extend(tidied.values())
+
+        # numpy array
+        elif isinstance(value, np.ndarray):
+            name = attr
+            da = xr.DataArray(value, name=name)
+            new_dims = {d: f"{attr}_{d}" for d in da.dims if d.startswith("dim_")}
+            da = da.rename(new_dims)
+            data_vars.append(da)
+
+    return xr.merge(data_vars).assign_attrs(source="GLS unit test")
+
+
 def lambda_source(func):
     """Return the one‑line source of a lambda (trimmed)."""
     try:
