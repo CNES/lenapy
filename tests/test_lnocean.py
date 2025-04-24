@@ -1,34 +1,16 @@
-def test_attributes(ohc_data):
-    temp = ohc_data.lnocean.temp
-    pt = ohc_data.lnocean.PT
-    ct = ohc_data.lnocean.CT
-    psal = ohc_data.lnocean.psal
-    sr = ohc_data.lnocean.SR
-    sa = ohc_data.lnocean.SA
-    pressure = ohc_data.lnocean.P
-    rho = ohc_data.lnocean.rho
-    sigma0 = ohc_data.lnocean.sigma0
-    cp = ohc_data.lnocean.Cp
-    heat = ohc_data.lnocean.heat
-    slh = ohc_data.lnocean.slh
-    ohc = ohc_data.lnocean.ohc
-    ssl = ohc_data.lnocean.ssl
-    tssl = ohc_data.lnocean.tssl
-    hssl = ohc_data.lnocean.hssl
-    ssl_above = ohc_data.lnocean.ssl_above
-    eeh = ohc_data.lnocean.eeh
-    ieeh = ohc_data.lnocean.ieeh
-    gohc = ohc_data.lnocean.gohc
-    msl = ohc_data.lnocean.msl
-    tmsl = ohc_data.lnocean.tmsl
-    hmsl = ohc_data.lnocean.hmsl
-    gohc_toa = ohc_data.lnocean.gohc_TOA
-    ohc_above = ohc_data.lnocean.ohc_above
-    ocean_depth = ohc_data.lnocean.ocean_depth
-    mld_theta0 = ohc_data.lnocean.mld_theta0
-    mld_theta0minus_only = ohc_data.lnocean.mld_theta0minus_only
-    mld_sigma0 = ohc_data.lnocean.mld_sigma0
-    mld_sigma0var = ohc_data.lnocean.mld_sigma0var
-    msl = ohc_data.lnocean.msl
-    msl = ohc_data.lnocean.msl
-    msl = ohc_data.lnocean.msl
+import xarray as xr
+
+from tests.utilities import result_to_dataset, subsample_xr
+
+
+def test_attributes(overwrite_references, lenapy_paths, ohc_data):
+    ref_file = lenapy_paths.ref_data / "lnocean_attributes.nc"
+    dataset = result_to_dataset(ohc_data.lnocean)
+    dataset = subsample_xr(dataset, 10)
+    if overwrite_references:
+        dataset.to_netcdf(
+            ref_file,
+            encoding={var: {"zlib": True, "complevel": 8} for var in dataset.data_vars},
+        )
+    ref_ocean = xr.open_dataset(ref_file)
+    xr.testing.assert_equal(ref_ocean, dataset)
