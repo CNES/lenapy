@@ -10,6 +10,7 @@ workflow:
 stages:
   - init
   - quality
+  - documentation
 
 # Default configuration for all jobs
 default:
@@ -114,4 +115,19 @@ mccabe_analysis:
   script:
     - source activate lenapy_env
     - pip install .[quality]
-    - ./continuous_integration/scripts/check_mccabe_complexity.sh 25 lenapy
+    - ./continuous_integration/scripts/check_mccabe_complexity.sh 25 lenapy lenapy/readers/ocean.py lenapy/plots/plotting.py
+
+build_doc:
+  stage: documentation
+  image: ${ARTIFACTORY_HOST}/${TAG_IMAGE_CONDA}
+  before_script:
+    - source activate lenapy_env
+    - pip install .[doc]
+  script:
+    - conda install pandoc
+    - sphinx-build -b html doc doc/build
+  artifacts:
+    when: always
+    paths:
+      - doc/build
+    expire_in: 1 day
