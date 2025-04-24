@@ -51,7 +51,7 @@ def result_to_dataset(res) -> xr.Dataset:
             da = da.rename(new_dims)
             data_vars.append(da)
 
-    return xr.merge(data_vars).assign_attrs(source="GLS unit test")
+    return xr.merge(data_vars, compat="override").assign_attrs(source="GLS unit test")
 
 
 def lambda_source(func):
