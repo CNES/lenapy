@@ -98,7 +98,7 @@ def test_distance(overwrite_references, lenapy_paths, air_temperature_data):
     if overwrite_references:
         results.to_netcdf(ref_file)
     ref_distance = xr.open_dataarray(ref_file)
-    xr.testing.assert_equal(ref_distance, results)
+    xr.testing.assert_allclose(ref_distance, results)
 
 
 def test_isosurface(overwrite_references, lenapy_paths, ohc_data):

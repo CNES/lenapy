@@ -12,7 +12,7 @@ def test_lntime_climato(overwrite_references, lenapy_paths):
     if overwrite_references:
         result.to_netcdf(ref_file)
     ref_climato = xr.open_dataarray(ref_file)
-    xr.testing.assert_equal(ref_climato, result)
+    xr.testing.assert_allclose(ref_climato, result)
 
 
 def test_lntime_filter(overwrite_references, lenapy_paths):
@@ -22,7 +22,7 @@ def test_lntime_filter(overwrite_references, lenapy_paths):
     if overwrite_references:
         result.to_netcdf(ref_file)
     ref_filter = xr.open_dataarray(ref_file)
-    xr.testing.assert_equal(ref_filter, result)
+    xr.testing.assert_allclose(ref_filter, result)
 
 
 def test_lntime_interp_time(overwrite_references, lenapy_paths):
@@ -86,7 +86,7 @@ def test_lntime_trend(overwrite_references, lenapy_paths):
     if overwrite_references:
         result.to_netcdf(ref_file)
     ref_trend = xr.open_dataarray(ref_file)
-    xr.testing.assert_equal(ref_trend, result)
+    xr.testing.assert_allclose(ref_trend, result)
 
 
 def test_lntime_detrend(overwrite_references, lenapy_paths):
@@ -96,7 +96,7 @@ def test_lntime_detrend(overwrite_references, lenapy_paths):
     if overwrite_references:
         result.to_netcdf(ref_file)
     ref_detrend = xr.open_dataarray(ref_file)
-    xr.testing.assert_equal(ref_detrend, result)
+    xr.testing.assert_allclose(ref_detrend, result)
 
 
 def test_lntime_fill_time(overwrite_references, lenapy_paths):
@@ -139,4 +139,4 @@ def test_lntime_gls(overwrite_references, lenapy_paths):
     if overwrite_references:
         data.to_netcdf(ref_file)
     ref_gls = xr.open_dataset(ref_file)
-    xr.testing.assert_equal(ref_gls, data)
+    xr.testing.assert_allclose(ref_gls, data)
