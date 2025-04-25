@@ -130,4 +130,4 @@ build_doc:
     when: always
     paths:
       - doc/build
-    expire_in: 1 day
+    expire_in: 2 day
