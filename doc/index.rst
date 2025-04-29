@@ -18,19 +18,13 @@ This library is based on the principle of class extension, i.e. functions can be
 Reading interfaces are implemented, enabling netcdf files to be opened with a compatible formalism from the **lenapy** library.
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 1
    :caption: Contents:
-   
-   changelog
+   :hidden:
+
    gettingStarted
-   api
+   Changelog <changelog>
    tutorials
-
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+   lenapy API Reference <api/index>
+   How to contribute <contributing>
+   Release procedure <release_procedure>

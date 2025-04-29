@@ -1,1 +1,2 @@
-.. mdinclude:: CHANGELOG.md
+.. _changes:
+.. mdinclude:: ../CHANGELOG.md

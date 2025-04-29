@@ -72,6 +72,7 @@ doc = [
     "sphinx",
     "sphinx-rtd-theme",
     "sphinx-mdinclude",
+    "sphinx-autodoc-typehints",
     "nbsphinx",
 ]
 notebook = [

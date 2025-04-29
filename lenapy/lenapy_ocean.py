@@ -94,7 +94,7 @@ class OceanSet:
           * longitude  (longitude) float32 1.0 2.0 3.0 4.0 ... 357.0 358.0 359.0 360.0
         Attributes:
             long_name:  Ocean heat content
-            units:      J/m²
+            units:      J/m^2
         print(data.lnocean.gohc)
         <xarray.DataArray 'gohc' (time: 156)>
         dask.array<truediv, shape=(156,), dtype=float64, chunksize=(1,), chunktype=numpy.ndarray>
@@ -103,7 +103,7 @@ class OceanSet:
             depth    float32 1.0
         Attributes:
             long_name:  Global ocean heat content wrt to ocean surface area
-            units:      J/m²
+            units:      J/m^2
 
     """
 
