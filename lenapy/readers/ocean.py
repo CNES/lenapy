@@ -263,18 +263,13 @@ class lenapyOceanProducts(BackendEntrypoint):
             temp = anom.ARGO_TEMPERATURE_ANOMALY + clim.ARGO_TEMPERATURE_MEAN
             psal = anom.ARGO_SALINITY_ANOMALY + clim.ARGO_SALINITY_MEAN
 
-            depth = -gsw.z_from_p(anom.PRESSURE, 0)
-            pressure = gsw.p_from_z(-depth, anom.latitude)
-            pressure = xr.where(pressure < anom.PRESSURE, pressure, anom.PRESSURE)
+            # Corresponding depth for pressure at mean latitude of 30 degrees
+            depth = -gsw.z_from_p(anom.PRESSURE, 30)
 
             return xr.Dataset(
                 {
-                    "temp": temp.interp(PRESSURE=pressure)
-                    .assign_coords(PRESSURE=depth)
-                    .rename(PRESSURE="depth"),
-                    "psal": psal.interp(PRESSURE=pressure)
-                    .assign_coords(PRESSURE=depth)
-                    .rename(PRESSURE="depth"),
+                    "temp": temp.assign_coords(PRESSURE=depth).rename(PRESSURE="depth"),
+                    "psal": psal.assign_coords(PRESSURE=depth).rename(PRESSURE="depth"),
                 }
             )
 
@@ -453,20 +448,13 @@ class lenapyOceanProducts(BackendEntrypoint):
                 open_dataset_kwargs=open_kw,
             )
 
-            depth = -gsw.z_from_p(data.PRES, 90)
-            pressure = gsw.p_from_z(-depth, data.latitude)
-            v0 = data.isel(PRES=0)
-            v0["PRES"] = xr.zeros_like(v0.PRES)
-            data2 = xr.concat([v0, data], dim="PRES")
+            # Corresponding depth for pressure at mean latitude of 30 degrees
+            depth = -gsw.z_from_p(data.PRES, 30)
 
             return xr.Dataset(
                 {
-                    "temp": data2.TOI.interp(PRES=pressure)
-                    .assign_coords(PRES=depth)
-                    .rename(PRES="depth"),
-                    "psal": data2.SOI.interp(PRES=pressure)
-                    .assign_coords(PRES=depth)
-                    .rename(PRES="depth"),
+                    "temp": data.TOI.assign_coords(PRES=depth).rename(PRES="depth"),
+                    "psal": data.SOI.assign_coords(PRES=depth).rename(PRES="depth"),
                 }
             )
 
@@ -523,18 +511,17 @@ class lenapyOceanProducts(BackendEntrypoint):
                 open_dataset_kwargs=open_kw,
             ).sel(time=slice(str(ymin), str(ymax)))
 
-            depth = -gsw.z_from_p(data.pressure, 0)
-            pressure = gsw.p_from_z(-depth, data.latitude)
-            pressure = xr.where(pressure < data.pressure, pressure, data.pressure)
+            # Corresponding depth for pressure at mean latitude of 30 degrees
+            depth = -gsw.z_from_p(data.pressure, 30)
 
             return xr.Dataset(
                 {
-                    "temp": data.temperature.interp(pressure=pressure)
-                    .assign_coords(pressure=depth)
-                    .rename(pressure="depth"),
-                    "psal": data.practical_salinity.interp(pressure=pressure)
-                    .assign_coords(pressure=depth)
-                    .rename(pressure="depth"),
+                    "temp": data.temperature.assign_coords(pressure=depth).rename(
+                        pressure="depth"
+                    ),
+                    "psal": data.practical_salinity.assign_coords(
+                        pressure=depth
+                    ).rename(pressure="depth"),
                 }
             )
 
