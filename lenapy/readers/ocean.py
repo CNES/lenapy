@@ -100,7 +100,7 @@ class lenapyOceanProducts(BackendEntrypoint):
 
     .. code-block:: python
 
-     data=xr.open_dataset('/home/usr/lenapy/data/ISAS20',engine='lenapyOceanProduct',product='ISAS",ymin=2005,ymax=2007,filter='ARGO',chunks={'time':1,'depth':10})
+     data=xr.open_dataset('/home/usr/lenapy/data/ISAS20', engine='lenapyOceanProducts', product='ISAS', ymin=2005, ymax=2007, filter='ARGO', chunks={'time':1,'depth':10})
 
     """
 
