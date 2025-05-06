@@ -10,6 +10,7 @@ workflow:
 stages:
   - init
   - quality
+  - documentation
 
 # Default configuration for all jobs
 default:
