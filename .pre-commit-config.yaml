@@ -20,3 +20,12 @@ repos:
         language_version: python3
         args:
           - --target-version=py312
+  - repo: https://github.com/PyCQA/pylint
+    rev: v3.3.6
+    hooks:
+      - id: pylint
+        name: pylint
+        entry: pylint --disable=all --fail-under=10 --enable=too-many-statements,too-many-nested-blocks
+        language: python
+        pass_filenames: true
+        types: [python]
