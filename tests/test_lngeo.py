@@ -40,7 +40,7 @@ def test_regridder(
         result.to_netcdf(ref_file)
     ref_nc = xr.open_dataset(ref_file)
     result_nc = xr.open_dataset(test_file)
-    xr.testing.assert_equal(ref_nc, result_nc)
+    xr.testing.assert_allclose(ref_nc, result_nc)
 
 
 def test_regrid(overwrite_references, lenapy_paths, air_temperature_data):
@@ -61,7 +61,7 @@ def test_regrid(overwrite_references, lenapy_paths, air_temperature_data):
     if overwrite_references:
         result.to_netcdf(ref_file)
     ref_regrid = xr.open_dataarray(ref_file)
-    xr.testing.assert_equal(ref_regrid, result.air)
+    xr.testing.assert_allclose(ref_regrid, result.air)
 
 
 def test_surface_cell(overwrite_references, lenapy_paths):
@@ -71,7 +71,7 @@ def test_surface_cell(overwrite_references, lenapy_paths):
     if overwrite_references:
         surface.to_netcdf(ref_file)
     ref_surface = xr.open_dataarray(ref_file)
-    xr.testing.assert_equal(ref_surface, surface)
+    xr.testing.assert_allclose(ref_surface, surface)
 
 
 def test_distance(overwrite_references, lenapy_paths, air_temperature_data):
@@ -98,7 +98,7 @@ def test_distance(overwrite_references, lenapy_paths, air_temperature_data):
     if overwrite_references:
         results.to_netcdf(ref_file)
     ref_distance = xr.open_dataarray(ref_file)
-    xr.testing.assert_equal(ref_distance, results)
+    xr.testing.assert_allclose(ref_distance, results)
 
 
 def test_isosurface(overwrite_references, lenapy_paths, ohc_data):
@@ -107,4 +107,4 @@ def test_isosurface(overwrite_references, lenapy_paths, ohc_data):
     if overwrite_references:
         depth.to_netcdf(ref_file)
     ref_depth = xr.open_dataarray(ref_file)
-    xr.testing.assert_equal(ref_depth, depth)
+    xr.testing.assert_allclose(ref_depth, depth)

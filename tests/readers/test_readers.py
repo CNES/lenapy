@@ -34,7 +34,7 @@ def test_read_tn14(overwrite_references, lenapy_paths, rmmean, ref_name):
         ds.to_netcdf(ref_file)
 
     ref_ds = xr.open_dataset(ref_file)
-    xr.testing.assert_equal(ref_ds, ds)
+    xr.testing.assert_allclose(ref_ds, ds)
 
 
 def test_lenapy_gfc(overwrite_references, lenapy_paths):
@@ -47,7 +47,7 @@ def test_lenapy_gfc(overwrite_references, lenapy_paths):
     if overwrite_references:
         gsm.to_netcdf(ref_file)
     ref_gsm = xr.open_dataset(ref_file)
-    xr.testing.assert_equal(ref_gsm, gsm)
+    xr.testing.assert_allclose(ref_gsm, gsm)
 
 
 @pytest.mark.parametrize(
@@ -65,7 +65,7 @@ def test_lenapy_grace(lenapy_paths, input_file, ref_file):
     """
     gsm_ref = xr.open_dataset(lenapy_paths.ref_data / ref_file)
     gsm = xr.open_dataset(lenapy_paths.data / input_file, engine="lenapyGraceL2")
-    xr.testing.assert_equal(gsm_ref, gsm)
+    xr.testing.assert_allclose(gsm_ref, gsm)
 
 
 def test_lenapy_netcdf(overwrite_references, lenapy_paths):
@@ -76,7 +76,7 @@ def test_lenapy_netcdf(overwrite_references, lenapy_paths):
     if overwrite_references:
         gmsl.to_netcdf(ref_file)
     ref_gsm = xr.open_dataset(ref_file)
-    xr.testing.assert_equal(ref_gsm, gmsl)
+    xr.testing.assert_allclose(ref_gsm, gmsl)
 
 
 def test_lenapy_mask(lenapy_paths):

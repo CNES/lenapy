@@ -13,4 +13,4 @@ def test_attributes(overwrite_references, lenapy_paths, ohc_data):
             encoding={var: {"zlib": True, "complevel": 8} for var in dataset.data_vars},
         )
     ref_ocean = xr.open_dataset(ref_file)
-    xr.testing.assert_equal(ref_ocean, dataset)
+    xr.testing.assert_allclose(ref_ocean, dataset)

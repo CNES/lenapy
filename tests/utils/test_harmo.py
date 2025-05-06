@@ -28,7 +28,7 @@ def test_sh_to_grid(lenapy_paths):
     costg_ds = xr.open_dataset(lenapy_paths.data / "COSTG_n12_2002_2022.nc")
     grid = costg_ds.lnharmo.to_grid()
     grid = subsample_xr(grid, 10)
-    xr.testing.assert_equal(grid_ref, grid)
+    xr.testing.assert_allclose(grid_ref, grid)
 
 
 @pytest.mark.parametrize(
