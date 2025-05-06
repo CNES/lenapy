@@ -338,7 +338,7 @@ class ReadGFC(BackendEntrypoint):
         header["radius"] = float(header["radius"])
         return header, legend_before_end_header
 
-    def _open_file(self, filename: str | os.PathLike) -> tuple[IO, str, bool]:
+    def _open_file(self, filename: str | os.PathLike) -> tuple[IO, str]:
         """
         Open a .gfc file or a compressed archive containing a .gfc file.
 
@@ -353,8 +353,6 @@ class ReadGFC(BackendEntrypoint):
             Opened file object.
         ext : str
             Original file extension.
-        is_binary : bool
-            Whether the file should be read as binary.
 
         Raises
         ------
@@ -365,24 +363,24 @@ class ReadGFC(BackendEntrypoint):
         compress_extensions = [".gz", ".zip", ".tar", ".gzip", ".ZIP"]
 
         if ext.lower() == ".gfc":
-            return open(filename, "r"), ext, False
+            return open(filename, "r"), ext
 
         if ext in (".gz", ".gzip"):
-            return gzip.open(filename, "rb"), ext, True
+            return gzip.open(filename, "rb"), ext
 
         if ext in (".zip", ".ZIP"):
             zip_file = zipfile.ZipFile(filename, "r")
             gfc_files = [f for f in zip_file.namelist() if f.lower().endswith(".gfc")]
             if not gfc_files:
                 raise ValueError("No .gfc file found in ZIP archive.")
-            return zip_file.open(gfc_files[0], "r"), ext, True
+            return zip_file.open(gfc_files[0], "r"), ext
 
         if ext == ".tar":
             tar_file = tarfile.open(filename, "r")
             gfc_files = [f for f in tar_file.getnames() if f.lower().endswith(".gfc")]
             if not gfc_files:
                 raise ValueError("No .gfc file found in TAR archive.")
-            return tar_file.extractfile(gfc_files[0]), ext, True
+            return tar_file.extractfile(gfc_files[0]), ext
 
         raise ValueError("Unsupported file extension.")
 
@@ -439,7 +437,7 @@ class ReadGFC(BackendEntrypoint):
         No date information in the file:
         >>> ds = xr.open_mfdataset('path/to/file.gfc', engine='lenapyGfc', no_date=True)
         """
-        file, ext, is_binary = self._open_file(filename)
+        file, ext = self._open_file(filename)
         header, legend = self._parse_header(file, ext)
 
         lmax = header["max_degree"]
