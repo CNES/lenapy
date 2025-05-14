@@ -34,6 +34,7 @@ import os
 import re
 import tarfile
 import zipfile
+from typing import IO
 
 import numpy as np
 import xarray as xr
@@ -255,6 +256,134 @@ class ReadGFC(BackendEntrypoint):
         "date_format",
     ]
 
+    @staticmethod
+    def _parse_header(fileIO: IO, ext: str) -> tuple[dict, str]:
+        """
+        Parse the header of a .gfc file and extract relevant metadata.
+
+        Parameters
+        ----------
+        fileIO : IO
+            File object.
+        ext : str
+            File extension.
+
+        Returns
+        -------
+        header : dict
+            Parsed header metadata.
+        legend_line : str
+            Last header line before 'end_of_head'.
+
+        Raises
+        ------
+        ValueError
+            If required header keys are missing or malformed.
+        """
+        header_parameters = [
+            "modelname",
+            "product_name",
+            "earth_gravity_constant",
+            "radius",
+            "max_degree",
+            "errors",
+            "norm",
+            "tide_system",
+        ]
+        regex = "(" + "|".join(header_parameters) + ")"
+        header = {}
+        legend_before_end_header = ""
+        while True:
+            line = fileIO.readline()
+            if ext.lower() in [".gz", ".gzip", ".zip", ".tar", ".ZIP"]:
+                line = line.decode()
+            if re.match(regex, line):
+                header[line.split()[0]] = line.split()[1]
+            if "end_of_head" in line:
+                break
+            elif "0    0" in line:
+                raise ValueError(f"Missing 'end_of_head' in header of file {fileIO}")
+            legend_before_end_header = line
+
+        # case for COSTG header where 'modelname' is created as 'product_name'
+        header["modelname"] = header.get("product_name", header.get("modelname"))
+        # default norm is fully_normalized, change it to 4pi if needed to be coherent with lenapy functions
+        header["norm"] = "4pi" if "norm" not in header else header["norm"]
+        header["norm"] = (
+            "4pi" if header["norm"] == "fully_normalized" else header["norm"]
+        )
+        header["norm"] = (
+            "unnorm" if header["norm"] == "unnormalized" else header["norm"]
+        )
+        header["tide_system"] = header.get("tide_system", "missing")
+
+        # test for mandatory keywords (https://icgem.gfz-potsdam.de/docs/ICGEM-Format-2023.pdf)
+        required = [
+            "modelname",
+            "earth_gravity_constant",
+            "radius",
+            "max_degree",
+            "errors",
+        ]
+        if not all(k in header for k in required):
+            raise ValueError(
+                (
+                    "File header does not contains mandatory keywords"
+                    " (https://icgem.gfz-potsdam.de/docs/ICGEM-Format-2023.pdf)"
+                )
+            )
+
+        header["max_degree"] = int(header["max_degree"])
+        header["earth_gravity_constant"] = float(header["earth_gravity_constant"])
+        header["radius"] = float(header["radius"])
+        return header, legend_before_end_header
+
+    def _open_file(self, filename: str | os.PathLike) -> tuple[IO, str]:
+        """
+        Open a .gfc file or a compressed archive containing a .gfc file.
+
+        Parameters
+        ----------
+        filename : str or os.PathLike
+            Path to the .gfc file or archive.
+
+        Returns
+        -------
+        file : IO
+            Opened file object.
+        ext : str
+            Original file extension.
+
+        Raises
+        ------
+        ValueError
+            If the file extension is unsupported or no .gfc is found in archive.
+        """
+        ext = os.path.splitext(filename)[-1]
+        compress_extensions = [".gz", ".zip", ".tar", ".gzip", ".ZIP"]
+
+        if ext.lower() == ".gfc":
+            return open(filename, "r"), ext
+
+        if ext in (".gz", ".gzip"):
+            return gzip.open(filename, "rb"), ext
+
+        if ext in (".zip", ".ZIP"):
+            zip_file = zipfile.ZipFile(filename, "r")
+            gfc_files = [f for f in zip_file.namelist() if f.lower().endswith(".gfc")]
+            if not gfc_files:
+                raise ValueError("No .gfc file found in ZIP archive.")
+            return zip_file.open(gfc_files[0], "r"), ext
+
+        if ext == ".tar":
+            tar_file = tarfile.open(filename, "r")
+            gfc_files = [f for f in tar_file.getnames() if f.lower().endswith(".gfc")]
+            if not gfc_files:
+                raise ValueError("No .gfc file found in TAR archive.")
+            return tar_file.extractfile(gfc_files[0]), ext
+
+        raise ValueError("Unsupported file extension.")
+
     def open_dataset(
         self,
         filename,
@@ -308,113 +437,13 @@ class ReadGFC(BackendEntrypoint):
         No date information in the file:
         >>> ds = xr.open_mfdataset('path/to/file.gfc', engine='lenapyGfc', no_date=True)
         """
-        # -- Create a pointer to the '.gfc' file
-        ext = os.path.splitext(filename)[-1]
-        compress_extensions = [".gz", ".zip", ".tar", ".gzip", ".ZIP"]
+        file, ext = self._open_file(filename)
+        header, legend = self._parse_header(file, ext)
 
-        if ext in (".gfc", ".GFC"):
-            file = open(filename, "r")
-
-        elif ext in compress_extensions:
-            if ext in (".gz", ".gzip"):
-                file = gzip.open(filename, "rb")
-            elif ext in (".zip", ".ZIP"):
-                zip_file = zipfile.ZipFile(filename, "r")
-                filenamezip = [
-                    file
-                    for file in zip_file.namelist()
-                    if file.endswith(".gfc") or file.endswith(".GFC")
-                ][0]
-                file = zip_file.open(filenamezip, "r")
-            elif ext == ".tar":
-                tar_file = tarfile.open(filename, "r")
-                filenametar = [
-                    file
-                    for file in tar_file.getnames()
-                    if file.endswith(".gfc") or file.endswith(".GFC")
-                ][0]
-                file = tar_file.extractfile(filenametar)
-
-        else:
-            raise ValueError(
-                "File does not have the good extension. "
-                "Should be .gfc or a compress format with a .gfc file in it."
-            )
-
-        # -- Extract parameters from '.gfc' header
-        header_parameters = [
-            "modelname",
-            "product_name",
-            "earth_gravity_constant",
-            "radius",
-            "max_degree",
-            "errors",
-            "norm",
-            "tide_system",
-        ]
-        parameters_regex = "(" + "|".join(header_parameters) + ")"
-        header = {}
-        line = True
-
-        # goes while up to end of header or end of file
-        while line:
-            line = file.readline()
-            if ext in compress_extensions:
-                line = line.decode()
-            if re.match(parameters_regex, line):
-                header[line.split()[0]] = line.split()[1]
-
-            # test to break when end of header
-            if "end_of_head" in line:
-                break
-            # try to intercept case where no end_of_head to raise Error (if file is starting with degree 0 and order 0)
-            elif "0    0" in line:
-                raise ValueError("No 'end_of_head' line in file ", filename)
-            # keep keys information from the line before end_of_head (to know if there is a time key or not)
-            legend_before_end_header = line
-
-        # case for COSTG header where 'modelname' is created as 'product_name'
-        header["modelname"] = (
-            header["product_name"] if "product_name" in header else header["modelname"]
-        )
-
-        # default norm is fully_normalized, change it to 4pi if needed to be coherent with lenapy functions
-        header["norm"] = "4pi" if "norm" not in header else header["norm"]
-        header["norm"] = (
-            "4pi" if header["norm"] == "fully_normalized" else header["norm"]
-        )
-        header["norm"] = (
-            "unnorm" if header["norm"] == "unnormalized" else header["norm"]
-        )
-
-        header["tide_system"] = (
-            "missing" if "tide_system" not in header else header["tide_system"]
-        )
-
-        # test for mandatory keywords (https://icgem.gfz-potsdam.de/docs/ICGEM-Format-2023.pdf)
-        if not all(
-            key in header
-            for key in [
-                "modelname",
-                "earth_gravity_constant",
-                "radius",
-                "max_degree",
-                "errors",
-            ]
-        ):
-            raise ValueError(
-                "File header does not contains mandatory keywords"
-                " (https://icgem.gfz-potsdam.de/docs/ICGEM-Format-2023.pdf)"
-            )
-
-        # convert str to numbers for adapted header info
-        header["max_degree"] = int(header["max_degree"])
-        header["earth_gravity_constant"] = float(header["earth_gravity_constant"])
-        header["radius"] = float(header["radius"])
         lmax = header["max_degree"]
 
         # test if gfct key then have to deal with time
-        if "t" not in legend_before_end_header:
+        if "t" not in legend:
             # -- Compute time
             if not no_date:
                 if (
@@ -538,10 +567,6 @@ class ReadGFC(BackendEntrypoint):
             ds["exact_time"] = xr.DataArray([exact_time], dims=["time"])
 
         # -- Close all file pointers
-        if ext in (".zip", ".ZIP"):
-            zip_file.close()
-        elif ext == ".tar":
-            tar_file.close()
         file.close()
 
         return ds
@@ -596,6 +621,107 @@ class ReadGFC(BackendEntrypoint):
 class ReadGRACEL2(BackendEntrypoint):
     open_dataset_parameters = ["filename_or_obj", "drop_variables"]
 
+    @staticmethod
+    def _open_file(filename: str | os.PathLike) -> any:
+        """
+        Open a file, supporting gzip-compressed files.
+
+        Parameters
+        ----------
+        filename: str or os.PathLike
+            Path to the file to open
+
+        Returns
+        -------
+        file: file-like
+            Opened file object
+        """
+        ext = os.path.splitext(filename)[-1]
+        if ext in (".gz", ".gzip"):
+            return gzip.open(filename, "rb")
+        return open(filename, "r")
+
+    @staticmethod
+    def _read_cnes_header(file: any, ext: str) -> dict:
+        """
+        Read header from CNES, GRGS, or TUGRZ formatted files.
+
+        Parameters
+        ----------
+        file: file-like
+            Opened file object
+        ext: str
+            File extension
+
+        Returns
+        -------
+        header: dict
+            Parsed header information
+        """
+        header = {}
+        while True:
+            line = file.readline()
+            if ext in (".gz", ".gzip"):
+                line = line.decode()
+            infos = line.split()
+            if line[:5] == "EARTH":
+                header["earth_gravity_constant"] = float(infos[1])
+                header["radius"] = float(infos[2])
+            elif line[:3] == "SHM":
+                header["max_degree"] = int(infos[1])
+                header["norm"] = " ".join(infos[4:6])
+                header["tide_system"] = " ".join(infos[6:])
+            elif "GRCOF2  " in line:
+                break
+        return header
+
+    @staticmethod
+    def _read_yaml_header(file: any, ext: str, filename: str) -> dict:
+        """
+        Read header from COST-G, UTCSR, JPL, or GFZ formatted files using YAML.
+
+        Parameters
+        ----------
+        file: file-like
+            Opened file object
+        ext: str
+            File extension
+        filename: str
+            File name for error reporting
+
+        Returns
+        -------
+        header: dict
+            Parsed header information
+        """
+        yaml_header_text = []
+        while True:
+            line = file.readline()
+            if ext in (".gz", ".gzip"):
+                line = line.decode()
+            if "End of YAML header" in line:
+                break
+            elif "GRCOF2  " in line:
+                raise ValueError(f"No 'End of YAML header' line in file {filename}")
+            elif "date_issued" in line or "acknowledgement" in line:
+                continue
+            yaml_header_text.append(line)
+        yaml_header = yaml.safe_load("".join(yaml_header_text))["header"]
+        header = {
+            "earth_gravity_constant": float(
+                yaml_header["non-standard_attributes"]["earth_gravity_param"]["value"]
+            ),
+            "radius": float(
+                yaml_header["non-standard_attributes"]["mean_equator_radius"]["value"]
+            ),
+            "max_degree": int(yaml_header["dimensions"]["degree"]),
+            "norm": yaml_header["non-standard_attributes"]["normalization"],
+            "tide_system": yaml_header["non-standard_attributes"].get(
+                "permanent_tide_flag", "missing"
+            ),
+        }
+        return header
+
     def open_dataset(self, filename, drop_variables=None):
         """
         Read a GRACE Level-2 gravity field product ASCII file (or compressed) from processing centers and
@@ -618,88 +744,16 @@ class ReadGRACEL2(BackendEntrypoint):
         """
         # -- Create a pointer to the file
         ext = os.path.splitext(filename)[-1]
+        file = self._open_file(filename)
 
-        if ext in (".gz", ".gzip"):
-            file = gzip.open(filename, "rb")
-        else:
-            file = open(filename, "r")
-
-        line = True
         # read CNES level 2 products (or GRAZ reprocessed by CNES)
-        if (
-            "CNES" in os.path.basename(filename)
-            or "GRGS" in os.path.basename(filename)
-            or "TUGRZ" in os.path.basename(filename)
-        ):
-            header = {}
-            while line:
-                line = file.readline()
-                if ext in (".gz", ".gzip"):
-                    line = line.decode()
-                infos = line.split()
-
-                if line[:5] == "EARTH":  # line with GM and a
-                    header["earth_gravity_constant"] = float(infos[1])
-                    header["radius"] = float(infos[2])
-                elif line[:3] == "SHM":  # line with lmax, norm and tide
-                    header["max_degree"] = int(infos[1])
-                    header["norm"] = " ".join(infos[4:6])
-                    header["tide_system"] = " ".join(infos[6:])
-
-                # first line with C00 = 1 (because no end of header information to deal with)
-                elif "GRCOF2  " in line:
-                    break
-
-        # Read other L2 products (COST-G, CSR, JPL or GFZ) where header follows the yaml format
+        if any(key in os.path.basename(filename) for key in ["CNES", "GRGS", "TUGRZ"]):
+            header = self._read_cnes_header(file, ext)
         elif any(
-            [
-                name in os.path.basename(filename)
-                for name in ("COSTG", "UTCSR", "JPLEM", "GFZOP")
-            ]
+            key in os.path.basename(filename)
+            for key in ["COSTG", "UTCSR", "JPLEM", "GFZOP"]
         ):
-            yaml_header_text = []
-            while line:
-                line = file.readline()
-                if ext in (".gz", ".gzip"):
-                    line = line.decode()
-                # test to break when end of header
-                if "End of YAML header" in line:
-                    break
-
-                # try to intercept case where no end_of_head (starting with degree and order 0)
-                elif "GRCOF2  " in line:
-                    raise ValueError(f"No 'End of YAML header' line in file {filename}")
-
-                # deal with case where file is weirdly filled with 'date_issued:0000-00-00T00:00:00' to avoid yaml crash
-                # deal also with acknowledgement line from GFZ on GRACE-FO periods that crash the yaml parser
-                elif "date_issued" in line or "acknowledgement" in line:
-                    continue
-                yaml_header_text.append(line)
-
-            # read yaml header to create a dict
-            yaml_header = yaml.safe_load("".join(yaml_header_text))["header"]
-
-            header = {
-                "earth_gravity_constant": float(
-                    yaml_header["non-standard_attributes"]["earth_gravity_param"][
-                        "value"
-                    ]
-                ),
-                "radius": float(
-                    yaml_header["non-standard_attributes"]["mean_equator_radius"][
-                        "value"
-                    ]
-                ),
-                "max_degree": int(yaml_header["dimensions"]["degree"]),
-                "norm": yaml_header["non-standard_attributes"]["normalization"],
-            }
-            try:
-                header["tide_system"] = yaml_header["non-standard_attributes"][
-                    "permanent_tide_flag"
-                ]
-            except KeyError:
-                header["tide_system"] = "missing"
-
+            header = self._read_yaml_header(file, ext, filename)
         else:
             raise ValueError(
                 "Name of the file does not corresponds to GRACE L2 products (https://archive.podaac."

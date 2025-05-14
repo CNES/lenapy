@@ -15,6 +15,7 @@ This module includes functions to:
 import datetime
 import inspect
 import pathlib
+from typing import Literal
 
 import cf_xarray as cfxr
 import numpy as np
@@ -23,6 +24,255 @@ import scipy as sc
 import xarray as xr
 
 from lenapy.constants import *
+
+
+def _compute_factors(
+    lmax: int, normalization: Literal["4pi", "ortho", "schmidt"]
+) -> tuple[np.ndarray, np.ndarray, float, float]:
+    """Compute recurrence coefficients f1 and f2 for the Legendre recursion.
+
+    Parameters
+    ----------
+    lmax : int
+        Maximum degree.
+    normalization : {'4pi', 'ortho', 'schmidt'}
+        Normalization scheme.
+
+    Returns
+    -------
+    f1 : np.ndarray
+        Recurrence factor f1.
+    f2 : np.ndarray
+        Recurrence factor f2.
+    norm_p10 : float
+        Normalization for P(1,0).
+    norm_4pi : float
+        Overall normalization factor.
+    """
+    size = (lmax + 1) * (lmax + 2) // 2
+    f1 = np.zeros(size)
+    f2 = np.zeros(size)
+
+    k = 2
+    if normalization in ("4pi", "ortho"):
+        norm_p10 = np.sqrt(3)
+        norm_4pi = 1 if normalization == "4pi" else 4 * np.pi
+        for l in range(2, lmax + 1):
+            k += 1
+            f1[k] = np.sqrt(2 * l - 1) * np.sqrt(2 * l + 1) / l
+            f2[k] = (l - 1) * np.sqrt(2 * l + 1) / (np.sqrt(2 * l - 3) * l)
+            for m in range(1, l - 1):
+                k += 1
+                f1[k] = (
+                    np.sqrt(2 * l + 1)
+                    * np.sqrt(2 * l - 1)
+                    / (np.sqrt(l + m) * np.sqrt(l - m))
+                )
+                f2[k] = (
+                    np.sqrt(2 * l + 1)
+                    * np.sqrt(l - m - 1)
+                    * np.sqrt(l + m - 1)
+                    / (np.sqrt(2 * l - 3) * np.sqrt(l + m) * np.sqrt(l - m))
+                )
+            k += 2
+    elif normalization == "schmidt":
+        norm_p10 = 1
+        norm_4pi = 1
+        for l in range(2, lmax + 1):
+            k += 1
+            f1[k] = (2 * l - 1) / l
+            f2[k] = (l - 1) / l
+            for m in range(1, l - 1):
+                k += 1
+                f1[k] = (2 * l - 1) / (np.sqrt(l + m) * np.sqrt(l - m))
+                f2[k] = (
+                    np.sqrt(l - m - 1)
+                    * np.sqrt(l + m - 1)
+                    / (np.sqrt(l + m) * np.sqrt(l - m))
+                )
+            k += 2
+    else:
+        raise ValueError(
+            (
+                f"Unknown normalization '{normalization}'. "
+                "It should be either "
+                "'4pi', 'ortho' or 'schmidt'"
+            )
+        )
+
+    return f1, f2, norm_p10, norm_4pi
+
+
+def _generate_grid(
+    bounds: list[float],
+    dlon: float,
+    dlat: float,
+    longitude: np.ndarray | None,
+    latitude: np.ndarray | None,
+    radians_in: bool,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Generate longitude and latitude arrays for the grid.
+
+    load longitude and latitude if given
+    if not : compute longitude and latitude in degrees between given or defaults bounds
+
+    Parameters
+    ----------
+    bounds : list of float
+        [lonmin, lonmax, latmin, latmax]
+    dlon, dlat : float
+        Grid spacing in degrees.
+    longitude, latitude : np.ndarray or None
+        Optionally provided coordinate arrays.
+    radians_in : bool
+        Whether the input arrays are in radians.
+
+    Returns
+    -------
+    longitude : np.ndarray
+        Array of longitudes in degrees.
+    latitude : np.ndarray
+        Array of latitudes in degrees.
+    """
+    if longitude is None:
+        longitude = np.arange(bounds[0] + dlon / 2.0, bounds[1] + dlon / 2.0, dlon)
+    elif radians_in:
+        longitude = np.rad2deg(longitude)
+
+    if latitude is None:
+        latitude = np.arange(bounds[2] + dlat / 2.0, bounds[3] + dlat / 2.0, dlat)
+    elif radians_in:
+        latitude = np.rad2deg(latitude)
+
+    return longitude, latitude
+
+
+def _init_bounds_and_grid(
+    bounds: list[float] | None,
+    lonmin: float,
+    lonmax: float,
+    latmin: float,
+    latmax: float,
+    dlon: float,
+    dlat: float,
+    radians_in: bool,
+) -> tuple[list[float], float, float]:
+    """
+    Initialize bounds and grid resolution.
+
+    Parameters
+    ----------
+    bounds: list of float or None
+        [lonmin, lonmax, latmin, latmax]
+    lonmin, lonmax, latmin, latmax: float
+        Default bounds if `bounds` is None.
+    dlon, dlat: float
+        Grid resolution in degrees or radians.
+    radians_in: bool
+        Whether the inputs are in radians.
+
+    Returns
+    -------
+    bounds: list of float
+        Bounds in degrees.
+    dlon: float
+        Longitude resolution in degrees.
+    dlat: float
+        Latitude resolution in degrees.
+    """
+    if bounds is None:
+        bounds = [lonmin, lonmax, latmin, latmax]
+    if not isinstance(bounds, list) or len(bounds) != 4:
+        raise TypeError('"bounds" must be a list of 4 elements')
+
+    if radians_in:
+        bounds = [np.rad2deg(b) for b in bounds]
+        if dlon != 1:
+            dlon = np.rad2deg(dlon)
+        if dlat != 1:
+            dlat = np.rad2deg(dlat)
+    return bounds, dlon, dlat
+
+
+def _handle_mass_conservation(
+    used_l: np.ndarray,
+    force_mass_conservation: bool,
+) -> tuple[np.ndarray, bool, bool]:
+    """
+    Test if mass conservation has to be forced to remove mass induced by the projection of C2n,0 coefficients
+
+    Parameters
+    ----------
+    used_l: np.ndarray
+        Degrees used in the computation.
+    force_mass_conservation: bool
+        Whether to enforce mass conservation.
+
+    Returns
+    -------
+    used_l: np.ndarray
+        Possibly modified degrees list.
+    use_czero_coef: bool
+        Whether to re-add degree 0 later.
+    force_mass_conservation: bool
+        Updated flag (can be False if nothing to conserve).
+    """
+    if force_mass_conservation and 0 in used_l:
+        if len(used_l) > 1:
+            return used_l[1:], True, force_mass_conservation
+        elif len(used_l) == 1:
+            return used_l, False, False
+    return used_l, False, force_mass_conservation
+
+
+def _init_degrees(
+    data: xr.Dataset,
+    lmin: int = None,
+    lmax: int = None,
+    mmin: int = None,
+    mmax: int = None,
+    used_l: np.ndarray = None,
+    used_m: np.ndarray = None,
+) -> tuple[np.ndarray, np.ndarray, int, int, int, int]:
+    """
+    Initialize spherical harmonic degrees and orders to be used.
+
+    It prioritizes used_l and used_m if given over lmin, lmax, mmin and mmax
+
+    Parameters
+    ----------
+    data : xr.Dataset
+        Spherical harmonics dataset with 'l' and 'm' dimensions.
+    lmin, lmax : int or None
+        Minimum and maximum degrees.
+    mmin, mmax : int or None
+        Minimum and maximum orders.
+    used_l, used_m : np.ndarray or None
+        Explicit list of degrees and orders to use.
+
+    Returns
+    -------
+    used_l: np.ndarray
+        Degrees to use.
+    used_m: np.ndarray
+        Orders to use.
+    lmin: int
+        Minimum degree
+    lmax: int
+        Maximum degree.
+    mmin:
+        Minimum order.
+    mmax:
+        Maximum order.
+    """
+    lmax = int(data.l.max()) if lmax is None else lmax
+    mmax = int(min(lmax, data.m.max())) if mmax is None else mmax
+    lmin = int(data.l.min()) if lmin is None else lmin
+    mmin = int(data.m.min()) if mmin is None else mmin
+    used_l = np.arange(lmin, lmax + 1) if used_l is None else used_l
+    used_m = np.arange(mmin, mmax + 1) if used_m is None else used_m
+    return used_l, used_m, lmin, lmax, mmin, mmax
 
 
 def sh_to_grid(
@@ -131,65 +381,18 @@ def sh_to_grid(
     """
     # addition error propagation, add mask in output variable
 
-    # -- set degree and order default parameters
-    # it prioritizes used_l and used_m if given over lmin, lmax, mmin and mmax
-    lmax = int(data.l.max()) if lmax is None else lmax
-    mmax = int(min(lmax, data.m.max())) if mmax is None else mmax
-    lmin = int(data.l.min()) if lmin is None else lmin
-    mmin = int(data.m.min()) if mmin is None else mmin
-    used_l = np.arange(lmin, lmax + 1) if used_l is None else used_l
-    used_m = np.arange(mmin, mmax + 1) if used_m is None else used_m
-
-    # test if mass conservation has to be forced to remove mass induced by the projection of C2n,0 coefficients
-    if force_mass_conservation and 0 in used_l and len(used_l) > 1:
-        use_czero_coef = True
-        used_l.sort()
-        used_l = used_l[1:]
-    elif force_mass_conservation and 0 in used_l and len(used_l) == 1:
-        force_mass_conservation = (
-            False  # no need of mass conservation with only coefficient C0,0
-        )
-    else:
-        use_czero_coef = False
-
-    # -- set grid output latitude and longitude
-    # Verify input variable to create bounds of grid information
-    bounds = [lonmin, lonmax, latmin, latmax] if bounds is None else bounds
-
-    # verify integrity of the argument "bounds" if given
-    try:
-        test_iter = iter(bounds)
-        if len(bounds) != 4:
-            raise TypeError
-    except TypeError:
-        raise TypeError(
-            'Given argument "bounds" has to be a list with 4 elements [lonmin, lonmax, latmin, latmax]'
-        )
-
-    # Convert bounds in radians if necessary
-    # work only if bounds or all lonmin, lonmax, latmin, latmax are given in the announced unit
-    if radians_in:
-        bounds = [np.rad2deg(i) for i in bounds]
-
-    # convert dlon, dlat from radians to degree if necessary
-    if radians_in and dlon != 1:
-        dlon = np.rad2deg(dlon)
-    if radians_in and dlat != 1:
-        dlat = np.rad2deg(dlat)
-
-    # load longitude and latitude if given
-    # if not : compute longitude and latitude in degrees between given or defaults bounds
-    if longitude is None:
-        longitude = np.arange(bounds[0] + dlon / 2.0, bounds[1] + dlon / 2.0, dlon)
-    else:
-        if radians_in:
-            longitude = np.rad2deg(longitude)
-
-    if latitude is None:
-        latitude = np.arange(bounds[2] + dlat / 2.0, bounds[3] + dlat / 2.0, dlat)
-    else:
-        if radians_in:
-            latitude = np.rad2deg(latitude)
+    used_l, used_m, lmin, lmax, mmin, mmax = _init_degrees(
+        data, lmin, lmax, mmin, mmax, used_l, used_m
+    )
+    used_l, use_czero_coef, force_mass_conservation = _handle_mass_conservation(
+        used_l, force_mass_conservation
+    )
+    bounds, dlon, dlat = _init_bounds_and_grid(
+        bounds, lonmin, lonmax, latmin, latmax, dlon, dlat, radians_in
+    )
+    longitude, latitude = _generate_grid(
+        bounds, dlon, dlat, longitude, latitude, radians_in
+    )
 
     cos_latitude = np.cos(np.deg2rad(latitude))
     sin_latitude = np.sin(np.deg2rad(latitude))
@@ -560,74 +763,18 @@ def compute_plm(lmax, z, mmax=None, normalization="4pi"):
         `doi: 10.1029/2018GC007529 <https://doi.org/10.1029/2018GC007529>`_
     """
     # removing singleton dimensions of x
-    z = np.atleast_1d(z).flatten()
     # update type to provide more memory for computation (np.float32 create some problems)
-    z = z.astype(np.float128)
+    z = np.atleast_1d(z).flatten().astype(np.float128)
 
     # if default mmax, set mmax to be maximal degree
     mmax = lmax if mmax is None else mmax
 
+    f1, f2, norm_p10, norm_4pi = _compute_factors(lmax, normalization)
+
     # scale factor based on Holmes2002
     scalef = 1e-280
 
-    # create multiplicative factors and p
-    f1 = np.zeros(((lmax + 1) * (lmax + 2) // 2))
-    f2 = np.zeros(((lmax + 1) * (lmax + 2) // 2))
     p = np.zeros(((lmax + 1) * (lmax + 2) // 2, len(z)))
-
-    k = 2
-    if normalization in ("4pi", "ortho"):
-        norm_p10 = np.sqrt(3)
-
-        for l in range(2, lmax + 1):
-            k += 1
-            f1[k] = np.sqrt(2 * l - 1) * np.sqrt(2 * l + 1) / l
-            f2[k] = (l - 1) * np.sqrt(2 * l + 1) / (np.sqrt(2 * l - 3) * l)
-            for m in range(1, l - 1):
-                k += 1
-                f1[k] = (
-                    np.sqrt(2 * l + 1)
-                    * np.sqrt(2 * l - 1)
-                    / (np.sqrt(l + m) * np.sqrt(l - m))
-                )
-                f2[k] = (
-                    np.sqrt(2 * l + 1)
-                    * np.sqrt(l - m - 1)
-                    * np.sqrt(l + m - 1)
-                    / (np.sqrt(2 * l - 3) * np.sqrt(l + m) * np.sqrt(l - m))
-                )
-            k += 2
-
-        if normalization == "4pi":
-            norm_4pi = 1
-        else:
-            norm_4pi = 4 * np.pi
-
-    elif normalization == "schmidt":
-        norm_p10 = 1
-        norm_4pi = 1
-
-        for l in range(2, lmax + 1):
-            k += 1
-            f1[k] = (2 * l - 1) / l
-            f2[k] = (l - 1) / l
-            for m in range(1, l - 1):
-                k += 1
-                f1[k] = (2 * l - 1) / (np.sqrt(l + m) * np.sqrt(l - m))
-                f2[k] = (
-                    np.sqrt(l - m - 1)
-                    * np.sqrt(l + m - 1)
-                    / (np.sqrt(l + m) * np.sqrt(l - m))
-                )
-            k += 2
-
-    else:
-        raise AssertionError(
-            "Unknown normalization given: ",
-            normalization,
-            ". It should be either " "'4pi', 'ortho' or 'schmidt'",
-        )
-
     # u is sine of colatitude (cosine of latitude), for z=cos(th): u=sin(th)
     u = np.sqrt(1 - z**2)
     # update where u==0 to minimal numerical precision different from 0 to prevent invalid divisions
@@ -835,6 +982,75 @@ def change_normalization(
     return ds_out
 
 
+def get_earth_parameters(
+    attrs: dict | None, a_earth: float | None, gm_earth: float | None
+) -> tuple[float, float]:
+    """
+    Retrieve Earth parameters from inputs or fallback constants.
+
+    Parameters
+    ----------
+    attrs : dict or None
+        Attributes potentially containing Earth parameters.
+    a_earth : float or None
+        Semi-major axis.
+    gm_earth : float or None
+        Gravitational constant.
+
+    Returns
+    -------
+    a_earth : float
+        Resolved semi-major axis.
+    gm_earth : float
+        Resolved gravitational constant.
+    """
+    if attrs is None:
+        attrs = {}
+
+    resolved_a = a_earth or float(attrs.get("radius", LNPY_A_EARTH_GRS80))
+    resolved_gm = gm_earth or float(attrs.get("earth_gravity_constant", LNPY_GM_EARTH))
+    return resolved_a, resolved_gm
+
+
+def load_default_love_numbers() -> xr.Dataset:
+    """
+    Load default Love numbers dataset.
+
+    Returns
+    -------
+    ds_love : xr.Dataset
+        Love numbers dataset.
+    """
+    current_file = inspect.getframeinfo(inspect.currentframe()).filename
+    folderpath = pathlib.Path(current_file).absolute().parent.parent
+    default_love_file = folderpath / "resources" / "LoveNumbers_Gegout97.txt"
+
+    df = pd.read_csv(default_love_file, names=["kl"])
+    ds = xr.Dataset.from_dataframe(df).rename({"index": "l"})
+    return ds
+
+
+def compute_a_div_r_lat(geocentric_colat: np.ndarray, f_earth: float) -> np.ndarray:
+    """
+    Compute a/r(θ) for ellipsoidal Earth correction.
+
+    Parameters
+    ----------
+    geocentric_colat : np.ndarray
+        Geocentric colatitudes in radians.
+    f_earth : float
+        Earth flattening.
+
+    Returns
+    -------
+    a_div_r_lat : np.ndarray
+    """
+    # e = sqrt(2f - f**2)
+    e_earth = np.sqrt(2 * f_earth - f_earth**2)
+    # a_div_r_lat = a / r(theta)  with r(theta) = a(1-f)/sqrt(1 - e**2*sin(theta)**2)
+    return np.sqrt(1 - e_earth**2 * np.sin(geocentric_colat) ** 2) / (1 - f_earth)
+
+
 def l_factor_conv(
     l,
     unit="mewh",
@@ -899,17 +1115,8 @@ def l_factor_conv(
         *Journal of Geodesy*, 92, 1401--1412, (2018).
         `doi: 10.1007/s00190-018-1128-0 <https://doi.org/10.1007/s00190-018-1128-0>`_
     """
-    # -- define constants
-    if attrs is None:
-        attrs = {}
-    if a_earth is None:
-        a_earth = float(attrs["radius"]) if "radius" in attrs else LNPY_A_EARTH_GRS80
-    if gm_earth is None:
-        gm_earth = (
-            float(attrs["earth_gravity_constant"])
-            if "earth_gravity_constant" in attrs
-            else LNPY_GM_EARTH
-        )
+
+    a_earth, gm_earth = get_earth_parameters(attrs, a_earth, gm_earth)
 
     l = xr.DataArray(l, dims=["l"], coords={"l": l})
     fraction = xr.ones_like(l)
@@ -917,19 +1124,10 @@ def l_factor_conv(
     # include elastic redistribution with kl Love numbers
     if include_elastic:
         if ds_love is None:
-            current_file = inspect.getframeinfo(inspect.currentframe()).filename
-            folderpath = pathlib.Path(current_file).absolute().parent.parent
-            default_love_file = folderpath.joinpath(
-                "resources", "LoveNumbers_Gegout97.txt"
-            )
-            ds_love = xr.Dataset.from_dataframe(
-                pd.read_csv(default_love_file, names=["kl"])
-            )
-            ds_love = ds_love.rename({"index": "l"})
-
+            ds_love = load_default_love_numbers()
         fraction = fraction + ds_love.kl
 
-    # test for ellipsoidal_earth
+    a_div_r_lat = None
     if ellipsoidal_earth:
         # test if geocentric_colat is set
         if geocentric_colat is None:
@@ -938,14 +1136,64 @@ def l_factor_conv(
                 "the parameter 'geocentric_colat' in l_factor_conv function"
             )
 
-        # compute variable for ellipsoidal_earth
-        # e = sqrt(2f - f**2)
-        e_earth = np.sqrt(2 * f_earth - f_earth**2)
-        # a_div_r_lat = a / r(theta)  with r(theta) = a(1-f)/sqrt(1 - e**2*sin(theta)**2)
-        a_div_r_lat = np.sqrt(1 - e_earth**2 * np.sin(geocentric_colat) ** 2) / (
-            1 - f_earth
-        )
+        a_div_r_lat = compute_a_div_r_lat(geocentric_colat, f_earth)
 
+    l_factor = compute_l_factor(
+        a_div_r_lat,
+        a_earth,
+        ds_love,
+        ellipsoidal_earth,
+        fraction,
+        gm_earth,
+        l,
+        rho_earth,
+        unit,
+    )
+
+    cst = {"gm_earth": gm_earth, "a_earth": a_earth}
+    return l_factor, cst
+
+
+def compute_l_factor(
+    a_div_r_lat: np.ndarray | None,
+    a_earth: float,
+    ds_love: xr.Dataset | None,
+    ellipsoidal_earth: bool,
+    fraction: xr.DataArray,
+    gm_earth: float,
+    l: np.ndarray | xr.DataArray,
+    rho_earth,
+    unit,
+):
+    """
+    Compute the degree-dependent scale factor.
+
+    Parameters
+    ----------
+    a_div_r_lat: np.ndarray or None
+        Ellipsoidal correction factor
+    a_earth: float
+        Earth radius
+    ds_love: xr.Dataset, optional
+        Love numbers
+    ellipsoidal_earth: bool
+        Whether to apply ellipsoidal correction
+    fraction: xr.DataArray
+        Redistribution factor
+    gm_earth: float
+        Earth gravitational constant
+    l: np.ndarray or xr.DataArray
+        Degrees
+    rho_earth: float
+        Earth density
+    unit: str
+        Unit type for conversion
+
+    Returns
+    -------
+    l_factor : xr.DataArray
+        Degree-dependent conversion factor.
+    """
     # l_factor is degree dependant
     if unit == "norm":
         # norm, fully normalized spherical harmonics
@@ -1016,9 +1264,7 @@ def l_factor_conv(
             "Invalid 'unit' parameter value in l_factor_conv function, valid values are: "
             "(norm, mewh, mmgeoid, microGal, bar, mvcu)"
         )
-
-    cst = {"gm_earth": gm_earth, "a_earth": a_earth}
-    return l_factor, cst
+    return l_factor
 
 
 def assert_sh(ds):

@@ -107,30 +107,43 @@ def climato(
     t_max=None,
 ):
     """
-    Analyse du cycle annuel, bi-annuel et de la tendance
-    Decompose les données en entrée en :
-    * Un cycle annuel
-    * Un cycle semi-annuel
-    * Une tendance
-    * Une moyenne
-    * Un signal résiduel
-    Retourne la combinaison voulue de ces éléments en fonction des arguments choisis (signal, mean, trend, cycle)
-    Si return_coeffs=True, retourne les coefficients des cycles et tendances
+    Annual, Semi-Annual Cycle and Trend Analysis.
+
+    Decomposes the input data into:
+    - An annual cycle
+    - A semi-annual cycle
+    - A trend
+    - A mean
+    - A residual signal
+
+    Returns the desired combination of these components based on the selected arguments
+    (`signal`, `mean`, `trend`, `cycle`).
+
+    If `return_coeffs=True`, also returns the coefficients of the cycles and the trend.
 
     Parameters
     ----------
-    signal : Bool (default=True)
-        Renvoie le signal résiduel après retrait de la climato, de la tendance, et de la moyenne
-    mean : Bool (default=True)
-        renvoie la valeur moyenne des données d'entrée
-    trend : Bool (default=True)
-        renvoie la tendance (en jour-1)
-    cycle : Bool (default=False)
-        renvoie le cycle annuel et semi-annuel
-    return_coeffs : Bool (default=False)
-        retourne en plus les coefficients des cycles et de la tendance linéaire
-    time_period : slice (default=slice(None,None==
-        Periode de reference sur laquelle est calculee la climato
+    signal : bool, optional
+        If True (default), returns the residual signal after removing the climatology
+        (annual and semi-annual cycles), the trend, and the mean.
+    mean : bool, optional
+        If True (default), returns the mean value of the input data.
+    trend : bool, optional
+        If True (default), returns the trend (in day⁻¹).
+    cycle : bool, optional
+        If True (default is False), returns the annual and semi-annual cycles.
+    return_coeffs : bool, optional
+        If True (default is False), also returns the coefficients of the cycles and the
+        linear trend.
+    time_period : slice, optional
+        Reference period over which the climatology is computed.
+        Default is `slice(None, None)` (i.e., the entire time range).
+
+    Returns
+    -------
+    xarray.Dataset or tuple
+        The requested components as an xarray.Dataset. If `return_coeffs=True`,
+        returns a tuple `(dataset, coeffs)` where `coeffs` contains the cycle and trend coefficients.
     """
 
     a = Coeffs_climato(xr.Dataset(dict(measure=data)), Nmin=Nmin)
@@ -379,9 +392,7 @@ def JJ_to_date(jj):
     return t0 + dt
 
 
-def fillna_climato(data, time_period=slice(None, None)):
+def fillna_climato(data):
     #
-    val = climato(
-        data, signal=False, mean=True, trend=True, cycle=True, time_period=time_period
-    )
+    val = climato(data, signal=False, mean=True, trend=True, cycle=True)
     return xr.where(data.isnull(), val, data)

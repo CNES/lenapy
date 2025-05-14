@@ -7,6 +7,43 @@ import os
 from lenapy.utils.harmo import assert_sh
 
 
+def check_dimensions(var, var_name):
+    """Check if a variable has only 'l' and 'm' dimensions or extra dims of size 1."""
+    if not (set(var.dims) == {"l", "m"}) and not (
+        len(var.dims) > 2 and max(var.shape[2:]) <= 1
+    ):
+        raise ValueError(
+            f"Variable '{var_name}' has extra dimension with a size that exceeds 1."
+            "\n You can reduce this extra dimension by using .isel(dim=0) on your dataset."
+        )
+
+
+def prepare_attributes(ds, include_errors: bool, extra_kwargs: dict):
+    """Prepare dataset attributes for .gfc file header."""
+    attrs = ds.attrs.copy()
+    mandatory_attrs_defaults = {
+        "product_type": "gravity_field",
+        "modelname": "unnamed_model",
+        "earth_gravity_constant": "not_set",
+        "radius": "not_set",
+        "max_degree": str(ds.l.max().values),
+    }
+    if include_errors and "eclm" in ds and "eslm" in ds:
+        mandatory_attrs_defaults["errors"] = "formal"
+    else:
+        mandatory_attrs_defaults["errors"] = "no"
+    for attr, default_value in mandatory_attrs_defaults.items():
+        attrs.setdefault(attr, default_value)
+    # Keep normalization coherent with .gfc standard
+    if "norm" in attrs and attrs["norm"] == "4pi":
+        attrs["norm"] = "fully_normalized"
+    elif "norm" in attrs and attrs["norm"] == "unnorm":
+        attrs["norm"] = "unnormalized"
+    # Update dataset attributes with any additional attributes specified by the user
+    attrs.update(extra_kwargs)
+    return attrs
+
+
 def dataset_to_gfc(
     ds,
     filename,
@@ -61,21 +98,11 @@ def dataset_to_gfc(
     assert_sh(ds)
 
     # Verify dimensions of 'clm', 'slm' and errors array
-    if include_errors:
-        list_var = ["clm", "slm", "eclm", "eslm"]
-    else:
-        list_var = ["clm", "slm"]
-    for var_name in list_var:
-        if var_name not in ds:
-            raise ValueError(f"Variable '{var_name}' not found in dataset.")
-        var_dims = ds[var_name].dims
-        if not (set(var_dims) == {"l", "m"}) and not (
-            len(var_dims) > 2 and max(ds[var_name].shape[2:]) <= 1
-        ):
-            raise ValueError(
-                f"Variable '{var_name}' has extra dimension with a size that exceeds 1."
-                f"\n You can reduce this extra dimension by using .isel(dim=0) on your dataset."
-            )
+    list_var = ["clm", "slm"] + (["eclm", "eslm"] if include_errors else [])
+    for var in list_var:
+        if var not in ds:
+            raise ValueError(f"Variable '{var}' not found in dataset.")
+        check_dimensions(ds[var], var)
 
     # reduce the dataset to 'l' and 'm' dimensions
     extra_dims = [dim for dim in ds.dims if dim not in ["l", "m"]]
@@ -83,30 +110,7 @@ def dataset_to_gfc(
         ds = ds.isel(**{dim: 0 for dim in extra_dims})
 
     # Set default values for missing mandatory attributes
-    attrs = ds.attrs.copy()
-    mandatory_attrs_defaults = {
-        "product_type": "gravity_field",
-        "modelname": "unnamed_model",
-        "earth_gravity_constant": "not_set",
-        "radius": "not_set",
-        "max_degree": str(ds.l.max().values),
-    }
-    if include_errors and "eclm" in ds and "eslm" in ds:
-        mandatory_attrs_defaults["errors"] = "formal"
-    else:
-        mandatory_attrs_defaults["errors"] = "no"
-
-    for attr, default_value in mandatory_attrs_defaults.items():
-        attrs.setdefault(attr, default_value)
-
-    # Keep normalization coherent with .gfc standard
-    if "norm" in attrs and attrs["norm"] == "4pi":
-        attrs["norm"] = "fully_normalized"
-    elif "norm" in attrs and attrs["norm"] == "unnorm":
-        attrs["norm"] = "unnormalized"
-
-    # Update dataset attributes with any additional attributes specified by the user
-    attrs.update(kwargs)
+    attrs = prepare_attributes(ds, include_errors, kwargs)
 
     # ensure the directory exists
     os.makedirs(os.path.dirname(filename), exist_ok=True)

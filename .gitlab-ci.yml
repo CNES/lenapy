@@ -1,0 +1,133 @@
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH
+
+stages:
+  - init
+  - quality
+  - documentation
+
+# Default configuration for all jobs
+default:
+  tags:
+    - Usine_Logicielle
+  timeout: 30 minutes
+
+variables:
+  DEBUG:
+    value: 'false'
+    description: "Afficher des logs supplémentaires"
+
+  TAG_IMAGE_CONDA: "publicremotes-docker/continuumio/miniconda3:23.5.2-0"
+  TAG_IMAGE_SONAR: "publicremotes-docker/sonarsource/sonar-scanner-cli:4.5"
+  CI: "true"
+  JFROG_CLI_HOME_DIR: ".jfrog/"
+  JFROG_CLI_TEMP_DIR: ".jfrog_tmp"
+  JFROG_VERSION: "v2/2.14.0"
+  JFROG_OS: "jfrog-cli-linux-amd64"
+  JFROG_CLI_BUILD_NAME: "${CI_PROJECT_PATH}_${CI_COMMIT_REF_SLUG}_gitlab-ci"
+  JFROG_CLI_BUILD_NUMBER: "${CI_PIPELINE_ID}"
+
+  ARTIFACTORY_BUILD_URL: "https://${artifactory_host}/artifactory/webapp/#/builds/${JFROG_CLI_BUILD_NAME}/${JFROG_CLI_BUILD_NUMBER}"
+  CI_TEMPLATE_REGISTRY_HOST: "${ARTIFACTORY_HOST}/publicremotes-docker"
+  PIP_INDEX_URL: "https://${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}@${ARTIFACTORY_HOST}/artifactory/api/pypi/pypi/simple"
+  PIP_CERT: "${CNES_CERTIFICATE}"
+  PIP_CACHE_DIR: ".pip-cache/"
+  CONDA_ENVS_DIRS: ".conda/envs"
+  CONDA_SSL_VERIFY: "${CNES_CERTIFICATE}"
+  PIP_SSL_VERIFY: "${CNES_CERTIFICATE}"
+  REQUESTS_CA_BUNDLE: "${CNES_CERTIFICATE}"
+
+build-env:
+  stage: init
+  image: ${ARTIFACTORY_HOST}/${TAG_IMAGE_CONDA}
+  before_script:
+    - export no_proxy=$NO_PROXY
+    - export http_proxy=$HTTP_PROXY
+    - export https_proxy=$HTTP_PROXY
+    - mkdir -p ${CONDA_ENVS_DIRS}
+    - pip install conda-lock
+  script:
+    - conda-lock install --name lenapy_env conda-lock.yml
+  timeout: 15 minutes
+  artifacts:
+    untracked: true
+    expire_in: 1 day
+
+formater:
+  stage: quality
+  image: ${ARTIFACTORY_HOST}/${TAG_IMAGE_CONDA}
+  before_script:
+  - source activate lenapy_env
+  - pip install .[formatter]
+  script:
+  - python -m black --check --diff lenapy
+  - python -m isort lenapy --check --diff
+
+pytest:
+  stage: quality
+  image: ${ARTIFACTORY_HOST}/${TAG_IMAGE_CONDA}
+  before_script:
+    - export no_proxy=$NO_PROXY
+    - export http_proxy=$HTTP_PROXY
+    - export https_proxy=$HTTP_PROXY
+  script:
+    - source activate lenapy_env
+    - pip install -e .[test]
+    - pytest -s tests --cov=lenapy --cov-report=xml:.ci-reports/coverage.xml --cov-report html:cov_html --cov-report=term --junitxml=.ci-reports/junit-report.xml
+  artifacts:
+    when: always
+    paths:
+      - ./.ci-reports/
+      - ./cov_html/
+    expire_in: 1 day
+
+test_notebooks:
+  stage: quality
+  image: ${ARTIFACTORY_HOST}/${TAG_IMAGE_CONDA}
+  script:
+    - source activate lenapy_env
+    - pip install -e .[test]
+    - pip install -e .[notebook]
+    - pytest --nbmake --nbmake-kernel=python3 doc/tutorials/
+
+pylint_analysis:
+  stage: quality
+  image: ${ARTIFACTORY_HOST}/${TAG_IMAGE_CONDA}
+  script:
+    - source activate lenapy_env
+    - pip install .[quality]
+    - pylint --recursive=y --disable=all --fail-under=10 --enable=too-many-statements,too-many-nested-blocks lenapy | tee pylint_report.txt
+  artifacts:
+    when: always
+    paths:
+      - pylint_report.txt
+    expire_in: 1 day
+
+mccabe_analysis:
+  stage: quality
+  image: ${ARTIFACTORY_HOST}/${TAG_IMAGE_CONDA}
+  script:
+    - source activate lenapy_env
+    - pip install .[quality]
+    - ./continuous_integration/scripts/check_mccabe_complexity.sh 25 lenapy lenapy/readers/ocean.py lenapy/plots/plotting.py
+
+build_doc:
+  stage: documentation
+  image: ${ARTIFACTORY_HOST}/${TAG_IMAGE_CONDA}
+  before_script:
+    - source activate lenapy_env
+    - pip install .[doc]
+  script:
+    - conda install pandoc
+    - sphinx-build -b html doc doc/build
+  artifacts:
+    when: always
+    paths:
+      - doc/build
+    expire_in: 7 day

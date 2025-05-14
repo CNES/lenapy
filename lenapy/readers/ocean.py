@@ -104,6 +104,7 @@ class lenapyOceanProducts(BackendEntrypoint):
 
     """
 
+    # pylint: disable=too-many-statements
     def open_dataset(
         self,
         directory,

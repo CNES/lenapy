@@ -7,6 +7,7 @@ from xarray.plot.dataarray_plot import _infer_line_data
 from lenapy.utils.harmo import l_factor_conv
 
 
+# pylint: disable=too-many-statements
 def plot_timeseries_uncertainty(
     xgeo_data,
     thick_line="median",
@@ -506,18 +507,18 @@ def plot_hs(
         cbar_kwargs.setdefault("cax", cbar_ax)
 
     # -- Creation of the array for matshow with clm and slm
-    mat = np.zeros((lmax + 1, 2 * lmax + 1)) * np.NaN
+    mat = np.zeros((lmax + 1, 2 * lmax + 1)) * np.nan
     i, j = np.tril_indices(lmax + 1)
 
     # set slm before clm to plot order 0 coefficient of clm
     mat[i, lmax - j] = (
-        ds.slm.where(ds.l >= lmin, np.NaN)
-        .where(np.logical_and(ds.m >= mmin, ds.m <= mmax), np.NaN)
+        ds.slm.where(ds.l >= lmin, np.nan)
+        .where(np.logical_and(ds.m >= mmin, ds.m <= mmax), np.nan)
         .isel(l=xr.DataArray(i, dims="tril"), m=xr.DataArray(j, dims="tril"))
     ).values
     mat[i, lmax + j] = (
-        ds.clm.where(ds.l >= lmin, np.NaN)
-        .where(np.logical_and(ds.m >= mmin, ds.m <= mmax), np.NaN)
+        ds.clm.where(ds.l >= lmin, np.nan)
+        .where(np.logical_and(ds.m >= mmin, ds.m <= mmax), np.nan)
         .isel(l=xr.DataArray(i, dims="tril"), m=xr.DataArray(j, dims="tril"))
         .values
     )
