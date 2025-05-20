@@ -4,11 +4,17 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
 import datetime
+import inspect
 import os
 import sys
 
+__location__ = os.path.join(
+    os.getcwd(), os.path.dirname(inspect.getfile(inspect.currentframe()))
+)
+
 sys.path.insert(0, os.path.abspath(".."))
 sys.path.insert(0, os.path.abspath("../lenapy"))
+sys.path.insert(0, os.path.join(__location__, "../lenapy"))
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
