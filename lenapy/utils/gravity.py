@@ -114,7 +114,7 @@ def change_reference(
 def change_tide_system(ds, new_tide, old_tide=None, k20=None, apply=False):
     """
     Apply a C20 offset to the dataset to change the tide system.
-    Follows IERS2010 convention [IERS2010]_ to convert between tide system ('tide_free', 'zero_tide', 'mean_tide').
+    Follows [IERS2010]_ convention to convert between tide system ('tide_free', 'zero_tide', 'mean_tide').
     Warning : It should be noted that each center use his one tide offset, it may differ in terms of offset formula
     that can come from [IERS2010]_ and [Smith1998]_. The value of k20 can also change between centers.
 

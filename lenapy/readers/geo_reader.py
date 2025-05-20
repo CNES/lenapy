@@ -109,8 +109,10 @@ class lenapyMask(BackendEntrypoint):
     The returned mask contains an extra dimension named 'zone', corresponding to the different values
     of the mask contained in the opened dataset.
     Required format for the dataset to be opened :
-        * contains several dataarrays, each one being a mask (identified as 'field')
-        * each mask is defined by values, whose signification is given in the attributes of the dataarray : {'value1' : 'label1',...}
+
+    - contains several dataarrays, each one being a mask (identified as 'field')
+    - each mask is defined by values, whose signification is given in the attributes of the dataarray : {'value1' : 'label1',...}
+
     If there is no valid attribute, the mask is returned with False where NaN, False or 0 are found, True for any other value.
 
     Parameters
