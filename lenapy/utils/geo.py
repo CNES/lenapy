@@ -416,8 +416,8 @@ def assert_grid(ds):
 
     Parameters
     ----------
-    ds : xr.Dataset
-        Dataset to verify.
+    ds : xr.DataArray
+        Spatial grid to verify.
 
     Returns
     -------

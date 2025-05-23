@@ -37,6 +37,7 @@ import zipfile
 from typing import IO
 
 import numpy as np
+import pandas as pd
 import xarray as xr
 import yaml
 from xarray.backends import BackendEntrypoint
@@ -257,13 +258,13 @@ class ReadGFC(BackendEntrypoint):
     ]
 
     @staticmethod
-    def _parse_header(fileIO: IO, ext: str) -> tuple[dict, str]:
+    def _parse_header(file_io: IO, ext: str) -> tuple[dict, str]:
         """
         Parse the header of a .gfc file and extract relevant metadata.
 
         Parameters
         ----------
-        fileIO : IO
+        file_io : IO
             File object.
         ext : str
             File extension.
@@ -294,7 +295,7 @@ class ReadGFC(BackendEntrypoint):
         header = {}
         legend_before_end_header = ""
         while True:
-            line = fileIO.readline()
+            line = file_io.readline()
             if ext.lower() in [".gz", ".gzip", ".zip", ".tar", ".ZIP"]:
                 line = line.decode()
             if re.match(regex, line):
@@ -302,7 +303,7 @@ class ReadGFC(BackendEntrypoint):
             if "end_of_head" in line:
                 break
             elif "0    0" in line:
-                raise ValueError(f"Missing 'end_of_head' in header of file {fileIO}")
+                raise ValueError(f"Missing 'end_of_head' in header of file {file_io}")
             legend_before_end_header = line
 
         # case for COSTG header where 'modelname' is created as 'product_name'
@@ -338,7 +339,8 @@ class ReadGFC(BackendEntrypoint):
         header["radius"] = float(header["radius"])
         return header, legend_before_end_header
 
-    def _open_file(self, filename: str | os.PathLike) -> tuple[IO, str]:
+    @staticmethod
+    def _open_file(filename: str | os.PathLike) -> tuple[IO, str]:
         """
         Open a .gfc file or a compressed archive containing a .gfc file.
 
@@ -360,22 +362,21 @@ class ReadGFC(BackendEntrypoint):
             If the file extension is unsupported or no .gfc is found in archive.
         """
         ext = os.path.splitext(filename)[-1]
-        compress_extensions = [".gz", ".zip", ".tar", ".gzip", ".ZIP"]
 
         if ext.lower() == ".gfc":
             return open(filename, "r"), ext
 
-        if ext in (".gz", ".gzip"):
+        elif ext in (".gz", ".gzip"):
             return gzip.open(filename, "rb"), ext
 
-        if ext in (".zip", ".ZIP"):
+        elif ext in (".zip", ".ZIP"):
             zip_file = zipfile.ZipFile(filename, "r")
             gfc_files = [f for f in zip_file.namelist() if f.lower().endswith(".gfc")]
             if not gfc_files:
                 raise ValueError("No .gfc file found in ZIP archive.")
             return zip_file.open(gfc_files[0], "r"), ext
 
-        if ext == ".tar":
+        elif ext == ".tar":
             tar_file = tarfile.open(filename, "r")
             gfc_files = [f for f in tar_file.getnames() if f.lower().endswith(".gfc")]
             if not gfc_files:
@@ -383,6 +384,241 @@ class ReadGFC(BackendEntrypoint):
             return tar_file.extractfile(gfc_files[0]), ext
 
         raise ValueError("Unsupported file extension.")
+
+    @staticmethod
+    def _get_date(date_regex, date_format, filename, header):
+        """
+        Extract date from header file information and format dates in datetime objects.
+
+        Parameters
+        ----------
+        date_regex : str | None, optional
+            A regular expression pattern used to search for the date in the modelname header information. It should
+            contain at least one capturing group for the begin_time, and optionally a second group for the `end_time`.
+        date_format : str | None, optional
+            A format string compatible with `datetime.strptime` to parse the extracted date strings.
+            Must be provided if `date_regex` is specified.
+        filename : str | os.PathLike[Any]
+            Name/path of the file to open.
+        header : dict
+            Parsed header metadata.
+
+        Returns
+        -------
+        mid_month : datatime.Datetime
+            Middle of the month.
+        exact_time : datatime.Datetime
+            Exact time of the data in the month.
+        begin_time : datatime.Datetime
+            Begin time of the data in the month.
+        end_time : datatime.Datetime
+            End time of the data in the month.
+        """
+        if (
+            date_regex
+            and date_format
+            and bool(re.search(date_regex, header["modelname"]))
+        ):
+            # Get dates from the given date_regex and date_format
+            dates = re.search(date_regex, header["modelname"])
+
+        elif bool(re.search(r"_(\d{7})-(\d{7})", header["modelname"])):
+            # For some products, time is stored as YYYYDOY-YYYYDOY in modelname
+            # For GRACE products, DOY can not coincide with 1st and last day of month
+            dates = re.search(r"_(\d{7})-(\d{7})", header["modelname"])
+            date_format = "%Y%j"
+
+        elif bool(re.search(r"(\d{4}-\d{2})", header["modelname"])):
+            # For other products, time is stored as YYYY-MM in modelname
+            dates = re.search(r"(\d{4}-\d{2})", header["modelname"])
+            date_format = "%Y-%m"
+
+        else:
+            raise ValueError(
+                f"Could not extract date information from modelname in the header "
+                f"of {filename}\n Try with the parameter no_date=True or "
+                f"check the use of arguments date_regex and date_format."
+            )
+
+        # Read begin date and end date if it exists
+        begin_time = datetime.datetime.strptime(dates.group(1), date_format)
+        end_time_str = dates.group(2) if dates.lastindex >= 2 else None
+
+        if end_time_str:  # Case with a date for the end
+            end_time = datetime.datetime.strptime(
+                end_time_str, date_format
+            ) + datetime.timedelta(days=1)
+            exact_time = begin_time + (end_time - begin_time) / 2
+
+            # Compute middle of the month for GRACE products
+            mid_month = mid_month_grace_estimate(begin_time, end_time)
+        else:  # Case without a date for the end
+            if (
+                begin_time.day == 1
+            ):  # Case where the date contains no day in the month information
+                end_time = (begin_time + datetime.timedelta(days=32)).replace(day=1)
+                mid_month = begin_time + (end_time - begin_time) / 2
+                exact_time = mid_month
+            else:  # Case where the date contains day in the month information, we keep the date as reference
+                end_time = begin_time
+                mid_month = begin_time
+                exact_time = begin_time
+
+        return mid_month, exact_time, begin_time, end_time
+
+    @staticmethod
+    def _format_icgem1(data, lmax, header, clm, slm, eclm=None, eslm=None):
+        """
+        Subfunction of the gfc reader to read the gfct icgem1.0 format.
+
+        Parameters
+        ----------
+        data : pd.Dataframe
+            pandas Dataframe containing the coefficients information.
+        lmax : int
+            Maximal degree for the spherical harmonics coefficients.
+        header : dict
+            Dictionary of header information.
+        clm : np.array
+            Pre-created clm coefficients array.
+        slm : np.array
+            Pre-created slm coefficients array.
+        eclm : np.array | None
+            Pre-created eclm coefficients array.
+        eslm : np.array | None
+            Pre-created eslm coefficients array.
+
+        Returns
+        -------
+         ds : xr.Dataset
+            Information from the file stored in `xr.Dataset` format.
+        """
+        periods_acos = data[(data["tag"] == "acos")]["ref_time"].unique()
+        periods_asin = data[(data["tag"] == "acos")]["ref_time"].unique()
+
+        trnd_clm, trnd_slm = np.zeros((lmax + 1, lmax + 1, 1)), np.zeros(
+            (lmax + 1, lmax + 1, 1)
+        )
+        acos_clm = np.zeros((lmax + 1, lmax + 1, 1, len(periods_acos)))
+        acos_slm = np.zeros((lmax + 1, lmax + 1, 1, len(periods_acos)))
+        asin_clm = np.zeros((lmax + 1, lmax + 1, 1, len(periods_asin)))
+        asin_slm = np.zeros((lmax + 1, lmax + 1, 1, len(periods_asin)))
+
+        ref_time = np.zeros((lmax + 1, lmax + 1, 1), dtype="datetime64[D]")
+
+        if (
+            header["errors"] != "no"
+        ):  # (does not deal with calibrated_and_formal error case)
+            trnd_eclm, trnd_eslm = np.zeros((lmax + 1, lmax + 1, 1)), np.zeros(
+                (lmax + 1, lmax + 1, 1)
+            )
+            acos_eclm = np.zeros((lmax + 1, lmax + 1, 1, len(periods_acos)))
+            acos_eslm = np.zeros((lmax + 1, lmax + 1, 1, len(periods_acos)))
+            asin_eclm = np.zeros((lmax + 1, lmax + 1, 1, len(periods_asin)))
+            asin_eslm = np.zeros((lmax + 1, lmax + 1, 1, len(periods_asin)))
+
+        index_gfc_trnd = [
+            (data["tag"] == "gfc") | (data["tag"] == "gfct"),
+            data["tag"] == "trnd",
+        ]
+        for ind, c, s in zip(index_gfc_trnd, [clm, trnd_clm], [slm, trnd_slm]):
+            c[data[ind]["degree"].values, data[ind]["order"].values] = data[ind][
+                "clm"
+            ].values[:, np.newaxis]
+            s[data[ind]["degree"].values, data[ind]["order"].values] = data[ind][
+                "slm"
+            ].values[:, np.newaxis]
+
+        index_acos_asin = [data["tag"] == "acos", data["tag"] == "asin"]
+        for ind, c, s, periods in zip(
+            index_acos_asin,
+            [acos_clm, asin_slm],
+            [acos_slm, asin_slm],
+            [periods_acos, periods_asin],
+        ):
+            for i, period in enumerate(periods):
+                k = ind & (data["ref_time"] == period)
+                c[data[k]["degree"].values, data[k]["order"].values, 0, i] = data[k][
+                    "clm"
+                ].values
+                s[data[k]["degree"].values, data[k]["order"].values, 0, i] = data[k][
+                    "slm"
+                ].values
+
+        ind = data["tag"] == "gfct"
+        ref_time[data[ind]["degree"].values, data[ind]["order"].values] = (
+            pd.to_datetime(
+                data[ind]["ref_time"].values.astype(int).astype(str), format="%Y%m%d"
+            ).to_numpy()[:, np.newaxis]
+        )
+
+        ds = xr.Dataset(
+            {
+                "clm": (["l", "m", "name"], clm),
+                "slm": (["l", "m", "name"], slm),
+                "trnd_clm": (["l", "m", "name"], trnd_clm),
+                "trnd_slm": (["l", "m", "name"], trnd_slm),
+                "acos_clm": (["l", "m", "name", "periods_acos"], acos_clm),
+                "acos_slm": (["l", "m", "name", "periods_acos"], acos_slm),
+                "asin_clm": (["l", "m", "name", "periods_asin"], asin_clm),
+                "asin_slm": (["l", "m", "name", "periods_asin"], asin_slm),
+                "ref_time": (["l", "m", "name"], ref_time),
+            },
+            coords={
+                "l": np.arange(lmax + 1),
+                "m": np.arange(lmax + 1),
+                "name": [header["modelname"]],
+                "periods_acos": periods_acos,
+                "periods_asin": periods_asin,
+            },
+            attrs=header,
+        )
+
+        # case with error information (does not deal with calibrated_and_formal error case)
+        if header["errors"] != "no":
+            for ind, ec, es in zip(
+                index_gfc_trnd, [eclm, trnd_eclm], [eslm, trnd_eslm]
+            ):
+                ec[data[ind]["degree"].values, data[ind]["order"].values] = data[ind][
+                    "eclm"
+                ].values[:, np.newaxis]
+                es[data[ind]["degree"].values, data[ind]["order"].values] = data[ind][
+                    "eslm"
+                ].values[:, np.newaxis]
+
+            for ind, ec, es, periods in zip(
+                index_acos_asin,
+                [acos_eclm, asin_eslm],
+                [acos_eslm, asin_eslm],
+                [periods_acos, periods_asin],
+            ):
+                for i, period in enumerate(periods):
+                    k = ind & (data["ref_time"] == period)
+                    ec[data[k]["degree"].values, data[k]["order"].values, 0, i] = data[
+                        k
+                    ]["eclm"].values
+                    es[data[k]["degree"].values, data[k]["order"].values, 0, i] = data[
+                        k
+                    ]["eslm"].values
+
+            ds["eclm"] = xr.DataArray(eclm, dims=["l", "m", "name"])
+            ds["eslm"] = xr.DataArray(eslm, dims=["l", "m", "name"])
+            ds["trnd_eclm"] = xr.DataArray(trnd_eclm, dims=["l", "m", "name"])
+            ds["trnd_eslm"] = xr.DataArray(trnd_eslm, dims=["l", "m", "name"])
+            ds["acos_eclm"] = xr.DataArray(
+                acos_eclm, dims=["l", "m", "name", "periods_acos"]
+            )
+            ds["acos_eslm"] = xr.DataArray(
+                acos_eslm, dims=["l", "m", "name", "periods_acos"]
+            )
+            ds["asin_eclm"] = xr.DataArray(
+                asin_eclm, dims=["l", "m", "name", "periods_asin"]
+            )
+            ds["asin_eslm"] = xr.DataArray(
+                asin_eslm, dims=["l", "m", "name", "periods_asin"]
+            )
+
+        return ds
 
     def open_dataset(
         self,
@@ -442,105 +678,47 @@ class ReadGFC(BackendEntrypoint):
 
         lmax = header["max_degree"]
 
+        # -- Load clm and slm data
+        clm, slm = np.zeros((lmax + 1, lmax + 1, 1)), np.zeros((lmax + 1, lmax + 1, 1))
+
+        col_names = ["tag", "degree", "order", "clm", "slm"]
+        if (
+            header["errors"] != "no"
+        ):  # (does not deal with calibrated_and_formal error case)
+            col_names.append("eclm")
+            col_names.append("eslm")
+
+            eclm, eslm = np.zeros((lmax + 1, lmax + 1, 1)), np.zeros(
+                (lmax + 1, lmax + 1, 1)
+            )
+
+        if "t" in legend:
+            col_names.append("ref_time")
+
+        # Read file with pandas, delim_whitespace for variable space delimiters
+        data = pd.read_csv(
+            file, delim_whitespace=True, header=None, names=col_names, engine="python"
+        )
+
         # test if gfct key then have to deal with time
         if "t" not in legend:
             # -- Compute time
             if not no_date:
-                if (
-                    date_regex
-                    and date_format
-                    and bool(re.search(date_regex, header["modelname"]))
-                ):
-                    # Get dates from the given date_regex and date_format
-                    dates = re.search(date_regex, header["modelname"])
-
-                elif bool(re.search(r"_(\d{7})-(\d{7})", header["modelname"])):
-                    # For some products, time is stored as YYYYDOY-YYYYDOY in modelname
-                    # For GRACE products, DOY can not coincide with 1st and last day of month
-                    dates = re.search(r"_(\d{7})-(\d{7})", header["modelname"])
-                    date_format = "%Y%j"
-
-                elif bool(re.search(r"(\d{4}-\d{2})", header["modelname"])):
-                    # For other products, time is stored as YYYY-MM in modelname
-                    dates = re.search(r"(\d{4}-\d{2})", header["modelname"])
-                    date_format = "%Y-%m"
-
-                else:
-                    raise ValueError(
-                        f"Could not extract date information from modelname in the header "
-                        f"of {filename}\n Try with the parameter no_date=True or "
-                        f"check the use of arguments date_regex and date_format."
-                    )
-
-                # Read begin date and end date if it exists
-                begin_time = datetime.datetime.strptime(dates.group(1), date_format)
-                end_time_str = dates.group(2) if dates.lastindex >= 2 else None
-
-                if end_time_str:  # Case with a date for the end
-                    end_time = datetime.datetime.strptime(
-                        end_time_str, date_format
-                    ) + datetime.timedelta(days=1)
-                    exact_time = begin_time + (end_time - begin_time) / 2
-
-                    # Compute middle of the month for GRACE products
-                    mid_month = mid_month_grace_estimate(begin_time, end_time)
-                else:  # Case without a date for the end
-                    if (
-                        begin_time.day == 1
-                    ):  # Case where the date contains no day in the month information
-                        end_time = (begin_time + datetime.timedelta(days=32)).replace(
-                            day=1
-                        )
-                        mid_month = begin_time + (end_time - begin_time) / 2
-                        exact_time = mid_month
-                    else:  # Case where the date contains day in the month information, we keep the date as reference
-                        end_time = begin_time
-                        mid_month = begin_time
-                        exact_time = begin_time
+                mid_month, exact_time, begin_time, end_time = self._get_date(
+                    date_regex, date_format, filename, header
+                )
 
             # If no time, time info will be a string with modelname
             else:
                 mid_month = header["modelname"]
 
-            # -- Load clm and slm data
-            clm, slm = np.zeros((lmax + 1, lmax + 1, 1)), np.zeros(
-                (lmax + 1, lmax + 1, 1)
-            )
-            # case with error information (does not deal with calibrated_and_formal error case)
-            if header["errors"] != "no":
-                eclm, eslm = np.zeros((lmax + 1, lmax + 1, 1)), np.zeros(
-                    (lmax + 1, lmax + 1, 1)
-                )
-                data = np.genfromtxt(
-                    file,
-                    dtype=[
-                        ("tag", "U4"),
-                        ("degree", int),
-                        ("order", int),
-                        ("clm", float),
-                        ("slm", float),
-                        ("eclm", float),
-                        ("eslm", float),
-                    ],
-                )
-                eclm[data["degree"], data["order"]] = data["eclm"][:, np.newaxis]
-                eslm[data["degree"], data["order"]] = data["eslm"][:, np.newaxis]
+            clm[data["degree"].values, data["order"].values] = data["clm"].values[
+                :, np.newaxis
+            ]
+            slm[data["degree"].values, data["order"].values] = data["slm"].values[
+                :, np.newaxis
+            ]
 
-            # case for no error in file
-            else:
-                data = np.genfromtxt(
-                    file,
-                    dtype=[
-                        ("tag", "U4"),
-                        ("degree", int),
-                        ("order", int),
-                        ("clm", float),
-                        ("slm", float),
-                    ],
-                )
-
-            clm[data["degree"], data["order"]] = data["clm"][:, np.newaxis]
-            slm[data["degree"], data["order"]] = data["slm"][:, np.newaxis]
             ds = xr.Dataset(
                 {"clm": (["l", "m", "time"], clm), "slm": (["l", "m", "time"], slm)},
                 coords={
@@ -551,17 +729,26 @@ class ReadGFC(BackendEntrypoint):
                 attrs=header,
             )
 
+            # case with error information (does not deal with calibrated_and_formal error case)
             if header["errors"] != "no":
+                eclm[data["degree"].values, data["order"].values] = data["eclm"].values[
+                    :, np.newaxis
+                ]
+                eslm[data["degree"].values, data["order"].values] = data["eslm"].values[
+                    :, np.newaxis
+                ]
+
                 ds["eclm"] = xr.DataArray(eclm, dims=["l", "m", "time"])
                 ds["eslm"] = xr.DataArray(eslm, dims=["l", "m", "time"])
 
         else:
-            raise AssertionError(
-                "Reading of .gfc file with time is not implemented yet"
-            )
+            if header["errors"] == "no":
+                ds = self._format_icgem1(data, lmax, header, clm, slm)
+            else:
+                ds = self._format_icgem1(data, lmax, header, clm, slm, eclm, eslm)
 
         # -- Add various time information in dataset
-        if not no_date:
+        if not no_date and "t" not in legend:
             ds["begin_time"] = xr.DataArray([begin_time], dims=["time"])
             ds["end_time"] = xr.DataArray([end_time], dims=["time"])
             ds["exact_time"] = xr.DataArray([exact_time], dims=["time"])

@@ -25,6 +25,8 @@ Examples
 >>> ds['slm'] *= ds_gauss_weights
 """
 
+import warnings
+
 import numpy as np
 import xarray as xr
 
@@ -348,3 +350,110 @@ def gauss_weights(radius, lmax, a_earth=LNPY_A_EARTH_GRS80, cutoff=1e-10):
             break
 
     return xr.DataArray(gaussian_weights, dims=["l"], coords={"l": np.arange(lmax + 1)})
+
+
+def gfct_field_estimation(ds, time):
+    """
+    Compute time-variable gravity field from variation coefficients contain in '.gfc' file with icgem1.0 format.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        Output of the reader from the '.gfc' file with gfct information.
+    time : np.datetime64 | list, tuple, np.ndarray of np.datetime64 | xr.DataArray of np.datetime64
+        Time information to compute the coefficients variations on.
+
+    Returns
+    -------
+    ds_out : xr.Dataset
+        Estimated coefficients time variations.
+    """
+    if isinstance(time, xr.DataArray):
+        if not np.issubdtype(time.dtype, np.datetime64):
+            raise TypeError("The time xr.DataArray does not contain np.datetime64.")
+
+    elif isinstance(time, (list, tuple, np.ndarray)):
+        if not np.issubdtype(time.dtype, np.datetime64):
+            raise TypeError("The time xr.DataArray does not contain np.datetime64.")
+        else:
+            time = xr.DataArray(time, dims=["time"])
+
+    elif isinstance(time, np.datetime64):
+        time = xr.DataArray(np.array([time]), dims=["time"])
+
+    else:
+        raise TypeError(
+            "The 'time' parameter has to be a xr.DataArray with np.datetime64, "
+            "or a list/array of datetime64, or a datetime64 object."
+        )
+
+    if "name" in ds.dims:
+        if ds.dims["name"] > 1:
+            warnings.warn(
+                "Multiple object on the dimension 'name', only the first one is converted to a time dataset."
+            )
+        ds = ds.isel(name=0)
+
+    delta_year = (time - ds.ref_time).dt.days / 365.25
+
+    clm = (
+        ds.clm
+        + ds.trnd_clm * delta_year
+        + (ds.acos_clm * np.cos(2 * np.pi * delta_year / ds.periods_acos)).sum(
+            "periods_acos"
+        )
+        + (ds.asin_slm * np.sin(2 * np.pi * delta_year / ds.periods_asin)).sum(
+            "periods_asin"
+        )
+    )
+    slm = (
+        ds.slm
+        + ds.trnd_slm * delta_year
+        + (ds.acos_slm * np.cos(2 * np.pi * delta_year / ds.periods_acos)).sum(
+            "periods_acos"
+        )
+        + (ds.asin_slm * np.sin(2 * np.pi * delta_year / ds.periods_asin)).sum(
+            "periods_asin"
+        )
+    )
+
+    print(clm.values.shape)
+    ds_out = xr.Dataset(
+        {
+            "clm": (["l", "m", "time"], clm.values),
+            "slm": (["l", "m", "time"], slm.values),
+        },
+        coords={
+            "l": ds.l,
+            "m": ds.m,
+            "time": time,
+        },
+        attrs=ds.attrs,
+    )
+
+    if ds.attrs["errors"] != "no":
+        eclm = np.sqrt(
+            ds.eclm**2
+            + (ds.trnd_eclm * delta_year) ** 2
+            + (
+                (ds.acos_eclm * np.cos(2 * np.pi * delta_year / ds.periods_acos)) ** 2
+            ).sum("periods_acos")
+            + (
+                (ds.asin_eslm * np.sin(2 * np.pi * delta_year / ds.periods_asin)) ** 2
+            ).sum("periods_asin")
+        )
+        eslm = np.sqrt(
+            ds.eslm**2
+            + (ds.trnd_eslm * delta_year) ** 2
+            + (
+                (ds.acos_eslm * np.cos(2 * np.pi * delta_year / ds.periods_acos)) ** 2
+            ).sum("periods_acos")
+            + (
+                (ds.asin_eslm * np.sin(2 * np.pi * delta_year / ds.periods_asin)) ** 2
+            ).sum("periods_asin")
+        )
+
+        ds["eclm"] = xr.DataArray(eclm, dims=["l", "m", "time"])
+        ds["eslm"] = xr.DataArray(eslm, dims=["l", "m", "time"])
+
+    return ds_out
