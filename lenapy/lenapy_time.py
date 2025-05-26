@@ -463,3 +463,9 @@ class TimeArray:
         Return an instance of the *eof* class based on the data array and the dimension names of the eof
         """
         return EOF(self._obj, dim, k)
+
+    def SavitzkyGolay(self, dim="time", window=5, order=1, step=1, sigma=None):
+        """
+        Perform a Savitzky-Golay filter on a dataArray and return filtered derivatives up to maximal order
+        """
+        return SavitzkyGolay(self._obj, dim, window, order, step, sigma)

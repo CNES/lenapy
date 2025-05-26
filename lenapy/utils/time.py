@@ -4,6 +4,7 @@ import netCDF4
 import numpy as np
 import pandas as pd
 import xarray as xr
+from scipy.special import factorial as factorial
 
 from lenapy.constants import *
 from lenapy.utils import filters
@@ -54,7 +55,8 @@ def filter(
 
     if annual_cycle is True:
         # remove the climato
-        data0, coeffs = climato(data, mean=False, trend=False, return_coeffs=True)
+        cc = Coeffs_climato(data, cycle=True, order=1).solve()
+        data0 = cc.signal(coefficients=[])
     else:
         data0 = data
 
@@ -63,15 +65,17 @@ def filter(
     v0 = xr.polyval(data0[time_coord], pf).polyfit_coefficients
     # Remove the polynomial to the initial data untreated
     v1 = data0 - v0
-    v1[time_coord] = v1[time_coord].astype("float")
+    v1[time_coord] = v1[time_coord].astype(np.int64)
     # Fullfil the data with the mirror effect at the beginning and at the end.
     v2 = v1.pad({time_coord: (k, k)}, mode="reflect", reflect_type="even")
-    v2[time_coord] = v1[time_coord].pad(
-        {time_coord: (k, k)}, mode="reflect", reflect_type="odd"
+    v2[time_coord] = (
+        v1[time_coord]
+        .pad({time_coord: (k, k)}, mode="reflect", reflect_type="odd")
+        .astype("<M8[ns]")
     )
 
     if annual_cycle is True:
-        v3 = generate_climato(v2[time_coord], coeffs, mean=True, trend=True, cycle=True)
+        v3 = cc.climatology(x=v2[time_coord])
     else:
         v3 = 0.0
 
@@ -147,96 +151,6 @@ def climato(
         return res.signal(coefficients=ret)
     else:
         return res.climatology(coefficients=ret)
-
-    """
-    use_dask = True if isinstance(data.data, da.Array) else False
-    if use_dask:
-        data = data.chunk(time=-1)
-
-    if not 'time' in data.coords: raise AssertionError('The time coordinates does not exist')
-    
-    # Reference temporelle = milieu de la période
-    tmin=data.time.sel(time=time_period).min().values
-    tmax=data.time.sel(time=time_period).max().values
-    tref=tmin+(tmax-tmin)/2.
-    
-    # Construction de la matrice des mesures
-    if isinstance(tref, np.datetime64):
-        one_day = pd.to_timedelta("1D").asm8
-        t1 = t1=(data.time-tref)/one_day
-    elif isinstance(tref, 
-                        (cftime.Datetime360Day,
-                         cftime.DatetimeNoLeap,
-                         cftime.DatetimeAllLeap,
-                         cftime.DatetimeGregorian,
-                         cftime.DatetimeProlepticGregorian,
-                         cftime.DatetimeJulian,)
-                    ):
-        t1 =  xr.DataArray([(date - tref).days for date in data.time.values], 
-                           coords=dict(time=data.time),
-                           dims=['time'])
-    
-    omega=2*np.pi/LNPY_DAYS_YEAR
-    X=xr.concat((t1**0,t1,np.cos(omega*t1),np.sin(omega*t1),np.cos(2*omega*t1),np.sin(2*omega*t1)),
-                dim=pd.Index(['mean','trend','cosAnnual','sinAnnual','cosSemiAnnual','sinSemiAnnual'], name="coeffs"))
-    
-
-    # Vecteur temps a utiliser pour calcul de la climato
-    time_vector=data.time.sel(time=time_period)
-    
-    # Détermination des coefficients par résolution des moindres carrés
-    time_vector_in = time_vector.values
-    X_in = X.values
-
-    def solve_least_square(data_in):
-    """
-    # For a given 1d time series, returns the coefficients of the fitted climatology
-    """
-        Y_in_nona = data_in[~np.isnan(data_in)]
-        # If less than 6 non-na elements, climato is not computable
-        if len(Y_in_nona) <= 6:
-            return np.full(X_in.shape[0], np.nan)
-        X_in_nona = X_in[:,~np.isnan(data_in)]
-        (coeffs,residus,rank,eig)=np.linalg.lstsq(X_in_nona.T,Y_in_nona,rcond=None)
-        return coeffs
-    
-    # Application de ufunc
-    coeffs = xr.apply_ufunc(
-        solve_least_square, 
-        data, 
-        input_core_dims=[['time']],
-        output_core_dims=[['coeffs']],
-        exclude_dims=set(('time',)),
-        vectorize=True,
-        dask='parallelized',
-        output_dtypes=[float],
-        dask_gufunc_kwargs={'output_sizes': {'coeffs': X_in.shape[0]}}
-    )
-    
-    coeffs = coeffs.assign_coords(coeffs=X.coeffs.values)
-    
-    # Calcul des résidus
-    data_climato = coeffs*X
-    residus = (data-data_climato.sum('coeffs')).assign_coords(coeffs='residu').expand_dims('coeffs')
-
-    # Toutes les composantes de la climatologie
-    results = xr.concat((residus,data_climato),dim='coeffs')    
-
-    # Sélection des composantes de la climato à retourner
-    composants = np.where([signal,mean,trend,cycle,cycle,cycle,cycle])[0]
-    
-    results_out = results.isel(coeffs=composants).sum('coeffs',skipna=fillna)
-
-    # Récupérer les attributs des données d'entrées
-    results_out.attrs = data.attrs
-    
-    results_out = results_out.rename(data.name)
-    if return_coeffs:
-        return results_out, coeffs.assign_attrs(time_ref=tref)
-    else:
-        return results_out
-    
-    """
 
 
 def generate_climato(time, coeffs, mean=True, trend=False, cycle=True):
@@ -385,3 +299,84 @@ def fillna_climato(data, time_period=slice(None, None)):
         data, signal=False, mean=True, trend=True, cycle=True, time_period=time_period
     )
     return xr.where(data.isnull(), val, data)
+
+
+def SavitzkyGolay(da, dim="time", window=5, order=1, step=1):
+    """
+    Perform a Savitzky-Golay filter on a dataArray and return filtered derivatives up to maximal order
+    """
+
+    # [0,1,...,order]
+    o = xr.DataArray(np.int32(np.arange(order + 1)), dims="order")
+    # Normalize polynomial coefficients to obtain the corresponding derivative
+    norm = xr.DataArray(factorial(o) / step**o)
+
+    # Filter impementation at the edges of the signal (between 0 and window, and between n-window and n)
+    lateral_signal = []
+    for i in range(window):
+        # Signal start
+        # X-axis indices
+        xm = xr.DataArray(np.arange(-i, window + 1, 1), dims=dim)
+        # Least-squares obervables matrix
+        X = xm**o
+        # SG filter implementation
+        filtrem = (
+            xr.DataArray(
+                np.dot(np.linalg.inv(np.dot(X.T, X)), X.T),
+                coords={
+                    "order": o,
+                    dim: da[dim].isel({dim: slice(None, window + i + 1)}),
+                },
+            )
+            * norm
+        )
+        # Signal end
+        # X-axis indices
+        xp = xr.DataArray(np.arange(-window, window - i, 1), dims=dim)
+        # Least-squares obervables matrix
+        X = xp**o
+        # SG filter implementation
+        filtrep = (
+            xr.DataArray(
+                np.dot(np.linalg.inv(np.dot(X.T, X)), X.T),
+                coords={
+                    "order": o,
+                    dim: da[dim].isel({dim: slice(-2 * window + i, None)}),
+                },
+            )
+            * norm
+        )
+
+        # Concolution du sign
+        signalm = da.isel({dim: slice(None, window + i + 1)})
+        xvm = da[dim].isel({dim: [i]}).values
+        signalp = da.isel({dim: slice(-2 * window + i, None)})
+        xvp = da[dim].isel({dim: [-window + i]}).values
+        lateral_signal.append(
+            (signalm * filtrem).sum(dim).expand_dims({dim: xvm}).rename("ok")
+        )
+        lateral_signal.append(
+            (signalp * filtrep).sum(dim).expand_dims({dim: xvp}).rename("ok")
+        )
+
+    # Filter impementation for the central part of the signal (between window and n-window)
+    x = xr.DataArray(np.arange(-window, window + 1, 1), dims="x_win")
+    X = x**o
+    filtre = (
+        xr.DataArray(
+            np.dot(np.linalg.inv(np.dot(X.T, X)), X.T), coords=dict(order=o, x_win=x)
+        )
+        * norm
+    )
+
+    # Fenetres de largeur 2*l+1, convoluées par le filtre (multiplication par le filtre et somme des éléments
+    central_signal = (
+        da.rolling({dim: 2 * l + 1}, center=True)
+        .construct("x_win")
+        .weighted(filtre)
+        .sum("x_win")
+        .isel({dim: slice(window, -window)})
+        .rename("ok")
+    )
+
+    return xr.merge((xr.merge(lateral_signal), central_signal)).ok
