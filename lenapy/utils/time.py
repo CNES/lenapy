@@ -301,57 +301,74 @@ def fillna_climato(data, time_period=slice(None, None)):
     return xr.where(data.isnull(), val, data)
 
 
-def SavitzkyGolay(da, dim="time", window=5, order=1, step=1):
+def SavitzkyGolay(da, dim="time", window=12, order=1, step=1, sigma=None):
     """
     Perform a Savitzky-Golay filter on a dataArray and return filtered derivatives up to maximal order
     """
+
+    def convolution_matrix(M, C):
+        return np.dot(np.linalg.inv(np.dot(X.T, np.dot(C, X))), np.dot(X.T, C))
+
+    def weights(xx):
+        if sigma is None:
+            return np.diag(xx * 0.0 + 1)
+        else:
+            return np.diag(np.exp(-(xx**2) / sigma**2))
+
+    if np.mod(window, 2) != 1:
+        print("Warning, window is even, set to window-1")
+    half_window = int((window - 1) / 2.0)
 
     # [0,1,...,order]
     o = xr.DataArray(np.int32(np.arange(order + 1)), dims="order")
     # Normalize polynomial coefficients to obtain the corresponding derivative
     norm = xr.DataArray(factorial(o) / step**o)
 
-    # Filter impementation at the edges of the signal (between 0 and window, and between n-window and n)
+    # Filter impementation at the edges of the signal (between 0 and half_window, and between n-half_window and n)
     lateral_signal = []
-    for i in range(window):
+    for i in range(half_window):
         # Signal start
         # X-axis indices
-        xm = xr.DataArray(np.arange(-i, window + 1, 1), dims=dim)
+        xm = xr.DataArray(np.arange(-i, half_window + 1, 1), dims=dim)
         # Least-squares obervables matrix
         X = xm**o
+        # Weight matrix
+        W = weights(xm)
         # SG filter implementation
         filtrem = (
             xr.DataArray(
-                np.dot(np.linalg.inv(np.dot(X.T, X)), X.T),
+                convolution_matrix(X, W),
                 coords={
                     "order": o,
-                    dim: da[dim].isel({dim: slice(None, window + i + 1)}),
+                    dim: da[dim].isel({dim: slice(None, half_window + i + 1)}),
                 },
             )
             * norm
         )
         # Signal end
         # X-axis indices
-        xp = xr.DataArray(np.arange(-window, window - i, 1), dims=dim)
+        xp = xr.DataArray(np.arange(-half_window, half_window - i, 1), dims=dim)
         # Least-squares obervables matrix
         X = xp**o
+        # Weight matrix
+        W = weights(xp)
         # SG filter implementation
         filtrep = (
             xr.DataArray(
-                np.dot(np.linalg.inv(np.dot(X.T, X)), X.T),
+                convolution_matrix(X, W),
                 coords={
                     "order": o,
-                    dim: da[dim].isel({dim: slice(-2 * window + i, None)}),
+                    dim: da[dim].isel({dim: slice(-2 * half_window + i, None)}),
                 },
             )
             * norm
         )
 
-        # Concolution du sign
-        signalm = da.isel({dim: slice(None, window + i + 1)})
+        # Convolution of the signal by the filter
+        signalm = da.isel({dim: slice(None, half_window + i + 1)})
         xvm = da[dim].isel({dim: [i]}).values
-        signalp = da.isel({dim: slice(-2 * window + i, None)})
-        xvp = da[dim].isel({dim: [-window + i]}).values
+        signalp = da.isel({dim: slice(-2 * half_window + i, None)})
+        xvp = da[dim].isel({dim: [-half_window + i]}).values
         lateral_signal.append(
             (signalm * filtrem).sum(dim).expand_dims({dim: xvm}).rename("ok")
         )
@@ -359,23 +376,22 @@ def SavitzkyGolay(da, dim="time", window=5, order=1, step=1):
             (signalp * filtrep).sum(dim).expand_dims({dim: xvp}).rename("ok")
         )
 
-    # Filter impementation for the central part of the signal (between window and n-window)
-    x = xr.DataArray(np.arange(-window, window + 1, 1), dims="x_win")
+    # Filter impementation for the central part of the signal (between half_window and n-half_window)
+    x = xr.DataArray(np.arange(-half_window, half_window + 1, 1), dims="x_win")
     X = x**o
+    # Weight matrix
+    W = weights(x)
     filtre = (
-        xr.DataArray(
-            np.dot(np.linalg.inv(np.dot(X.T, X)), X.T), coords=dict(order=o, x_win=x)
-        )
-        * norm
+        xr.DataArray(convolution_matrix(X, W), coords=dict(order=o, x_win=x)) * norm
     )
 
     # Fenetres de largeur 2*l+1, convoluées par le filtre (multiplication par le filtre et somme des éléments
     central_signal = (
-        da.rolling({dim: 2 * l + 1}, center=True)
+        da.rolling({dim: 2 * half_window + 1}, center=True)
         .construct("x_win")
         .weighted(filtre)
         .sum("x_win")
-        .isel({dim: slice(window, -window)})
+        .isel({dim: slice(half_window, -half_window)})
         .rename("ok")
     )
 
