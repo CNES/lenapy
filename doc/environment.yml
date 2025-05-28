@@ -18,5 +18,7 @@ dependencies:
   - dask>=2023.6
   - xesmf>=0.8.2
   - cf_xarray
+  - pandas
+  - scipy
 
       
