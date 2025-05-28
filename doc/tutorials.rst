@@ -7,7 +7,7 @@ LENAPY Tutorials
 In the following you will find several Tutorials on how to use LENAPY.
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 1
 
     tutorials/Timeseries.ipynb
     tutorials/GriddedData.ipynb
