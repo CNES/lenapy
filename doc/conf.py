@@ -4,11 +4,17 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
 import datetime
+import inspect
 import os
 import sys
 
+__location__ = os.path.join(
+    os.getcwd(), os.path.dirname(inspect.getfile(inspect.currentframe()))
+)
+
 sys.path.insert(0, os.path.abspath(".."))
 sys.path.insert(0, os.path.abspath("../lenapy"))
+sys.path.insert(0, os.path.join(__location__, "../lenapy"))
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -46,6 +52,7 @@ autodoc_inherit_docstrings = True
 autoclass_content = "both"
 # sort class members by their order in the source
 autodoc_member_order = "bysource"
+autodoc_typehints = "both"
 
 # show all members of a class in the Methods and Attributes sections automatically
 numpydoc_show_class_members = True
@@ -66,17 +73,16 @@ source_suffix = [".rst", ".md"]
 html_theme = "sphinx_rtd_theme"
 html_theme_options = {
     "logo_only": False,
-    "display_version": True,
     "prev_next_buttons_location": "both",
     "collapse_navigation": False,
     "sticky_navigation": True,
-    "navigation_depth": 4,
+    "navigation_depth": 3,
     "includehidden": True,
     "titles_only": False,
     "style_nav_header_background": "#2980B9",  # header color en haut à gauche
     # github_url for open access version
 }
-html_static_path = ["_static"]
+# html_static_path = ["_static"]
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {
@@ -94,3 +100,4 @@ intersphinx_mapping = {
 # See also:
 # https://www.sphinx-doc.org/en/master/usage/extensions/intersphinx.html#confval-intersphinx_disabled_reftypes
 intersphinx_disabled_reftypes = ["*"]
+templates_path = [".templates"]

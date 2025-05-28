@@ -1,18 +1,3 @@
-"""
-
-Modules
-^^^^^^^
-Accessor modules
-
-.. autosummary::
-    :toctree:
-
-    lenapy_geo
-    lenapy_time
-    lenapy_ocean
-    lenapy_harmo
-"""
-
 import warnings
 
 from lenapy import constants, lenapy_geo, lenapy_harmo, lenapy_time

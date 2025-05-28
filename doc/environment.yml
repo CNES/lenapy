@@ -6,16 +6,19 @@ channels:
 dependencies:
   - python=3.11
   - esmpy>=8.4.0
+  - gsw>=3.6.16
   - pip>=20.1  # pip is needed as dependency
-  - pip:
-      - sphinx_rtd_theme
-      - sphinx-mdinclude
-      - nbsphinx          
-      - matplotlib>=3.6
-      - xarray>=2024.2
-      - gsw>=3.6.16
-      - netCDF4>=1.6.5
-      - pyyaml>=6.0
-      - dask>=2023.6
-      - xesmf>=0.8.2
+  - sphinx_rtd_theme
+  - sphinx-mdinclude
+  - nbsphinx
+  - matplotlib>=3.6
+  - xarray>=2024.2
+  - netCDF4>=1.6.5
+  - pyyaml>=6.0
+  - dask>=2023.6
+  - xesmf>=0.8.2
+  - cf_xarray
+  - pandas
+  - scipy
+
       
