@@ -290,6 +290,7 @@ class ReadGFC(BackendEntrypoint):
             "errors",
             "norm",
             "tide_system",
+            "format",
         ]
         regex = "(" + "|".join(header_parameters) + ")"
         header = {}
@@ -304,7 +305,8 @@ class ReadGFC(BackendEntrypoint):
                 break
             elif "0    0" in line:
                 raise ValueError(f"Missing 'end_of_head' in header of file {file_io}")
-            legend_before_end_header = line
+            if line:
+                legend_before_end_header = line
 
         # case for COSTG header where 'modelname' is created as 'product_name'
         header["modelname"] = header.get("product_name", header.get("modelname"))
@@ -495,6 +497,8 @@ class ReadGFC(BackendEntrypoint):
         """
         periods_acos = data[(data["tag"] == "acos")]["ref_time"].unique()
         periods_asin = data[(data["tag"] == "acos")]["ref_time"].unique()
+        periods_acos.sort()
+        periods_asin.sort()
 
         trnd_clm, trnd_slm = np.zeros((lmax + 1, lmax + 1, 1)), np.zeros(
             (lmax + 1, lmax + 1, 1)
@@ -509,9 +513,8 @@ class ReadGFC(BackendEntrypoint):
         if (
             header["errors"] != "no"
         ):  # (does not deal with calibrated_and_formal error case)
-            trnd_eclm, trnd_eslm = np.zeros((lmax + 1, lmax + 1, 1)), np.zeros(
-                (lmax + 1, lmax + 1, 1)
-            )
+            trnd_eclm = np.zeros((lmax + 1, lmax + 1, 1))
+            trnd_eslm = np.zeros((lmax + 1, lmax + 1, 1))
             acos_eclm = np.zeros((lmax + 1, lmax + 1, 1, len(periods_acos)))
             acos_eslm = np.zeros((lmax + 1, lmax + 1, 1, len(periods_acos)))
             asin_eclm = np.zeros((lmax + 1, lmax + 1, 1, len(periods_asin)))
@@ -529,21 +532,24 @@ class ReadGFC(BackendEntrypoint):
                 "slm"
             ].values[:, np.newaxis]
 
-        index_acos_asin = [data["tag"] == "acos", data["tag"] == "asin"]
         for ind, c, s, periods in zip(
-            index_acos_asin,
+            [data["tag"] == "acos", data["tag"] == "asin"],
             [acos_clm, asin_slm],
             [acos_slm, asin_slm],
             [periods_acos, periods_asin],
         ):
-            for i, period in enumerate(periods):
-                k = ind & (data["ref_time"] == period)
-                c[data[k]["degree"].values, data[k]["order"].values, 0, i] = data[k][
-                    "clm"
-                ].values
-                s[data[k]["degree"].values, data[k]["order"].values, 0, i] = data[k][
-                    "slm"
-                ].values
+            c[
+                data[ind]["degree"].values,
+                data[ind]["order"].values,
+                0,
+                np.searchsorted(periods, data[ind]["ref_time"]),
+            ] = data[ind]["clm"].values
+            s[
+                data[ind]["degree"].values,
+                data[ind]["order"].values,
+                0,
+                np.searchsorted(periods, data[ind]["ref_time"]),
+            ] = data[ind]["slm"].values
 
         ind = data["tag"] == "gfct"
         ref_time[data[ind]["degree"].values, data[ind]["order"].values] = (
@@ -587,19 +593,23 @@ class ReadGFC(BackendEntrypoint):
                 ].values[:, np.newaxis]
 
             for ind, ec, es, periods in zip(
-                index_acos_asin,
+                [data["tag"] == "acos", data["tag"] == "asin"],
                 [acos_eclm, asin_eslm],
                 [acos_eslm, asin_eslm],
                 [periods_acos, periods_asin],
             ):
-                for i, period in enumerate(periods):
-                    k = ind & (data["ref_time"] == period)
-                    ec[data[k]["degree"].values, data[k]["order"].values, 0, i] = data[
-                        k
-                    ]["eclm"].values
-                    es[data[k]["degree"].values, data[k]["order"].values, 0, i] = data[
-                        k
-                    ]["eslm"].values
+                ec[
+                    data[ind]["degree"].values,
+                    data[ind]["order"].values,
+                    0,
+                    np.searchsorted(periods, data[ind]["ref_time"]),
+                ] = data[ind]["eclm"].values
+                es[
+                    data[ind]["degree"].values,
+                    data[ind]["order"].values,
+                    0,
+                    np.searchsorted(periods, data[ind]["ref_time"]),
+                ] = data[ind]["eslm"].values
 
             ds["eclm"] = xr.DataArray(eclm, dims=["l", "m", "name"])
             ds["eslm"] = xr.DataArray(eslm, dims=["l", "m", "name"])
@@ -616,6 +626,230 @@ class ReadGFC(BackendEntrypoint):
             )
             ds["asin_eslm"] = xr.DataArray(
                 asin_eslm, dims=["l", "m", "name", "periods_asin"]
+            )
+
+        return ds
+
+    @staticmethod
+    def _format_icgem2(data, lmax, header):
+        """
+        Subfunction of the gfc reader to read the gfct icgem2.0 format.
+
+        Parameters
+        ----------
+        data : pd.Dataframe
+            pandas Dataframe containing the coefficients information.
+        lmax : int
+            Maximal degree for the spherical harmonics coefficients.
+        header : dict
+            Dictionary of header information.
+
+        Returns
+        -------
+         ds : xr.Dataset
+            Information from the file stored in `xr.Dataset` format.
+        """
+        periods_acos = data[(data["tag"] == "acos")]["period"].unique()
+        periods_asin = data[(data["tag"] == "acos")]["period"].unique()
+        periods_acos.sort()
+        periods_asin.sort()
+
+        # The epochs are used to create associated array to store the coefficients
+        epochs = np.union1d(
+            data[data["tag"] == "gfct"]["ref_time"].unique(),
+            data[data["tag"] == "gfct"]["ref_time_end"].unique(),
+        )
+        epochs.sort()
+
+        clm = np.zeros((lmax + 1, lmax + 1, 1, len(epochs)))
+        slm = np.zeros((lmax + 1, lmax + 1, 1, len(epochs)))
+        trnd_clm = np.zeros((lmax + 1, lmax + 1, 1, len(epochs)))
+        trnd_slm = np.zeros((lmax + 1, lmax + 1, 1, len(epochs)))
+        acos_clm = np.zeros((lmax + 1, lmax + 1, 1, len(epochs), len(periods_acos)))
+        acos_slm = np.zeros((lmax + 1, lmax + 1, 1, len(epochs), len(periods_acos)))
+        asin_clm = np.zeros((lmax + 1, lmax + 1, 1, len(epochs), len(periods_asin)))
+        asin_slm = np.zeros((lmax + 1, lmax + 1, 1, len(epochs), len(periods_asin)))
+
+        ref_time = pd.to_datetime(
+            np.char.mod("%.4f", epochs), format="%Y%m%d.%H%M"
+        ).to_numpy()
+
+        clm[
+            data[data["tag"] == "gfc"]["degree"].values,
+            data[data["tag"] == "gfc"]["order"].values,
+        ] = data[data["tag"] == "gfc"]["clm"].values[:, np.newaxis, np.newaxis]
+        slm[
+            data[data["tag"] == "gfc"]["degree"].values,
+            data[data["tag"] == "gfc"]["order"].values,
+        ] = data[data["tag"] == "gfc"]["slm"].values[:, np.newaxis, np.newaxis]
+
+        for i in range(len(epochs) - 1):
+            for j in range(i + 1, len(epochs)):
+                for ind, c, s in zip(
+                    [data["tag"] == "gfct", data["tag"] == "trnd"],
+                    [clm, trnd_clm],
+                    [slm, trnd_slm],
+                ):
+                    ind_t = (
+                        ind
+                        & (data["ref_time"] == epochs[i])
+                        & (data["ref_time_end"] == epochs[j])
+                    )
+                    c[
+                        data[ind_t]["degree"].values,
+                        data[ind_t]["order"].values,
+                        0,
+                        i:j,
+                    ] = data[ind_t]["clm"].values[:, np.newaxis]
+                    s[
+                        data[ind_t]["degree"].values,
+                        data[ind_t]["order"].values,
+                        0,
+                        i:j,
+                    ] = data[ind_t]["slm"].values[:, np.newaxis]
+
+                for ind, c, s, period in zip(
+                    [data["tag"] == "acos", data["tag"] == "asin"],
+                    [acos_clm, asin_clm],
+                    [acos_slm, asin_slm],
+                    [periods_acos, periods_asin],
+                ):
+                    ind_t = (
+                        ind
+                        & (data["ref_time"] == epochs[i])
+                        & (data["ref_time_end"] == epochs[j])
+                    )
+                    c[
+                        data[ind_t]["degree"].values,
+                        data[ind_t]["order"].values,
+                        0,
+                        i:j,
+                        np.searchsorted(period, data[ind_t]["period"]),
+                    ] = data[ind_t]["clm"].values[:, np.newaxis]
+                    s[
+                        data[ind_t]["degree"].values,
+                        data[ind_t]["order"].values,
+                        0,
+                        i:j,
+                        np.searchsorted(period, data[ind_t]["period"]),
+                    ] = data[ind_t]["slm"].values[:, np.newaxis]
+
+        ds = xr.Dataset(
+            {
+                "clm": (["l", "m", "name", "time"], clm),
+                "slm": (["l", "m", "name", "time"], slm),
+                "trnd_clm": (["l", "m", "name", "time"], trnd_clm),
+                "trnd_slm": (["l", "m", "name", "time"], trnd_slm),
+                "acos_clm": (["l", "m", "name", "time", "periods_acos"], acos_clm),
+                "acos_slm": (["l", "m", "name", "time", "periods_acos"], acos_slm),
+                "asin_clm": (["l", "m", "name", "time", "periods_asin"], asin_clm),
+                "asin_slm": (["l", "m", "name", "time", "periods_asin"], asin_slm),
+            },
+            coords={
+                "l": np.arange(lmax + 1),
+                "m": np.arange(lmax + 1),
+                "name": [header["modelname"]],
+                "time": ref_time,
+                "periods_acos": periods_acos,
+                "periods_asin": periods_asin,
+            },
+            attrs=header,
+        )
+
+        # case with error information (does not deal with calibrated_and_formal error case)
+        if header["errors"] != "no":
+            eclm = np.zeros((lmax + 1, lmax + 1, 1, len(epochs)))
+            eslm = np.zeros((lmax + 1, lmax + 1, 1, len(epochs)))
+            trnd_eclm = np.zeros((lmax + 1, lmax + 1, 1, len(epochs)))
+            trnd_eslm = np.zeros((lmax + 1, lmax + 1, 1, len(epochs)))
+            acos_eclm = np.zeros(
+                (lmax + 1, lmax + 1, 1, len(epochs), len(periods_acos))
+            )
+            acos_eslm = np.zeros(
+                (lmax + 1, lmax + 1, 1, len(epochs), len(periods_acos))
+            )
+            asin_eclm = np.zeros(
+                (lmax + 1, lmax + 1, 1, len(epochs), len(periods_asin))
+            )
+            asin_eslm = np.zeros(
+                (lmax + 1, lmax + 1, 1, len(epochs), len(periods_asin))
+            )
+
+            eclm[
+                data[data["tag"] == "gfc"]["degree"].values,
+                data[data["tag"] == "gfc"]["order"].values,
+            ] = data[data["tag"] == "gfc"]["eclm"].values[:, np.newaxis, np.newaxis]
+            eslm[
+                data[data["tag"] == "gfc"]["degree"].values,
+                data[data["tag"] == "gfc"]["order"].values,
+            ] = data[data["tag"] == "gfc"]["eslm"].values[:, np.newaxis, np.newaxis]
+
+            for i in range(len(epochs) - 1):
+                for j in range(i + 1, len(epochs)):
+                    for ind, ec, es in zip(
+                        [data["tag"] == "gfct", data["tag"] == "trnd"],
+                        [eclm, trnd_eclm],
+                        [eslm, trnd_eslm],
+                    ):
+                        ind_t = (
+                            ind
+                            & (data["ref_time"] == epochs[i])
+                            & (data["ref_time_end"] == epochs[j])
+                        )
+                        ec[
+                            data[ind_t]["degree"].values,
+                            data[ind_t]["order"].values,
+                            0,
+                            i:j,
+                        ] = data[ind_t]["eclm"].values[:, np.newaxis]
+                        es[
+                            data[ind_t]["degree"].values,
+                            data[ind_t]["order"].values,
+                            0,
+                            i:j,
+                        ] = data[ind_t]["eslm"].values[:, np.newaxis]
+
+                    for ind, ec, es, periods in zip(
+                        [data["tag"] == "acos", data["tag"] == "asin"],
+                        [acos_eclm, asin_eslm],
+                        [acos_eslm, asin_eslm],
+                        [periods_acos, periods_asin],
+                    ):
+                        ind_t = (
+                            ind
+                            & (data["ref_time"] == epochs[i])
+                            & (data["ref_time_end"] == epochs[j])
+                        )
+                        ec[
+                            data[ind_t]["degree"].values,
+                            data[ind_t]["order"].values,
+                            0,
+                            i:j,
+                            np.searchsorted(period, data[ind_t]["period"]),
+                        ] = data[ind_t]["eclm"].values[:, np.newaxis]
+                        es[
+                            data[ind_t]["degree"].values,
+                            data[ind_t]["order"].values,
+                            0,
+                            i:j,
+                            np.searchsorted(period, data[ind_t]["period"]),
+                        ] = data[ind_t]["eslm"].values[:, np.newaxis]
+
+            ds["eclm"] = xr.DataArray(eclm, dims=["l", "m", "name", "time"])
+            ds["eslm"] = xr.DataArray(eslm, dims=["l", "m", "name", "time"])
+            ds["trnd_eclm"] = xr.DataArray(trnd_eclm, dims=["l", "m", "name", "time"])
+            ds["trnd_eslm"] = xr.DataArray(trnd_eslm, dims=["l", "m", "name", "time"])
+            ds["acos_eclm"] = xr.DataArray(
+                acos_eclm, dims=["l", "m", "name", "time", "periods_acos"]
+            )
+            ds["acos_eslm"] = xr.DataArray(
+                acos_eslm, dims=["l", "m", "name", "time", "periods_acos"]
+            )
+            ds["asin_eclm"] = xr.DataArray(
+                asin_eclm, dims=["l", "m", "name", "time", "periods_asin"]
+            )
+            ds["asin_eslm"] = xr.DataArray(
+                asin_eslm, dims=["l", "m", "name", "time", "periods_asin"]
             )
 
         return ds
@@ -694,6 +928,9 @@ class ReadGFC(BackendEntrypoint):
 
         if "t" in legend:
             col_names.append("ref_time")
+            if " period" in legend:
+                col_names.append("ref_time_end")
+                col_names.append("period")
 
         # Read file with pandas, delim_whitespace for variable space delimiters
         data = pd.read_csv(
@@ -741,11 +978,23 @@ class ReadGFC(BackendEntrypoint):
                 ds["eclm"] = xr.DataArray(eclm, dims=["l", "m", "time"])
                 ds["eslm"] = xr.DataArray(eslm, dims=["l", "m", "time"])
 
-        else:
+        elif " period" not in legend:
             if header["errors"] == "no":
                 ds = self._format_icgem1(data, lmax, header, clm, slm)
             else:
                 ds = self._format_icgem1(data, lmax, header, clm, slm, eclm, eslm)
+
+            if "format" not in ds.attrs:
+                ds.attrs["format"] = "icgem1.0"
+
+        else:
+            if header["errors"] == "no":
+                ds = self._format_icgem2(data, lmax, header)
+            else:
+                ds = self._format_icgem2(data, lmax, header)
+
+            if "format" not in ds.attrs:
+                ds.attrs["format"] = "icgem2.0"
 
         # -- Add various time information in dataset
         if not no_date and "t" not in legend:

@@ -354,7 +354,8 @@ def gauss_weights(radius, lmax, a_earth=LNPY_A_EARTH_GRS80, cutoff=1e-10):
 
 def gfct_field_estimation(ds, time):
     """
-    Compute time-variable gravity field from variation coefficients contain in '.gfc' file with icgem1.0 format.
+    Compute time-variable gravity field from variation coefficients contain in '.gfc' file
+    with icgem1.0 or icgem2.0 format.
 
     Parameters
     ----------
@@ -373,10 +374,9 @@ def gfct_field_estimation(ds, time):
             raise TypeError("The time xr.DataArray does not contain np.datetime64.")
 
     elif isinstance(time, (list, tuple, np.ndarray)):
+        time = xr.DataArray(time, dims=["time"])
         if not np.issubdtype(time.dtype, np.datetime64):
             raise TypeError("The time xr.DataArray does not contain np.datetime64.")
-        else:
-            time = xr.DataArray(time, dims=["time"])
 
     elif isinstance(time, np.datetime64):
         time = xr.DataArray(np.array([time]), dims=["time"])
@@ -388,40 +388,146 @@ def gfct_field_estimation(ds, time):
         )
 
     if "name" in ds.dims:
-        if ds.dims["name"] > 1:
+        if ds.sizes["name"] > 1:
             warnings.warn(
                 "Multiple object on the dimension 'name', only the first one is converted to a time dataset."
             )
         ds = ds.isel(name=0)
 
-    delta_year = (time - ds.ref_time).dt.days / 365.25
+    # Case of icgem1.0 format: direct computation
+    if "icgem1." in ds.attrs["format"]:
+        delta_year = (time - ds.ref_time).dt.days / 365.25
 
-    clm = (
-        ds.clm
-        + ds.trnd_clm * delta_year
-        + (ds.acos_clm * np.cos(2 * np.pi * delta_year / ds.periods_acos)).sum(
-            "periods_acos"
-        )
-        + (ds.asin_slm * np.sin(2 * np.pi * delta_year / ds.periods_asin)).sum(
-            "periods_asin"
-        )
-    )
-    slm = (
-        ds.slm
-        + ds.trnd_slm * delta_year
-        + (ds.acos_slm * np.cos(2 * np.pi * delta_year / ds.periods_acos)).sum(
-            "periods_acos"
-        )
-        + (ds.asin_slm * np.sin(2 * np.pi * delta_year / ds.periods_asin)).sum(
-            "periods_asin"
-        )
-    )
+        clm = (
+            ds.clm
+            + ds.trnd_clm * delta_year
+            + (ds.acos_clm * np.cos(2 * np.pi * delta_year / ds.periods_acos)).sum(
+                "periods_acos"
+            )
+            + (ds.asin_slm * np.sin(2 * np.pi * delta_year / ds.periods_asin)).sum(
+                "periods_asin"
+            )
+        ).values
+        slm = (
+            ds.slm
+            + ds.trnd_slm * delta_year
+            + (ds.acos_slm * np.cos(2 * np.pi * delta_year / ds.periods_acos)).sum(
+                "periods_acos"
+            )
+            + (ds.asin_slm * np.sin(2 * np.pi * delta_year / ds.periods_asin)).sum(
+                "periods_asin"
+            )
+        ).values
 
-    print(clm.values.shape)
+        if ds.attrs["errors"] != "no":
+            eclm = np.sqrt(
+                ds.eclm**2
+                + (ds.trnd_eclm * delta_year) ** 2
+                + (
+                    (ds.acos_eclm * np.cos(2 * np.pi * delta_year / ds.periods_acos))
+                    ** 2
+                ).sum("periods_acos")
+                + (
+                    (ds.asin_eslm * np.sin(2 * np.pi * delta_year / ds.periods_asin))
+                    ** 2
+                ).sum("periods_asin")
+            ).values
+            eslm = np.sqrt(
+                ds.eslm**2
+                + (ds.trnd_eslm * delta_year) ** 2
+                + (
+                    (ds.acos_eslm * np.cos(2 * np.pi * delta_year / ds.periods_acos))
+                    ** 2
+                ).sum("periods_acos")
+                + (
+                    (ds.asin_eslm * np.sin(2 * np.pi * delta_year / ds.periods_asin))
+                    ** 2
+                ).sum("periods_asin")
+            ).values
+
+    # Case of icgem1.0 format: one computation for each given time to use corresponding coefficients
+    elif "icgem2." in ds.attrs["format"]:
+        clm = np.zeros((ds.sizes["l"], ds.sizes["m"], len(time)))
+        slm = np.zeros((ds.sizes["l"], ds.sizes["m"], len(time)))
+
+        if ds.attrs["errors"] != "no":
+            eclm = np.zeros((ds.sizes["l"], ds.sizes["m"], len(time)))
+            eslm = np.zeros((ds.sizes["l"], ds.sizes["m"], len(time)))
+
+        for i, t in enumerate(time):
+            t_ds = ds.isel(time=np.searchsorted(ds.time, t) - 1)
+
+            delta_year = -(t_ds.time - t).dt.days / 365.25
+
+            clm[:, :, i] = (
+                t_ds.clm
+                + t_ds.trnd_clm * delta_year
+                + (
+                    t_ds.acos_clm * np.cos(2 * np.pi * delta_year / ds.periods_acos)
+                ).sum("periods_acos")
+                + (
+                    t_ds.asin_slm * np.sin(2 * np.pi * delta_year / ds.periods_asin)
+                ).sum("periods_asin")
+            )
+            slm[:, :, i] = (
+                t_ds.slm
+                + t_ds.trnd_slm * delta_year
+                + (
+                    t_ds.acos_slm * np.cos(2 * np.pi * delta_year / ds.periods_acos)
+                ).sum("periods_acos")
+                + (
+                    t_ds.asin_slm * np.sin(2 * np.pi * delta_year / ds.periods_asin)
+                ).sum("periods_asin")
+            )
+
+            if ds.attrs["errors"] != "no":
+                eclm[:, :, i] = np.sqrt(
+                    t_ds.eclm**2
+                    + (t_ds.trnd_eclm * delta_year) ** 2
+                    + (
+                        (
+                            t_ds.acos_eclm
+                            * np.cos(2 * np.pi * delta_year / ds.periods_acos)
+                        )
+                        ** 2
+                    ).sum("periods_acos")
+                    + (
+                        (
+                            t_ds.asin_eslm
+                            * np.sin(2 * np.pi * delta_year / ds.periods_asin)
+                        )
+                        ** 2
+                    ).sum("periods_asin")
+                )
+                eslm[:, :, i] = np.sqrt(
+                    t_ds.eslm**2
+                    + (t_ds.trnd_eslm * delta_year) ** 2
+                    + (
+                        (
+                            t_ds.acos_eslm
+                            * np.cos(2 * np.pi * delta_year / ds.periods_acos)
+                        )
+                        ** 2
+                    ).sum("periods_acos")
+                    + (
+                        (
+                            t_ds.asin_eslm
+                            * np.sin(2 * np.pi * delta_year / ds.periods_asin)
+                        )
+                        ** 2
+                    ).sum("periods_asin")
+                )
+
+    else:
+        raise ValueError(
+            "Unknown format, please provide information on "
+            "ds.attrs['format'] with either 'icgem1.0' or 'icgem2.0'"
+        )
+
     ds_out = xr.Dataset(
         {
-            "clm": (["l", "m", "time"], clm.values),
-            "slm": (["l", "m", "time"], slm.values),
+            "clm": (["l", "m", "time"], clm),
+            "slm": (["l", "m", "time"], slm),
         },
         coords={
             "l": ds.l,
@@ -432,28 +538,7 @@ def gfct_field_estimation(ds, time):
     )
 
     if ds.attrs["errors"] != "no":
-        eclm = np.sqrt(
-            ds.eclm**2
-            + (ds.trnd_eclm * delta_year) ** 2
-            + (
-                (ds.acos_eclm * np.cos(2 * np.pi * delta_year / ds.periods_acos)) ** 2
-            ).sum("periods_acos")
-            + (
-                (ds.asin_eslm * np.sin(2 * np.pi * delta_year / ds.periods_asin)) ** 2
-            ).sum("periods_asin")
-        )
-        eslm = np.sqrt(
-            ds.eslm**2
-            + (ds.trnd_eslm * delta_year) ** 2
-            + (
-                (ds.acos_eslm * np.cos(2 * np.pi * delta_year / ds.periods_acos)) ** 2
-            ).sum("periods_acos")
-            + (
-                (ds.asin_eslm * np.sin(2 * np.pi * delta_year / ds.periods_asin)) ** 2
-            ).sum("periods_asin")
-        )
-
-        ds["eclm"] = xr.DataArray(eclm, dims=["l", "m", "time"])
-        ds["eslm"] = xr.DataArray(eslm, dims=["l", "m", "time"])
+        ds_out["eclm"] = xr.DataArray(eclm, dims=["l", "m", "time"])
+        ds_out["eslm"] = xr.DataArray(eslm, dims=["l", "m", "time"])
 
     return ds_out
