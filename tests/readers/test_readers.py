@@ -2,6 +2,7 @@ import pytest
 import xarray as xr
 
 from lenapy.readers.gravi_reader import read_tn14
+from tests.conftest import overwrite_references
 
 
 def test_read_tn13(lenapy_paths):
@@ -37,10 +38,22 @@ def test_read_tn14(overwrite_references, lenapy_paths, rmmean, ref_name):
     xr.testing.assert_allclose(ref_ds, ds)
 
 
-def test_lenapy_gfc(overwrite_references, lenapy_paths):
-    ref_file = lenapy_paths.ref_data / "readers" / "lenapyGfc.nc"
+@pytest.mark.parametrize(
+    "input_file, ref_file",
+    [
+        ("GSM-2_2002213-2002243_GRAC_COSTG_BF01_0100.gfc", "lenapyGfc_static.nc"),
+        ("GOCO06s_l20.gfc", "lenapyGfc_icgem1.nc"),
+    ],
+)
+def test_lenapy_gfc(overwrite_references, lenapy_paths, input_file, ref_file):
+    """
+    Test loading GRACE '.gfc' ascii files with the lenapyGfc engine.
+
+    Compares parsed datasets to reference NetCDF datasets to ensure consistent structure and values.
+    """
+    ref_file = lenapy_paths.ref_data / "readers" / ref_file
     gsm = xr.open_dataset(
-        lenapy_paths.data / "GSM-2_2002213-2002243_GRAC_COSTG_BF01_0100.gfc",
+        lenapy_paths.data / input_file,
         engine="lenapyGfc",
         no_date=False,
     )
@@ -57,14 +70,16 @@ def test_lenapy_gfc(overwrite_references, lenapy_paths):
         ("GSM-2_2022001-2022031_GRFO_UTCSR_BA01_0601.gz", "gz_grace_l2.nc"),
     ],
 )
-def test_lenapy_grace(lenapy_paths, input_file, ref_file):
+def test_lenapy_grace(overwrite_references, lenapy_paths, input_file, ref_file):
     """
     Test loading GRACE Level-2 files (TXT and GZ) with the lenapyGraceL2 engine.
 
     Compares parsed datasets to reference NetCDF datasets to ensure consistent structure and values.
     """
-    gsm_ref = xr.open_dataset(lenapy_paths.ref_data / ref_file)
     gsm = xr.open_dataset(lenapy_paths.data / input_file, engine="lenapyGraceL2")
+    if overwrite_references:
+        gsm.to_netcdf(ref_file)
+    gsm_ref = xr.open_dataset(lenapy_paths.ref_data / ref_file)
     xr.testing.assert_allclose(gsm_ref, gsm)
 
 
