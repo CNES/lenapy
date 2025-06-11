@@ -46,7 +46,7 @@ from lenapy.constants import *
 from lenapy.utils.harmo import mid_month_grace_estimate
 
 
-def read_tn14(filename, rmmean=False):
+def read_tn14(filename: str | os.PathLike, rmmean: bool = False) -> xr.Dataset:
     """
     Read TN14 data to produce a dataset with C20 and C30 information.
     Handles dates in the same way as others GRACE products.
@@ -147,7 +147,7 @@ def read_tn14(filename, rmmean=False):
     return ds
 
 
-def read_tn13(filename):
+def read_tn13(filename: str | os.PathLike) -> xr.Dataset:
     """
     Read TN13 data to produce a dataset with C10, C11 and S11 information.
     Handles dates in the same way as other GRACE products.
@@ -388,13 +388,20 @@ class ReadGFC(BackendEntrypoint):
         raise ValueError("Unsupported file extension.")
 
     @staticmethod
-    def _get_date(date_regex, date_format, filename, header):
+    def _get_date(
+        date_regex: str | None,
+        date_format: str | None,
+        filename: str | os.PathLike,
+        header: dict,
+    ) -> tuple[
+        datetime.datetime, datetime.datetime, datetime.datetime, datetime.datetime
+    ]:
         """
         Extract date from header file information and format dates in datetime objects.
 
         Parameters
         ----------
-        date_regex : str | None, optional
+        date_regex : str | None
             A regular expression pattern used to search for the date in the modelname header information. It should
             contain at least one capturing group for the begin_time, and optionally a second group for the `end_time`.
         date_format : str | None, optional
@@ -469,7 +476,15 @@ class ReadGFC(BackendEntrypoint):
         return mid_month, exact_time, begin_time, end_time
 
     @staticmethod
-    def _format_icgem1(data, lmax, header, clm, slm, eclm=None, eslm=None):
+    def _format_icgem1(
+        data: pd.DataFrame,
+        lmax: int,
+        header: dict,
+        clm: np.ndarray,
+        slm: np.ndarray,
+        eclm: np.ndarray | None = None,
+        eslm: np.ndarray | None = None,
+    ) -> xr.Dataset:
         """
         Subfunction of the gfc reader to read the gfct icgem1.0 format.
 
@@ -631,7 +646,7 @@ class ReadGFC(BackendEntrypoint):
         return ds
 
     @staticmethod
-    def _format_icgem2(data, lmax, header):
+    def _format_icgem2(data: pd.DataFrame, lmax: int, header: dict) -> xr.Dataset:
         """
         Subfunction of the gfc reader to read the gfct icgem2.0 format.
 
@@ -856,12 +871,12 @@ class ReadGFC(BackendEntrypoint):
 
     def open_dataset(
         self,
-        filename,
-        drop_variables=None,
-        no_date=False,
-        date_regex=None,
-        date_format=None,
-    ):
+        filename: str | os.PathLike,
+        drop_variables: None = None,
+        no_date: bool = False,
+        date_regex: str | None = None,
+        date_format: str | None = None,
+    ) -> xr.Dataset:
         """
         Read a .gfc ASCII file (or compressed) and format it as a xr.Dataset.
         The file needs to follow the ICGEM format: https://icgem.gfz-potsdam.de/docs/ICGEM-Format-2023.pdf
@@ -1007,7 +1022,7 @@ class ReadGFC(BackendEntrypoint):
 
         return ds
 
-    def guess_can_open(self, filename):
+    def guess_can_open(self, filename: str | os.PathLike) -> bool:
         """
         Test the readability of a file with ReadGFC. Test if it is a .gfc file.
 
@@ -1158,7 +1173,9 @@ class ReadGRACEL2(BackendEntrypoint):
         }
         return header
 
-    def open_dataset(self, filename, drop_variables=None):
+    def open_dataset(
+        self, filename: str | os.PathLike, drop_variables: None = None
+    ) -> xr.Dataset:
         """
         Read a GRACE Level-2 gravity field product ASCII file (or compressed) from processing centers and
         format it as a xr.Dataset. The header information are stored in ds.attrs.
@@ -1286,7 +1303,9 @@ class ReadGRACEL2(BackendEntrypoint):
 class ReadShLoading(BackendEntrypoint):
     open_dataset_parameters = ["filename_or_obj", "drop_variables"]
 
-    def open_dataset(self, filename, drop_variables=None):
+    def open_dataset(
+        self, filename: str | os.PathLike, drop_variables=None
+    ) -> xr.Dataset:
         """
         Read Loading models in ASCII file (or compressed) from http://loading.u-strasbg.fr and
         format it as a xr.Dataset. The header information are stored in ds.attrs.
@@ -1321,7 +1340,7 @@ class ReadShLoading(BackendEntrypoint):
         return ds
 
     @staticmethod
-    def _process_file(file, compression=False):
+    def _process_file(file, compression: bool = False) -> xr.Dataset:
         """
         Process a single file pointer and return it as a xr.Dataset.
 

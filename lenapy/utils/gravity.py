@@ -26,6 +26,7 @@ Examples
 """
 
 import warnings
+from typing import Literal
 
 import numpy as np
 import xarray as xr
@@ -34,13 +35,13 @@ from lenapy.constants import *
 
 
 def change_reference(
-    ds,
-    new_radius=LNPY_A_EARTH_GRS80,
-    new_earth_gravity_constant=LNPY_GM_EARTH,
-    old_radius=None,
-    old_earth_gravity_constant=None,
-    apply=False,
-):
+    ds: xr.Dataset,
+    new_radius: float = LNPY_A_EARTH_GRS80,
+    new_earth_gravity_constant: float = LNPY_GM_EARTH,
+    old_radius: float | None = None,
+    old_earth_gravity_constant: float | None = None,
+    apply: bool = False,
+) -> xr.Dataset:
     """
     Spherical Harmonics dataset are associated with an earth radius *a* and *µ* or *GM* the earth gravity constant.
     This function return the dataset updated with the new constants associated to it in input
@@ -111,7 +112,13 @@ def change_reference(
     return ds_out
 
 
-def change_tide_system(ds, new_tide, old_tide=None, k20=None, apply=False):
+def change_tide_system(
+    ds: xr.Dataset,
+    new_tide: Literal["tide_free", "zero_tide", "mean_tide"],
+    old_tide: Literal["tide_free", "zero_tide", "mean_tide"] | None = None,
+    k20: float | None = None,
+    apply: bool = False,
+) -> xr.Dataset:
     """
     Apply a C20 offset to the dataset to change the tide system.
     Follows [IERS2010]_ convention to convert between tide system ('tide_free', 'zero_tide', 'mean_tide').
@@ -201,7 +208,12 @@ def change_tide_system(ds, new_tide, old_tide=None, k20=None, apply=False):
     return ds_out
 
 
-def change_love_reference_frame(ds, new_frame, old_frame, apply=False):
+def change_love_reference_frame(
+    ds: xr.Dataset,
+    new_frame: Literal["CM", "CE", "CF", "CL", "CH"],
+    old_frame: Literal["CM", "CE", "CF", "CL", "CH"],
+    apply: bool = False,
+) -> xr.Dataset:
     """
     Modify degree 1 love numbers of the dataset to change the reference frame.
     The input dataset need to contain 'hl', 'll', 'kl' variables that are potential love numbers with a degree dimension
@@ -293,7 +305,9 @@ def change_love_reference_frame(ds, new_frame, old_frame, apply=False):
     return ds_love
 
 
-def gauss_weights(radius, lmax, a_earth=LNPY_A_EARTH_GRS80, cutoff=1e-10):
+def gauss_weights(
+    radius: float, lmax: int, a_earth: float = LNPY_A_EARTH_GRS80, cutoff: float = 1e-10
+) -> xr.DataArray:
     """
     Generate a xr.DataArray with Gaussian weights as a function of degree.
 
@@ -352,7 +366,9 @@ def gauss_weights(radius, lmax, a_earth=LNPY_A_EARTH_GRS80, cutoff=1e-10):
     return xr.DataArray(gaussian_weights, dims=["l"], coords={"l": np.arange(lmax + 1)})
 
 
-def gfct_field_estimation(ds, time):
+def gfct_field_estimation(
+    ds: xr.Dataset, time: np.datetime64 | np.ndarray | list | tuple | xr.DataArray
+) -> xr.Dataset:
     """
     Compute time-variable gravity field from variation coefficients contain in '.gfc' file
     with icgem1.0 or icgem2.0 format.

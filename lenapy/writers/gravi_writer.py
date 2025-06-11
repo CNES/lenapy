@@ -4,10 +4,12 @@ The gravi_writer.py provides writer functions to save Spherical Harmonics datase
 
 import os
 
+import xarray as xr
+
 from lenapy.utils.harmo import assert_sh
 
 
-def check_dimensions(var, var_name):
+def _check_dimensions(var: xr.DataArray, var_name: str) -> None:
     """Check if a variable has only 'l' and 'm' dimensions or extra dims of size 1."""
     if not (set(var.dims) == {"l", "m"}) and not (
         len(var.dims) > 2 and max(var.shape[2:]) <= 1
@@ -18,7 +20,9 @@ def check_dimensions(var, var_name):
         )
 
 
-def prepare_attributes(ds, include_errors: bool, extra_kwargs: dict):
+def _prepare_attributes(
+    ds: xr.Dataset, include_errors: bool, extra_kwargs: dict
+) -> dict:
     """Prepare dataset attributes for .gfc file header."""
     attrs = ds.attrs.copy()
     mandatory_attrs_defaults = {
@@ -28,31 +32,34 @@ def prepare_attributes(ds, include_errors: bool, extra_kwargs: dict):
         "radius": "not_set",
         "max_degree": str(ds.l.max().values),
     }
+
     if include_errors and "eclm" in ds and "eslm" in ds:
         mandatory_attrs_defaults["errors"] = "formal"
     else:
         mandatory_attrs_defaults["errors"] = "no"
     for attr, default_value in mandatory_attrs_defaults.items():
         attrs.setdefault(attr, default_value)
+
     # Keep normalization coherent with .gfc standard
     if "norm" in attrs and attrs["norm"] == "4pi":
         attrs["norm"] = "fully_normalized"
     elif "norm" in attrs and attrs["norm"] == "unnorm":
         attrs["norm"] = "unnormalized"
+
     # Update dataset attributes with any additional attributes specified by the user
     attrs.update(extra_kwargs)
     return attrs
 
 
 def dataset_to_gfc(
-    ds,
-    filename,
-    overwrite=True,
-    include_errors=False,
-    fmt=" .12e",
-    fast_save=False,
+    ds: xr.Dataset,
+    filename: str | os.PathLike,
+    overwrite: bool = True,
+    include_errors: bool = False,
+    fmt: str = " .12e",
+    fast_save: bool = False,
     **kwargs,
-):
+) -> None:
     """
     Save a Spherical Harmonics xr.Dataset to a .gfc ASCII file according to the ICGEM format specifications:
     https://icgem.gfz-potsdam.de/docs/ICGEM-Format-2023.pdf
@@ -102,7 +109,7 @@ def dataset_to_gfc(
     for var in list_var:
         if var not in ds:
             raise ValueError(f"Variable '{var}' not found in dataset.")
-        check_dimensions(ds[var], var)
+        _check_dimensions(ds[var], var)
 
     # reduce the dataset to 'l' and 'm' dimensions
     extra_dims = [dim for dim in ds.dims if dim not in ["l", "m"]]
@@ -110,7 +117,7 @@ def dataset_to_gfc(
         ds = ds.isel(**{dim: 0 for dim in extra_dims})
 
     # Set default values for missing mandatory attributes
-    attrs = prepare_attributes(ds, include_errors, kwargs)
+    attrs = _prepare_attributes(ds, include_errors, kwargs)
 
     # ensure the directory exists
     os.makedirs(os.path.dirname(filename), exist_ok=True)
@@ -175,3 +182,5 @@ def dataset_to_gfc(
                             )
 
                         file.write(line + "\n")
+
+        return None

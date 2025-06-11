@@ -1,3 +1,5 @@
+from typing import Literal
+
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
@@ -451,17 +453,17 @@ class TaylorDiagram(object):
 
 
 def plot_hs(
-    ds,
-    lmin=1,
-    lmax=None,
-    mmin=0,
-    mmax=None,
-    reverse=False,
-    ax=None,
-    cbar_ax=None,
-    cbar_kwargs=None,
+    ds: xr.Dataset,
+    lmin: int = 1,
+    lmax: int | None = None,
+    mmin: int = 0,
+    mmax: int | None = None,
+    reverse: bool = False,
+    ax: plt.Axes | None = None,
+    cbar_ax: dict | None = None,
+    cbar_kwargs: dict | None = None,
     **kwargs,
-):
+) -> plt.Axes:
     """
     Plot time series of spherical harmonic dataset, with only l and m dimensions, into pyramidal plot.
 
@@ -552,19 +554,19 @@ def plot_hs(
 
 
 def plot_power(
-    ds,
-    kind="degree",
-    unit=None,
-    lmin=0,
-    lmax=None,
-    mmin=0,
-    mmax=None,
-    unit_kwargs=None,
-    hue=None,
-    add_legend=True,
-    ax=None,
+    ds: xr.Dataset,
+    kind: Literal["degree", "order"] = "degree",
+    unit: Literal["mewh", "mmgeoid", "microGal", "bar", "mvcu", "norm"] | None = None,
+    lmin: int = 0,
+    lmax: int | None = None,
+    mmin: int = 0,
+    mmax: int | None = None,
+    unit_kwargs: dict | None = None,
+    hue: str | None = None,
+    add_legend: bool = True,
+    ax: plt.Axes = None,
     **kwargs,
-):
+) -> plt.Axes:
     """
     Plot degree or order power spectrum of a spherical harmonic dataset, with only l and m dimensions.
 

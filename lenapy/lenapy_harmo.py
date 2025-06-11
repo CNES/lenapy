@@ -23,6 +23,7 @@ Examples
 
 import numbers
 import operator
+import os
 
 import xarray as xr
 
@@ -166,7 +167,7 @@ class HarmoSet:
 
         return self.ds
 
-    def to_grid(self, **kwargs):
+    def to_grid(self, **kwargs) -> xr.DataArray:
         """
         Transform Spherical Harmonics (SH) dataset into spatial DataArray.
         For details on the function, see :func:`lenapy.utils.harmo.sh_to_grid` documentation.
@@ -185,12 +186,12 @@ class HarmoSet:
 
     def change_reference(
         self,
-        new_radius,
-        new_earth_gravity_constant,
-        old_radius=None,
-        old_earth_gravity_constant=None,
-        apply=False,
-    ):
+        new_radius: float,
+        new_earth_gravity_constant: float,
+        old_radius: float | None = None,
+        old_earth_gravity_constant: float | None = None,
+        apply: bool = False,
+    ) -> xr.Dataset:
         """
         Update the reference frame for spherical harmonics.
         For details on the function, see :func:`lenapy.utils.gravity.change_reference` documentation.
@@ -223,7 +224,13 @@ class HarmoSet:
             apply=apply,
         )
 
-    def change_tide_system(self, new_tide, old_tide=None, k20=None, apply=False):
+    def change_tide_system(
+        self,
+        new_tide: Literal["tide_free", "zero_tide", "mean_tide"],
+        old_tide: Literal["tide_free", "zero_tide", "mean_tide"] | None = None,
+        k20: float | None = None,
+        apply: bool = False,
+    ) -> xr.Dataset:
         """
         Apply a C20 offset to the dataset to change the tide system.
         For details on the function, see :func:`lenapy.utils.gravity.change_tide_system` documentation.
@@ -249,8 +256,11 @@ class HarmoSet:
         )
 
     def change_normalization(
-        self, new_normalization, old_normalization=None, apply=False
-    ):
+        self,
+        new_normalization: Literal["4pi", "ortho", "schmidt"] = "4pi",
+        old_normalization: Literal["4pi", "ortho", "schmidt"] | None = None,
+        apply: bool = False,
+    ) -> xr.Dataset:
         """
         Apply a C20 offset to the dataset to change the tide system.
         For details on the function, see :func:`lenapy.utils.gravity.change_tide_system` documentation.
@@ -311,7 +321,7 @@ class HarmoSet:
         """
         return plot_power(self._obj, **kwargs)
 
-    def to_gfc(self, filename, **kwargs):
+    def to_gfc(self, filename: str | os.PathLike, **kwargs):
         """
         Save the dataset to a .gfc file.
         For details on the function, see :func:`lenapy.writers.gravi_writer.dataset_to_gfc` documentation.
@@ -346,7 +356,7 @@ class HarmoArray:
         assert_grid(xarray_obj)
         self._obj = xarray_obj
 
-    def to_sh(self, lmax, **kwargs):
+    def to_sh(self, lmax: int, **kwargs) -> xr.Dataset:
         """
         Transform gravity field spatial representation DataArray into Spherical Harmonics (SH) dataset.
         For details on the function, see :func:`lenapy.utils.harmo.grid_to_sh` documentation.

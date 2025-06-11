@@ -29,7 +29,8 @@ from lenapy.constants import *
 def _compute_factors(
     lmax: int, normalization: Literal["4pi", "ortho", "schmidt"]
 ) -> tuple[np.ndarray, np.ndarray, float, float]:
-    """Compute recurrence coefficients f1 and f2 for the Legendre recursion.
+    """
+    Compute recurrence coefficients f1 and f2 for the Legendre recursion.
 
     Parameters
     ----------
@@ -276,32 +277,32 @@ def _init_degrees(
 
 
 def sh_to_grid(
-    data,
-    unit="mewh",
+    data: xr.Dataset,
+    unit: Literal["mewh", "mmgeoid", "microGal", "bar", "mvcu", "norm"] = "mewh",
     errors=False,
-    lmax=None,
-    mmax=None,
-    lmin=None,
-    mmin=None,
-    used_l=None,
-    used_m=None,
-    lonmin=-180,
-    lonmax=180,
-    latmin=-90,
-    latmax=90,
-    bounds=None,
-    dlon=1,
-    dlat=1,
-    longitude=None,
-    latitude=None,
-    radians_in=False,
-    force_mass_conservation=False,
-    ellipsoidal_earth=False,
-    include_elastic=True,
-    plm=None,
-    normalization_plm="4pi",
+    lmax: int | None = None,
+    mmax: int | None = None,
+    lmin: int | None = None,
+    mmin: int | None = None,
+    used_l: np.ndarray | None = None,
+    used_m: np.ndarray | None = None,
+    lonmin: float = -180,
+    lonmax: float = 180,
+    latmin: float = -90,
+    latmax: float = 90,
+    bounds: list = None,
+    dlon: float = 1,
+    dlat: float = 1,
+    longitude: np.ndarray | None = None,
+    latitude: np.ndarray | None = None,
+    radians_in: bool = False,
+    force_mass_conservation: bool = False,
+    ellipsoidal_earth: bool = False,
+    include_elastic: bool = True,
+    plm: xr.DataArray = None,
+    normalization_plm: Literal["4pi", "ortho", "schmidt"] = "4pi",
     **kwargs,
-):
+) -> xr.DataArray:
     """
     Transform Spherical Harmonics (SH) dataset into spatial DataArray.
     With choice for constants, unit, love numbers, degree/order, spatial grid latitude and longitude, Earth hypothesis.
@@ -529,20 +530,20 @@ def sh_to_grid(
 
 
 def grid_to_sh(
-    grid,
-    lmax,
-    unit="mewh",
-    mmax=None,
-    lmin=0,
-    mmin=0,
-    used_l=None,
-    used_m=None,
-    ellipsoidal_earth=False,
-    include_elastic=True,
-    plm=None,
-    normalization_plm="4pi",
+    grid: xr.DataArray,
+    lmax: int,
+    unit: Literal["mewh", "mmgeoid", "microGal", "bar", "mvcu", "norm"] = "mewh",
+    mmax: int | None = None,
+    lmin: int = 0,
+    mmin: int = 0,
+    used_l: np.ndarray | None = None,
+    used_m: np.ndarray | None = None,
+    ellipsoidal_earth: bool = False,
+    include_elastic: bool = True,
+    plm: xr.DataArray | None = None,
+    normalization_plm: Literal["4pi", "ortho", "schmidt"] = "4pi",
     **kwargs,
-):
+) -> xr.Dataset:
     """
     Transform gravity field spatial representation DataArray into Spherical Harmonics (SH) dataset.
     With choice for constants, unit of the spatial DataArray, love_numbers, degree/order, Earth hypothesis.
@@ -592,7 +593,7 @@ def grid_to_sh(
 
     Returns
     -------
-    ds_out : xr.DataArray
+    ds_out : xr.Dataset
         SH Dataset computed from the grid with the chosen unit.
     """
     # -- set degree and order default parameters
@@ -727,7 +728,13 @@ def grid_to_sh(
     return ds_out
 
 
-def compute_plm(lmax, z, mmax=None, normalization="4pi"):
+def compute_plm(
+    lmax: int,
+    z: np.ndarray,
+    mmax: int = None,
+    normalization: Literal["4pi", "ortho", "schmidt"] = "4pi",
+    dtype: complex | float | type[complex] | type[float] = np.float128,
+) -> np.ndarray:
     """
     Compute all the associated Legendre functions up to a maximum degree and
     order using the recursion relation from [Holmes2002]_
@@ -741,9 +748,11 @@ def compute_plm(lmax, z, mmax=None, normalization="4pi"):
         Argument of the associated Legendre functions.
     mmax : int or NoneType, optional
         Maximum order of associated legrendre functions.
-    normalization : str, optional
+    normalization : {'4pi', 'ortho', 'schmidt'}, optional
         '4pi', 'ortho', or 'schmidt' for use with geodesy 4pi normalized, orthonormalized, or Schmidt semi-normalized
         spherical harmonic functions, respectively. Default is '4pi'.
+    dtype : dtype, optional
+        Data type of the output array. Default is np.float128.
 
     Returns
     -------
@@ -764,7 +773,7 @@ def compute_plm(lmax, z, mmax=None, normalization="4pi"):
     """
     # removing singleton dimensions of x
     # update type to provide more memory for computation (np.float32 create some problems)
-    z = np.atleast_1d(z).flatten().astype(np.float128)
+    z = np.atleast_1d(z).flatten().astype(dtype)
 
     # if default mmax, set mmax to be maximal degree
     mmax = lmax if mmax is None else mmax
@@ -778,7 +787,7 @@ def compute_plm(lmax, z, mmax=None, normalization="4pi"):
     # u is sine of colatitude (cosine of latitude), for z=cos(th): u=sin(th)
     u = np.sqrt(1 - z**2)
     # update where u==0 to minimal numerical precision different from 0 to prevent invalid divisions
-    u[u == 0] = np.finfo(np.float64).eps
+    u[u == 0] = np.finfo(dtype).eps
 
     # Calculate P(l,0) (not scaled)
     p[0, :] = 1 / np.sqrt(norm_4pi)
@@ -835,7 +844,9 @@ def compute_plm(lmax, z, mmax=None, normalization="4pi"):
     return plm[:, : mmax + 1, :]
 
 
-def mid_month_grace_estimate(begin_time, end_time):
+def mid_month_grace_estimate(
+    begin_time: datetime.datetime, end_time: datetime.datetime
+) -> datetime.datetime:
     """
     Calculate middle of the month date based on begin_time and end_time for GRACE products.
     begin_time is rounded to equal to the first day of the month and
@@ -883,8 +894,11 @@ def mid_month_grace_estimate(begin_time, end_time):
 
 
 def change_normalization(
-    ds, new_normalization="4pi", old_normalization=None, apply=False
-):
+    ds: xr.Dataset,
+    new_normalization: Literal["4pi", "ortho", "schmidt"] = "4pi",
+    old_normalization: Literal["4pi", "ortho", "schmidt"] | None = None,
+    apply: bool = False,
+) -> xr.Dataset:
     """
     Spherical Harmonics (SH) dataset are associated with a Legendre polynomial normalization.
     This function return the dataset updated with the new normalization asked in input (as a deep copy by default).
@@ -925,7 +939,7 @@ def change_normalization(
             "ds.attrs['norm']."
         )
 
-    # -- conversion for each tidal system
+    # -- conversion for each system
     if new_normalization == "4pi" and old_normalization == "schmidt":
         update_factor = 1 / np.sqrt(2 * ds.l + 1)
     elif new_normalization == "schmidt" and old_normalization == "4pi":
@@ -982,7 +996,7 @@ def change_normalization(
     return ds_out
 
 
-def get_earth_parameters(
+def _get_earth_parameters(
     attrs: dict | None, a_earth: float | None, gm_earth: float | None
 ) -> tuple[float, float]:
     """
@@ -1007,6 +1021,7 @@ def get_earth_parameters(
     if attrs is None:
         attrs = {}
 
+    # return first element if not None, otherwise return value for the attrs.key if it exists otherwise return last term
     resolved_a = a_earth or float(attrs.get("radius", LNPY_A_EARTH_GRS80))
     resolved_gm = gm_earth or float(attrs.get("earth_gravity_constant", LNPY_GM_EARTH))
     return resolved_a, resolved_gm
@@ -1030,7 +1045,7 @@ def load_default_love_numbers() -> xr.Dataset:
     return ds
 
 
-def compute_a_div_r_lat(geocentric_colat: np.ndarray, f_earth: float) -> np.ndarray:
+def _compute_a_div_r_lat(geocentric_colat: np.ndarray, f_earth: float) -> np.ndarray:
     """
     Compute a/r(θ) for ellipsoidal Earth correction.
 
@@ -1051,110 +1066,7 @@ def compute_a_div_r_lat(geocentric_colat: np.ndarray, f_earth: float) -> np.ndar
     return np.sqrt(1 - e_earth**2 * np.sin(geocentric_colat) ** 2) / (1 - f_earth)
 
 
-def l_factor_conv(
-    l,
-    unit="mewh",
-    include_elastic=True,
-    ellipsoidal_earth=False,
-    geocentric_colat=None,
-    ds_love=None,
-    a_earth=None,
-    gm_earth=None,
-    f_earth=LNPY_F_EARTH_GRS80,
-    rho_earth=LNPY_RHO_EARTH,
-    attrs=None,
-):
-    """
-    Compute a scale factor for a transformation between spherical harmonics and grid data.
-    Spatial data over the grid are associated with a specific unit.
-    The scale factor is degree-dependent and is computed for the given list of degree l.
-    The scale factor can be estimated using elastic or non-elastic Earth as well as a spherical or ellipsoidal Earth.
-
-    Parameters
-    ----------
-    l : np.ndarray
-        Degree for which the scale factor is estimated.
-    unit : str, optional
-        'mewh', 'mmgeoid', 'microGal', 'pascal', 'mvcu', or 'norm'
-        Unit of the spatial data used in the transformation. Default is 'mewh' for meters of Equivalent Water Height.
-        'mmgeoid' represents millimeters mmgeoid height, 'microGal' represents microGal gravity perturbations,
-        'pascal' represents equivalent surface pressure in pascal and
-        'mvcu' represents meters viscoelastic crustal uplift
-    include_elastic : bool, optional
-        If True, the Earth behavior is elastic.
-    ellipsoidal_earth : bool, optional
-        If True, consider the Earth as an ellipsoid following [Ditmar2018]_ and if False as a sphere.
-    geocentric_colat : list, optional
-        List of geocentric colatitude for ellipsoidal Earth radius computation in radians.
-    ds_love : xr.Dataset | None, optional
-        Dataset with a l dimension corresponding to degree and with l (and possibly h and k) variables that
-        are Love numbers.
-        Default Love numbers used are from Gegout97.
-    a_earth : float, optional
-        Earth semi-major axis [m]. If not provided, uses `data.attrs['radius']` and
-        if it does not exist, uses LNPY_A_EARTH_GRS80.
-    f_earth : float, optional
-        Earth flattening. Default is LNPY_F_EARTH_GRS80.
-    gm_earth : float, optional
-        Standard gravitational parameter for Earth [m³.s⁻²]. Default is LNPY_GM_EARTH.
-    rho_earth : float, optional
-        Earth density [kg.m⁻³]. Default is LNPY_RHO_EARTH.
-    attrs : dict | None, optional
-        ds.attrs information that might help to estimate l_factor if no parameters are given.
-
-    Returns
-    -------
-    l_factor : np.ndarray
-        Degree-dependent scale factor.
-
-    References
-    ----------
-    .. [Ditmar2018] P. Ditmar,
-        "Conversion of time-varying Stokes coefficients into mass anomalies at the
-        Earth’s surface considering the Earth’s oblateness",
-        *Journal of Geodesy*, 92, 1401--1412, (2018).
-        `doi: 10.1007/s00190-018-1128-0 <https://doi.org/10.1007/s00190-018-1128-0>`_
-    """
-
-    a_earth, gm_earth = get_earth_parameters(attrs, a_earth, gm_earth)
-
-    l = xr.DataArray(l, dims=["l"], coords={"l": l})
-    fraction = xr.ones_like(l)
-
-    # include elastic redistribution with kl Love numbers
-    if include_elastic:
-        if ds_love is None:
-            ds_love = load_default_love_numbers()
-        fraction = fraction + ds_love.kl
-
-    a_div_r_lat = None
-    if ellipsoidal_earth:
-        # test if geocentric_colat is set
-        if geocentric_colat is None:
-            raise ValueError(
-                "For ellipsoidal Earth, you need to set "
-                "the parameter 'geocentric_colat' in l_factor_conv function"
-            )
-
-        a_div_r_lat = compute_a_div_r_lat(geocentric_colat, f_earth)
-
-    l_factor = compute_l_factor(
-        a_div_r_lat,
-        a_earth,
-        ds_love,
-        ellipsoidal_earth,
-        fraction,
-        gm_earth,
-        l,
-        rho_earth,
-        unit,
-    )
-
-    cst = {"gm_earth": gm_earth, "a_earth": a_earth}
-    return l_factor, cst
-
-
-def compute_l_factor(
+def _compute_l_factor(
     a_div_r_lat: np.ndarray | None,
     a_earth: float,
     ds_love: xr.Dataset | None,
@@ -1162,9 +1074,9 @@ def compute_l_factor(
     fraction: xr.DataArray,
     gm_earth: float,
     l: np.ndarray | xr.DataArray,
-    rho_earth,
-    unit,
-):
+    rho_earth: float,
+    unit: str,
+) -> xr.DataArray:
     """
     Compute the degree-dependent scale factor.
 
@@ -1257,8 +1169,6 @@ def compute_l_factor(
         if ellipsoidal_earth:
             pass
 
-    # Gt, Gigatonnes ?
-
     else:
         raise ValueError(
             "Invalid 'unit' parameter value in l_factor_conv function, valid values are: "
@@ -1267,7 +1177,111 @@ def compute_l_factor(
     return l_factor
 
 
-def assert_sh(ds):
+def l_factor_conv(
+    l: np.ndarray,
+    unit: Literal["mewh", "mmgeoid", "microGal", "pascal", "mvcu", "norm"] = "mewh",
+    include_elastic: bool = True,
+    ellipsoidal_earth: bool = False,
+    geocentric_colat: list | np.ndarray | None = None,
+    ds_love: xr.Dataset | None = None,
+    a_earth: float | None = None,
+    gm_earth: float | None = None,
+    f_earth: float = LNPY_F_EARTH_GRS80,
+    rho_earth: float = LNPY_RHO_EARTH,
+    attrs: dict | None = None,
+) -> tuple[xr.DataArray, dict]:
+    """
+    Compute a scale factor for a transformation between spherical harmonics and grid data.
+    Spatial data over the grid are associated with a specific unit.
+    The scale factor is degree-dependent and is computed for the given list of degree l.
+    The scale factor can be estimated using elastic or non-elastic Earth as well as a spherical or ellipsoidal Earth.
+
+    Parameters
+    ----------
+    l : np.ndarray
+        Degree for which the scale factor is estimated.
+    unit : str, optional
+        'mewh', 'mmgeoid', 'microGal', 'pascal', 'mvcu', or 'norm'
+        Unit of the spatial data used in the transformation. Default is 'mewh' for meters of Equivalent Water Height.
+        'mmgeoid' represents millimeters mmgeoid height, 'microGal' represents microGal gravity perturbations,
+        'pascal' represents equivalent surface pressure in pascal and
+        'mvcu' represents meters viscoelastic crustal uplift
+    include_elastic : bool, optional
+        If True, the Earth behavior is elastic.
+    ellipsoidal_earth : bool, optional
+        If True, consider the Earth as an ellipsoid following [Ditmar2018]_ and if False as a sphere.
+    geocentric_colat : list, optional
+        List of geocentric colatitude for ellipsoidal Earth radius computation in radians.
+    ds_love : xr.Dataset | None, optional
+        Dataset with the l dimension corresponding to degree and with l (and possibly h and k) variables that
+        are Love numbers.
+        Default Love numbers used are from Gegout97.
+    a_earth : float, optional
+        Earth semi-major axis [m]. If not provided, uses `data.attrs['radius']` and
+        if it does not exist, uses LNPY_A_EARTH_GRS80.
+    f_earth : float, optional
+        Earth flattening. Default is LNPY_F_EARTH_GRS80.
+    gm_earth : float, optional
+        Standard gravitational parameter for Earth [m³.s⁻²]. Default is LNPY_GM_EARTH.
+    rho_earth : float, optional
+        Earth density [kg.m⁻³]. Default is LNPY_RHO_EARTH.
+    attrs : dict | None, optional
+        ds.attrs information that might help to estimate l_factor if no parameters are given.
+
+    Returns
+    -------
+    l_factor : xr.DataArray
+        Degree-dependent scale factor.
+    cst: dict
+        Attributes for the final dataset
+
+    References
+    ----------
+    .. [Ditmar2018] P. Ditmar,
+        "Conversion of time-varying Stokes coefficients into mass anomalies at the
+        Earth’s surface considering the Earth’s oblateness",
+        *Journal of Geodesy*, 92, 1401--1412, (2018).
+        `doi: 10.1007/s00190-018-1128-0 <https://doi.org/10.1007/s00190-018-1128-0>`_
+    """
+    a_earth, gm_earth = _get_earth_parameters(attrs, a_earth, gm_earth)
+
+    l = xr.DataArray(l, dims=["l"], coords={"l": l})
+    fraction = xr.ones_like(l)
+
+    # include elastic redistribution with kl Love numbers
+    if include_elastic:
+        if ds_love is None:
+            ds_love = load_default_love_numbers()
+        fraction = fraction + ds_love.kl
+
+    a_div_r_lat = None
+    if ellipsoidal_earth:
+        # test if geocentric_colat is set
+        if geocentric_colat is None:
+            raise ValueError(
+                "For ellipsoidal Earth, you need to set "
+                "the parameter 'geocentric_colat' in l_factor_conv function"
+            )
+
+        a_div_r_lat = _compute_a_div_r_lat(geocentric_colat, f_earth)
+
+    l_factor = _compute_l_factor(
+        a_div_r_lat,
+        a_earth,
+        ds_love,
+        ellipsoidal_earth,
+        fraction,
+        gm_earth,
+        l,
+        rho_earth,
+        unit,
+    )
+
+    cst = {"gm_earth": gm_earth, "a_earth": a_earth}
+    return l_factor, cst
+
+
+def assert_sh(ds: xr.Dataset) -> bool:
     """
     Verify if the dataset ds has dimensions 'l' and 'm' as well as variables 'clm' and 'slm'
     Raise Assertion error if not.
