@@ -380,7 +380,9 @@ def apply_zonal_normalization(
 
     sign = -1 if reverse else 1
 
-    return ds_out - sign * correction
+    ds_out.loc[dict(l=slice(2, None, 2), m=0)] = ds_out.sel(m=0) - sign * correction
+
+    return ds_out
 
 
 def gauss_weights(
