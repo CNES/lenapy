@@ -76,6 +76,8 @@ LNPY_GM_ATMO = (
 )
 LNPY_G_WMO = 9.80665  # m.s², standard gravitational acceleration from [WMO1988]_
 
+LNPY_OMEGA_EARTH_GRS80 = 7.292115e-5  # rad.s⁻¹, Earth rotation rate [GRS80]_
+
 # Radius of the Earth for which spherical Earth volume equals the ellipsoidal Earth volume
 LNPY_RAVERAGE_EARTH = LNPY_A_EARTH_GRS80 * (1 - LNPY_F_EARTH_GRS80) ** (
     1 / 3

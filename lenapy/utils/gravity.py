@@ -305,6 +305,84 @@ def change_love_reference_frame(
     return ds_love
 
 
+def apply_zonal_normalization(
+    ds: xr.Dataset,
+    radius: float | None = None,
+    earth_gravity_constant: float | None = None,
+    f_earth: float = LNPY_F_EARTH_GRS80,
+    omega_earth: float = LNPY_OMEGA_EARTH_GRS80,
+    reverse: bool = False,
+    apply: bool = False,
+) -> xr.Dataset:
+    """
+    Apply zonal normalization on a SH dataset for a specified ellipsoid.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        xr.Dataset that corresponds to SH data to be correct for the zonal normalization.
+    radius : float | None, optional
+        Earth radius constant of the dataset ds in meters. If not provided, uses `ds.attrs['radius']`.
+    earth_gravity_constant : float | None, optional
+        Current gravitational constant of the Earth of the dataset ds in m³/s².
+        If not provided, uses `ds.attrs['earth_gravity_constant']`.
+    f_earth : float, optional
+        Earth flattening. Default is LNPY_F_EARTH_GRS80.
+    omega_earth : float, optional
+        Earth rotation rate. Default is LNPY_OMEGA_EARTH_GRS80.
+    reverse : bool, optional
+        False to apply the correction, True to remove the correction.
+    apply : bool, optional
+        If True, apply the update to the current dataset without making a deep copy. Default is False.
+
+    Returns
+    -------
+    ds_out : xr.Dataset
+        Updated dataset with the normalization.
+
+    """
+    try:
+        radius = ds.attrs["radius"] if radius is None else radius
+        earth_gravity_constant = (
+            ds.attrs["earth_gravity_constant"]
+            if earth_gravity_constant is None
+            else earth_gravity_constant
+        )
+
+    except KeyError:
+        raise KeyError(
+            "If you provide no information about the current reference constants of your ds dataset using "
+            "'radius' and 'earth_gravity_constant' parameters, those information need to be "
+            "contained in ds.attrs dict as ds.attrs['radius'] and ds.attrs['earth_gravity_constant']."
+        )
+
+    # if apply = False : Copy the dataset to avoid modifying the input dataset
+    ds_out = ds if apply else ds.copy(deep=True)
+
+    e_prime = np.sqrt(2 * f_earth - f_earth**2) / (1 - f_earth)
+    q0 = (0.5 + 1.5 / e_prime**2) * np.arctan(e_prime) - 1.5 / e_prime
+
+    k = 1 / 3 - (
+        2 * omega_earth**2 * radius**3 * np.sqrt(2 * f_earth - f_earth**2)
+    ) / (45 * earth_gravity_constant * q0)
+
+    l = ds.sel(l=slice(0, None, 2)).l
+
+    correction = (
+        (-1) ** (l // 2 + 1)
+        * 3
+        * np.sqrt(2 * f_earth - f_earth**2) ** l
+        * (1 + l / 2 * (5 * k - 1))
+        / (l + 3)
+        / (l + 1)
+        / np.sqrt(2 * l + 1)
+    )
+
+    sign = -1 if reverse else 1
+
+    return ds_out - sign * correction
+
+
 def gauss_weights(
     radius: float, lmax: int, a_earth: float = LNPY_A_EARTH_GRS80, cutoff: float = 1e-10
 ) -> xr.DataArray:

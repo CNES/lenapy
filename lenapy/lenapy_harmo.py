@@ -29,7 +29,11 @@ import xarray as xr
 
 from lenapy.plots.plotting import plot_hs, plot_power
 from lenapy.utils.geo import assert_grid
-from lenapy.utils.gravity import change_reference, change_tide_system
+from lenapy.utils.gravity import (
+    apply_zonal_normalization,
+    change_reference,
+    change_tide_system,
+)
 from lenapy.utils.harmo import *
 from lenapy.writers.gravi_writer import dataset_to_gfc
 
@@ -286,6 +290,23 @@ class HarmoSet:
             old_normalization=old_normalization,
             apply=apply,
         )
+
+    def apply_zonal_normalization(self, **kwargs) -> xr.Dataset:
+        """
+        Apply zonal normalization on a SH dataset for a specified ellipsoid.
+        For details on the function, see :func:`lenapy.utils.gravity.apply_zonal_normalization` documentation.
+
+        Parameters
+        ----------
+        **kwargs :
+            Supplementary parameters used by the function apply_zonal_normalization()
+
+        Returns
+        -------
+        ds_out : xr.Dataset
+            Updated dataset with the normalization.
+        """
+        return apply_zonal_normalization(self._obj, **kwargs)
 
     def plot_hs(self, **kwargs):
         """
