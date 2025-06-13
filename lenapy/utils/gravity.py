@@ -305,6 +305,59 @@ def change_love_reference_frame(
     return ds_love
 
 
+def estimate_normal_gravity(
+    geographic_latitude: xr.DataArray | np.ndarray | None = None,
+    a_earth: float | None = LNPY_A_EARTH_GRS80,
+    earth_gravity_constant: float | None = LNPY_GM_EARTH,
+    f_earth: float = LNPY_F_EARTH_GRS80,
+    omega_earth: float = LNPY_OMEGA_EARTH_GRS80,
+) -> xr.DataArray:
+    """
+    Estimate normal acceleration with the Somigliana equation at given geographic latitude
+    for a group of Earth's parameters that represent the ellipsoid.
+
+    Parameters
+    ----------
+    geographic_latitude: xr.DataArray | np.ndarray, optional
+        Geographic / geodetic latitude for ellipsoidal Earth radius computation in radians.
+    a_earth : float, optional
+        Earth semi-major axis [m]. Default is LNPY_A_EARTH_GRS80.
+    earth_gravity_constant : float, optional
+        Standard gravitational parameter for Earth [m³.s⁻²]. Default is LNPY_GM_EARTH.
+    f_earth : float, optional
+        Earth flattening. Default is LNPY_F_EARTH_GRS80.
+    omega_earth : float, optional
+        Earth's rotation rate [rad.s⁻¹]. Default is LNPY_OMEGA_EARTH.
+
+    Returns
+    -------
+    gamma_0: xr.DataArray | np.ndarray
+        Normal gravity at given geographic colatitude.
+    """
+    e_prime = np.sqrt(2 * f_earth - f_earth**2) / (1 - f_earth)
+    q0 = (0.5 + 1.5 / e_prime**2) * np.arctan(e_prime) - 1.5 / e_prime
+    q0_prime = 3 * (1 + 1 / e_prime**2) * (1 - 1 / e_prime * np.arctan(e_prime)) - 1
+    m = omega_earth**2 * a_earth**3 * (1 - f_earth) / earth_gravity_constant
+
+    gamma_e = (
+        earth_gravity_constant
+        / a_earth**2
+        / (1 - f_earth)
+        * (1 - m - m * e_prime * q0_prime / 6 / q0)
+    )
+    gamma_p = (
+        earth_gravity_constant / a_earth**2 * (1 + m * e_prime * q0_prime / 3 / q0)
+    )
+
+    return (
+        gamma_e * np.cos(geographic_latitude) ** 2
+        + (1 - f_earth) * gamma_p * np.sin(geographic_latitude) ** 2
+    ) / np.sqrt(
+        np.cos(geographic_latitude) ** 2
+        + (1 - f_earth) ** 2 * np.sin(geographic_latitude) ** 2
+    )
+
+
 def apply_zonal_normalization(
     ds: xr.Dataset,
     radius: float | None = None,

@@ -24,6 +24,7 @@ import scipy as sc
 import xarray as xr
 
 from lenapy.constants import *
+from lenapy.utils.gravity import estimate_normal_gravity
 
 
 def _compute_factors(
@@ -373,7 +374,7 @@ def sh_to_grid(
     **kwargs :
         Supplementary parameters used by the function l_factor_conv to modify defaults constants used in the computation
         for the unit conversion. These parameters include (see :func:`l_factor_conv` documentation for more details) :
-        a_earth, gm_earth, f_earth, rho_earth, ds_love
+        a_earth, gm_earth, f_earth, omega_earth, rho_earth, ds_love
 
     Returns
     -------
@@ -589,7 +590,7 @@ def grid_to_sh(
     **kwargs :
         Supplementary parameters used by the function l_factor_conv to modify defaults constants used in the computation
         for the unit conversion. These parameters include (see :func:`l_factor_conv` documentation for more details) :
-        a_earth, gm_earth, f_earth, rho_earth, ds_love
+        a_earth, gm_earth, f_earth, omega_earth, rho_earth, ds_love
 
     Returns
     -------
@@ -1045,20 +1046,22 @@ def load_default_love_numbers() -> xr.Dataset:
     return ds
 
 
-def _compute_a_div_r_lat(geocentric_colat: np.ndarray, f_earth: float) -> np.ndarray:
+def _compute_a_div_r_lat(
+    geocentric_colat: xr.DataArray, f_earth: float
+) -> np.ndarray | xr.DataArray:
     """
     Compute a/r(θ) for ellipsoidal Earth correction.
 
     Parameters
     ----------
-    geocentric_colat : np.ndarray
+    geocentric_colat : xr.DataArray
         Geocentric colatitudes in radians.
     f_earth : float
         Earth flattening.
 
     Returns
     -------
-    a_div_r_lat : np.ndarray
+    a_div_r_lat : np.ndarray | xr.DataArray
     """
     # e = sqrt(2f - f**2)
     e_earth = np.sqrt(2 * f_earth - f_earth**2)
@@ -1067,39 +1070,48 @@ def _compute_a_div_r_lat(geocentric_colat: np.ndarray, f_earth: float) -> np.nda
 
 
 def _compute_l_factor(
-    a_div_r_lat: np.ndarray | None,
-    a_earth: float,
-    ds_love: xr.Dataset | None,
-    ellipsoidal_earth: bool,
-    fraction: xr.DataArray,
-    gm_earth: float,
     l: np.ndarray | xr.DataArray,
-    rho_earth: float,
     unit: str,
+    ellipsoidal_earth: bool,
+    geocentric_colat: xr.DataArray | None,
+    ds_love: xr.Dataset | None,
+    a_earth: float,
+    gm_earth: float,
+    f_earth: float,
+    omega_earth: float,
+    rho_earth: float,
+    fraction: xr.DataArray,
+    a_div_r_lat: np.ndarray | xr.DataArray | None,
 ) -> xr.DataArray:
     """
     Compute the degree-dependent scale factor.
 
     Parameters
     ----------
-    a_div_r_lat: np.ndarray or None
-        Ellipsoidal correction factor
-    a_earth: float
-        Earth radius
-    ds_love: xr.Dataset, optional
-        Love numbers
-    ellipsoidal_earth: bool
-        Whether to apply ellipsoidal correction
-    fraction: xr.DataArray
-        Redistribution factor
-    gm_earth: float
-        Earth gravitational constant
     l: np.ndarray or xr.DataArray
         Degrees
-    rho_earth: float
-        Earth density
     unit: str
         Unit type for conversion
+    ellipsoidal_earth: bool
+        Whether to apply ellipsoidal correction
+    geocentric_colat : xr.DataArray
+        Geocentric colatitude
+    ds_love: xr.Dataset, optional
+        Love numbers
+    a_earth: float
+        Earth radius
+    gm_earth: float
+        Earth gravitational constant
+    f_earth : float
+        Earth flattening
+    omega_earth : float, optional
+        Earth's rotation rate
+    rho_earth: float
+        Earth density
+    fraction: xr.DataArray
+        Redistribution factor
+    a_div_r_lat: np.ndarray | xr.DataArray | None
+        Ellipsoidal correction factor
 
     Returns
     -------
@@ -1123,9 +1135,15 @@ def _compute_l_factor(
 
     elif unit == "mmgeoid":
         # mmgeoid, millimeters geoid height
-        l_factor = xr.ones_like(l) * a_earth * 1e3
         if ellipsoidal_earth:
-            l_factor = l_factor * a_div_r_lat ** (l + 1)
+            gamma_0 = estimate_normal_gravity(
+                geocentric_colat.latitude, a_earth, gm_earth, f_earth, omega_earth
+            )
+            l_factor = gm_earth / a_earth / gamma_0 * 1e3 * a_div_r_lat ** (l + 1)
+
+        else:
+            # Simplification of the formula for the spherical case
+            l_factor = xr.ones_like(l) * a_earth * 1e3
 
     elif unit == "microGal":
         # microGal, microGal gravity perturbations
@@ -1182,11 +1200,12 @@ def l_factor_conv(
     unit: Literal["mewh", "mmgeoid", "microGal", "pascal", "mvcu", "norm"] = "mewh",
     include_elastic: bool = True,
     ellipsoidal_earth: bool = False,
-    geocentric_colat: list | np.ndarray | None = None,
+    geocentric_colat: xr.DataArray | None = None,
     ds_love: xr.Dataset | None = None,
     a_earth: float | None = None,
     gm_earth: float | None = None,
     f_earth: float = LNPY_F_EARTH_GRS80,
+    omega_earth: float = LNPY_OMEGA_EARTH_GRS80,
     rho_earth: float = LNPY_RHO_EARTH,
     attrs: dict | None = None,
 ) -> tuple[xr.DataArray, dict]:
@@ -1210,8 +1229,8 @@ def l_factor_conv(
         If True, the Earth behavior is elastic.
     ellipsoidal_earth : bool, optional
         If True, consider the Earth as an ellipsoid following [Ditmar2018]_ and if False as a sphere.
-    geocentric_colat : list, optional
-        List of geocentric colatitude for ellipsoidal Earth radius computation in radians.
+    geocentric_colat : xr.DataArray | None, optional
+        Geocentric colatitude for ellipsoidal Earth radius computation in radians, the dimension is geographic latitude.
     ds_love : xr.Dataset | None, optional
         Dataset with the l dimension corresponding to degree and with l (and possibly h and k) variables that
         are Love numbers.
@@ -1219,10 +1238,14 @@ def l_factor_conv(
     a_earth : float, optional
         Earth semi-major axis [m]. If not provided, uses `data.attrs['radius']` and
         if it does not exist, uses LNPY_A_EARTH_GRS80.
+        if it does not exist, uses LNPY_A_EARTH_GRS80.
+    gm_earth : float, optional
+        Standard gravitational parameter for Earth [m³.s⁻²]. If not provided, uses
+        `data.attrs['earth_gravity_constant']` and if it does not exist, uses LNPY_GM_EARTH.
     f_earth : float, optional
         Earth flattening. Default is LNPY_F_EARTH_GRS80.
-    gm_earth : float, optional
-        Standard gravitational parameter for Earth [m³.s⁻²]. Default is LNPY_GM_EARTH.
+    omega_earth : float, optional
+        Earth's rotation rate [rad.s⁻¹]. Default is LNPY_OMEGA_EARTH.
     rho_earth : float, optional
         Earth density [kg.m⁻³]. Default is LNPY_RHO_EARTH.
     attrs : dict | None, optional
@@ -1266,15 +1289,18 @@ def l_factor_conv(
         a_div_r_lat = _compute_a_div_r_lat(geocentric_colat, f_earth)
 
     l_factor = _compute_l_factor(
-        a_div_r_lat,
-        a_earth,
-        ds_love,
-        ellipsoidal_earth,
-        fraction,
-        gm_earth,
         l,
-        rho_earth,
         unit,
+        ellipsoidal_earth,
+        geocentric_colat,
+        ds_love,
+        a_earth,
+        gm_earth,
+        f_earth,
+        omega_earth,
+        rho_earth,
+        fraction,
+        a_div_r_lat,
     )
 
     cst = {"gm_earth": gm_earth, "a_earth": a_earth}
