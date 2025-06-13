@@ -1240,8 +1240,12 @@ class ReadGRACEL2(BackendEntrypoint):
 
         exact_time = begin_time + (end_time - begin_time) / 2
 
-        # compute middle of the month for GRACE products
-        mid_month = mid_month_grace_estimate(begin_time, end_time)
+        if (end_time - begin_time).days > 11:
+            # compute middle of the month for GRACE products
+            mid_month = mid_month_grace_estimate(begin_time, end_time)
+        else:
+            # Exact time for 10 days products
+            mid_month = exact_time
 
         # -- Load clm and slm data and errors
         clm, slm = np.zeros((lmax + 1, lmax + 1, 1)), np.zeros((lmax + 1, lmax + 1, 1))
