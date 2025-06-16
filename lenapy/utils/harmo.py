@@ -1137,7 +1137,11 @@ def _compute_l_factor(
         # mmgeoid, millimeters geoid height
         if ellipsoidal_earth:
             gamma_0 = estimate_normal_gravity(
-                geocentric_colat.latitude, a_earth, gm_earth, f_earth, omega_earth
+                np.deg2rad(geocentric_colat.latitude),
+                a_earth,
+                gm_earth,
+                f_earth,
+                omega_earth,
             )
             l_factor = gm_earth / a_earth / gamma_0 * 1e3 * a_div_r_lat ** (l + 1)
 
