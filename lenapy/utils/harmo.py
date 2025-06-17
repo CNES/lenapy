@@ -15,6 +15,7 @@ This module includes functions to:
 import datetime
 import inspect
 import pathlib
+import warnings
 from typing import Literal
 
 import cf_xarray as cfxr
@@ -772,6 +773,12 @@ def compute_plm(
         *Geochemistry, Geophysics, Geosystems*, 19, 2574–2592, (2018).
         `doi: 10.1029/2018GC007529 <https://doi.org/10.1029/2018GC007529>`_
     """
+    if lmax > 300:
+        warnings.warn(
+            "No validation made with lmax > 300, the "
+            "Legendre functions may be unstable because of IEEE754-2008 norm."
+        )
+
     # removing singleton dimensions of x
     # update type to provide more memory for computation (np.float32 create some problems)
     z = np.atleast_1d(z).flatten().astype(dtype)

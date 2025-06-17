@@ -358,7 +358,7 @@ def estimate_normal_gravity(
     )
 
 
-def apply_zonal_normalization(
+def apply_normal_zonal_correction(
     ds: xr.Dataset,
     radius: float | None = None,
     earth_gravity_constant: float | None = None,
@@ -368,12 +368,12 @@ def apply_zonal_normalization(
     apply: bool = False,
 ) -> xr.Dataset:
     """
-    Apply zonal normalization on a SH dataset for a specified ellipsoid.
+    Apply a correction of the normal gravity field on zonal coefficients on a SH dataset for a specified ellipsoid.
 
     Parameters
     ----------
     ds : xr.Dataset
-        xr.Dataset that corresponds to SH data to be correct for the zonal normalization.
+        xr.Dataset that corresponds to SH data to be correct for the normal gravity field.
     radius : float | None, optional
         Earth radius constant of the dataset ds in meters. If not provided, uses `ds.attrs['radius']`.
     earth_gravity_constant : float | None, optional
@@ -391,7 +391,7 @@ def apply_zonal_normalization(
     Returns
     -------
     ds_out : xr.Dataset
-        Updated dataset with the normalization.
+        Updated dataset with the correction.
 
     """
     try:
@@ -419,7 +419,7 @@ def apply_zonal_normalization(
         2 * omega_earth**2 * radius**3 * np.sqrt(2 * f_earth - f_earth**2)
     ) / (45 * earth_gravity_constant * q0)
 
-    l = ds.sel(l=slice(0, None, 2)).l
+    l = ds.sel(l=slice(2, None, 2)).l
 
     correction = (
         (-1) ** (l // 2 + 1)
@@ -433,7 +433,7 @@ def apply_zonal_normalization(
 
     sign = -1 if reverse else 1
 
-    ds_out.loc[dict(l=slice(2, None, 2), m=0)] = ds_out.sel(m=0) - sign * correction
+    ds_out.loc[dict(l=slice(2, None, 2), m=0)] = ds_out.sel(m=0) + sign * correction
 
     return ds_out
 
