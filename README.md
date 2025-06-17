@@ -45,4 +45,6 @@ You can now use all the functionnalities of lenapy by adding the right suffixe a
   ds.air.lngeo.mean(['latitude','longitude'],weights=['latitude']).lntime.climato().plot()
   ```
   
-  
+# Contributors
+
+We appreciate the contributions from our community. A complete list of contributors can be found in the [CONTRIBUTORS.md](./CONTRIBUTORS.md) file.
