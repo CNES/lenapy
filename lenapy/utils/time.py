@@ -318,7 +318,7 @@ def SavitzkyGolay(da, dim="time", window=12, order=1, step=1, sigma=None):
     """
 
     def convolution_matrix(M, C):
-        return np.dot(np.linalg.inv(np.dot(X.T, np.dot(C, X))), np.dot(X.T, C))
+        return np.dot(np.linalg.inv(np.dot(M.T, np.dot(C, M))), np.dot(M.T, C))
 
     def weights(xx):
         if sigma is None:
