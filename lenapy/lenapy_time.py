@@ -479,7 +479,7 @@ class TimeArray:
         step : float or time type
             distance between to consecutive points of abscissa
         sigma : same type as step (optionnal)
-        
+
             standard deviation of the weights function to be applied on the window
 
         Return
@@ -487,5 +487,5 @@ class TimeArray:
         filtered : xr.DataArray
             new DataArray filtered with an extra dimension 'order', giving the successive filtered derivatives of the signal
         """
-        
+
         return SavitzkyGolay(self._obj, dim, window, order, step, sigma)

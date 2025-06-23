@@ -149,7 +149,6 @@ def climato(
         The requested components as an xarray.Dataset. If `return_coeffs=True`,
         returns a tuple `(dataset, coeffs)` where `coeffs` contains the cycle and trend coefficients.
     """
-
     a = Coeffs_climato(xr.Dataset(dict(measure=data)), Nmin=Nmin)
     res = a.solve("measure", t_min=t_min, t_max=t_max)
     ret = []
