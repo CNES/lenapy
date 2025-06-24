@@ -433,7 +433,9 @@ def apply_normal_zonal_correction(
 
     sign = -1 if reverse else 1
 
-    ds_out.loc[dict(l=slice(2, None, 2), m=0)] = ds_out.sel(m=0) + sign * correction
+    ds_out.clm.loc[dict(l=slice(2, None, 2), m=0)] = (
+        ds_out.clm.sel(m=0) + sign * correction
+    )
 
     return ds_out
 

@@ -382,7 +382,7 @@ def sh_to_grid(
     xgrid : xr.DataArray
         Spatial representation of the SH Dataset in the chosen unit.
     """
-    # addition error propagation, add mask in output variable
+    # add mask in output variable
 
     used_l, used_m, lmin, lmax, mmin, mmax = _init_degrees(
         data, lmin, lmax, mmin, mmax, used_l, used_m

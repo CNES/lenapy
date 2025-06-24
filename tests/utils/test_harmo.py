@@ -83,20 +83,28 @@ def test_l_factor_conv(lenapy_paths, l, unit):
 
     ds_love = None
     if unit == "mecu":
+        ds_love = xr.Dataset(
+            {"kl": ("l", [0, 0.3, 0.2, 0.1]), "hl": ("l", [0, 1, 1, 1])},
+            coords={"l": np.arange(1, 5)},
+        )
 
-        @dataclass
-        class Love:
-            hl: int
-            kl: int
+    latitude = np.linspace(43, 60, len(l))
+    geocentric_colat = xr.DataArray(
+        np.arctan2(
+            np.cos(np.deg2rad(latitude)),
+            (1 - 1 / 300) ** 2 * np.sin(np.deg2rad(latitude)),
+        ),
+        dims=["latitude"],
+        coords={"latitude": latitude},
+    )
 
-        ds_love = Love(1, 1)
     l_factor, cst = l_factor_conv(
         l=l,
         unit=unit,
         include_elastic=True,
         ds_love=ds_love,
         ellipsoidal_earth=True,
-        geocentric_colat=[1] * len(l),
+        geocentric_colat=geocentric_colat,
     )
 
     assert np.allclose(ref_l_factor, l_factor), f"Failed for scale factor {unit}"
