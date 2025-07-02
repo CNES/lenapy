@@ -1087,6 +1087,7 @@ def _compute_l_factor(
     f_earth: float,
     omega_earth: float,
     rho_earth: float,
+    rho_water: float,
     fraction: xr.DataArray,
     a_div_r_lat: np.ndarray | xr.DataArray | None,
 ) -> xr.DataArray:
@@ -1115,6 +1116,8 @@ def _compute_l_factor(
         Earth's rotation rate
     rho_earth: float
         Earth density
+    rho_water: float
+        Water density
     fraction: xr.DataArray
         Redistribution factor
     a_div_r_lat: np.ndarray | xr.DataArray | None
@@ -1136,7 +1139,17 @@ def _compute_l_factor(
         # mewh, meters equivalent water height [kg.m-2]
         # the exact formula is l_factor*(1 - f) (see [Ditmar2018]_ after eq. 17)
         # it is an approximation of the order of 0.3% to be coherent with the common formula from Wahr 1998
-        l_factor = rho_earth * a_earth * (2 * l + 1) / (3 * fraction * 1e3)
+        l_factor = rho_earth * a_earth * (2 * l + 1) / (3 * fraction * rho_water)
+        if ellipsoidal_earth:
+            l_factor = l_factor * a_div_r_lat ** (l + 2)
+
+    elif unit == "mewh_icgem":
+        l_factor = (
+            gm_earth
+            / (4 * np.pi * 6.673e-11 * a_earth**2)
+            * (2 * l + 1)
+            / (fraction * rho_water)
+        )
         if ellipsoidal_earth:
             l_factor = l_factor * a_div_r_lat ** (l + 2)
 
@@ -1218,6 +1231,7 @@ def l_factor_conv(
     f_earth: float = LNPY_F_EARTH_GRS80,
     omega_earth: float = LNPY_OMEGA_EARTH_GRS80,
     rho_earth: float = LNPY_RHO_EARTH,
+    rho_water: float = 1000,
     attrs: dict | None = None,
 ) -> tuple[xr.DataArray, dict]:
     """
@@ -1258,7 +1272,9 @@ def l_factor_conv(
     omega_earth : float, optional
         Earth's rotation rate [rad.s⁻¹]. Default is LNPY_OMEGA_EARTH.
     rho_earth : float, optional
-        Earth density [kg.m⁻³]. Default is LNPY_RHO_EARTH.
+        Earth density [kg.m⁻³] for Equivalent Water Height formula. Default is LNPY_RHO_EARTH.
+    rho_water : float, optional
+        Water density [kg.m⁻³] for Equivalent Water Height formula. Default is 1000 Kg.m⁻³.
     attrs : dict | None, optional
         ds.attrs information that might help to estimate l_factor if no parameters are given.
 
@@ -1310,6 +1326,7 @@ def l_factor_conv(
         f_earth,
         omega_earth,
         rho_earth,
+        rho_water,
         fraction,
         a_div_r_lat,
     )
