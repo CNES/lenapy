@@ -55,6 +55,6 @@ def test_gravi_writer_valueerror(lenapy_paths):
     with pytest.raises(ValueError):
         sub_ds.lnharmo.to_gfc("tmp/test_errors.gfc", fast_save=True)
 
-    sub_ds = ds.isel(time=0).drop_vars(["clm"])
+    sub_ds = ds.isel(time=0).drop_vars(["eclm"])
     with pytest.raises(ValueError):
-        dataset_to_gfc(sub_ds, "tmp/test_errors.gfc")
+        dataset_to_gfc(sub_ds, "tmp/test_errors.gfc", include_errors=True)

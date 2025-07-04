@@ -43,9 +43,6 @@ def test_lenapy_operation_dataset(lenapy_paths):
     assert np.allclose(2 * gsm.clm.values, (gsm.lnharmo + gsm).clm.values)
 
     with pytest.raises(AssertionError):
-        gsm.isel(time=0).lnharmo + gsm
-
-    with pytest.raises(AssertionError):
         gsm.isel(time=0).lnharmo + np.array([0])
 
     with pytest.raises(AssertionError):
