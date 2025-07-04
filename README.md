@@ -47,4 +47,4 @@ You can now use all the functionalities of lenapy by adding the right suffix aft
   
 # Contributors
 
-We appreciate the contributions from our community. A complete list of contributors can be found in the [CONTRIBUTORS.md](./CONTRIBUTORS.md) file.
+We appreciate the contributions from our community. A complete list of contributors can be found in the [CONTRIBUTORS.md](https://github.com/CNES/lenapy/blob/main/CONTRIBUTORS.md) file.
