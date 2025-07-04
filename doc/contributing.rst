@@ -110,3 +110,24 @@ Building the docs is possible with
    $ python -m pip install -e ".[dev]"
    $ cd doc
    $ sphinx-build -b html doc doc/build
+
+Report issues or bugs
+~~~~~~~~~~~~~~~~~~~~~
+
+If you encounter a bug, unexpected behavior, or see something that could be improved:
+
+* Open an issue on the GitHub Issues page,
+* Describe the problem clearly, with a minimal reproducible example if possible,
+* Indicate the version of Lenapy, Python, and platform you’re using.
+
+Bug reports, feature suggestions, and usability feedback are all welcome.
+
+Seek support or ask questions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you have questions about how to use Lenapy:
+
+* First, check the documentation,
+* If your question isn't answered there, post your question in the Issues with the label question.
+
+We aim to respond as quickly as possible and encourage community help.
