@@ -63,15 +63,14 @@ def test_reference_conversion(dataset_love, old_frame, new_frame, expected):
     assert np.isclose(hl1, expected[1])
 
 
-def test_reference_wrong_frame():
-    ds_love = dataset_love()
+def test_reference_wrong_frame(dataset_love):
     with pytest.raises(ValueError):
         change_love_reference_frame(
-            ds_love.copy(deep=True), new_frame="AA", old_frame="CM"
+            dataset_love.copy(deep=True), new_frame="AA", old_frame="CM"
         )
     with pytest.raises(ValueError):
         change_love_reference_frame(
-            ds_love.copy(deep=True), new_frame="CM", old_frame="AA"
+            dataset_love.copy(deep=True), new_frame="CM", old_frame="AA"
         )
 
 
@@ -110,17 +109,16 @@ def test_tide_conversion_correct(base_dataset, old_tide, new_tide, expected_delt
     assert ds_out.attrs["tide_system"] == new_tide
 
 
-def test_tide_missing():
+def test_tide_missing(base_dataset):
     """
     Test change_tide_system function for no provided tide_system and for 'missing' value
     """
-    ds = base_dataset()
     with pytest.raises(ValueError):
-        change_tide_system(ds, "mean_tide")
+        change_tide_system(base_dataset, "mean_tide")
 
-    ds.attrs["tide_system"] = "missing"
+    base_dataset.attrs["tide_system"] = "missing"
     with pytest.raises(ValueError):
-        change_tide_system(ds, "mean_tide")
+        change_tide_system(base_dataset, "mean_tide")
 
 
 @pytest.fixture
