@@ -112,7 +112,7 @@ def test_change_normalization(lenapy_paths):
     ref_ortho_file = lenapy_paths.ref_data / "utils" / "costg_n12_ortho_ntime10.nc"
     ds_ref_ortho = xr.open_dataset(ref_ortho_file)
 
-    ref_schmidt_file = lenapy_paths.ref_data / "utils" / "costg_n12_ortho_ntime10.nc"
+    ref_schmidt_file = lenapy_paths.ref_data / "utils" / "costg_n12_schmidt_ntime10.nc"
     ds_ref_schmidt = xr.open_dataset(ref_schmidt_file)
 
     costg_ds_n10 = xr.open_dataset(lenapy_paths.data / "COSTG_n12_2002_2022.nc").isel(
