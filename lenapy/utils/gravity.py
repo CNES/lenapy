@@ -145,7 +145,7 @@ def change_tide_system(
 
     Raises
     ------
-    ValueError
+    ValueError | KeyError
         If the input tidal system is not provided and not found in the dataset attributes.
 
     Examples
@@ -172,7 +172,7 @@ def change_tide_system(
                     "You need to provide 'old_tide' param"
                 )
         else:
-            raise ValueError(
+            raise KeyError(
                 "No information ds.attrs['tide_system'] in dataset, you need to provide 'old_tide' param"
             )
 
@@ -392,6 +392,11 @@ def apply_normal_zonal_correction(
     -------
     ds_out : xr.Dataset
         Updated dataset with the correction.
+
+    Raises
+    ------
+    KeyError
+        If the current reference frame constants are not provided and not found in the dataset attributes.
 
     """
     try:

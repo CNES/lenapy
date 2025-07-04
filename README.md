@@ -37,7 +37,7 @@ In your python code, simply import the library with ::
   import lenapy
   ```
   
-You can now use all the functionnalities of lenapy by adding the right suffixe after your Dataset or DataArray ::
+You can now use all the functionalities of lenapy by adding the right suffix after your Dataset or DataArray ::
   ```
   import xarray as xr
   import lenapy

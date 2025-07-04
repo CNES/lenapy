@@ -940,8 +940,8 @@ def change_normalization(
             ds.attrs["norm"] if old_normalization is None else old_normalization
         )
 
-    except ValueError:
-        raise ValueError(
+    except KeyError:
+        raise KeyError(
             "If you provide no information about the current normalization of your ds dataset using "
             "'old_normalization' parameters, those information need to be contained in ds.attrs dict as "
             "ds.attrs['norm']."

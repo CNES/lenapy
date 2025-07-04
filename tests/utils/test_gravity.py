@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 import xarray as xr
 
+from lenapy.constants import *
 from lenapy.utils.gravity import (
     change_love_reference_frame,
     change_reference,
@@ -65,8 +66,8 @@ def test_reference_conversion(dataset_love, old_frame, new_frame, expected):
 
 def test_reference_wrong_frame(dataset_love):
     with pytest.raises(ValueError):
-        change_love_reference_frame(
-            dataset_love.copy(deep=True), new_frame="AA", old_frame="CM"
+        dataset_love.copy(deep=True).lnharmo.change_love_reference_frame(
+            new_frame="AA", old_frame="CM"
         )
     with pytest.raises(ValueError):
         change_love_reference_frame(
@@ -77,10 +78,14 @@ def test_reference_wrong_frame(dataset_love):
 @pytest.fixture
 def base_dataset():
     clm = xr.DataArray(
-        np.zeros((3, 3)), dims=["l", "m"], coords={"l": [0, 1, 2], "m": [0, 1, 2]}
+        np.zeros((5, 5)),
+        dims=["l", "m"],
+        coords={"l": [0, 1, 2, 3, 4], "m": [0, 1, 2, 3, 4]},
     )
     slm = xr.DataArray(
-        np.zeros((3, 3)), dims=["l", "m"], coords={"l": [0, 1, 2], "m": [0, 1, 2]}
+        np.zeros((5, 5)),
+        dims=["l", "m"],
+        coords={"l": [0, 1, 2, 3, 4], "m": [0, 1, 2, 3, 4]},
     )
     ds = xr.Dataset({"clm": clm, "slm": slm})
     return ds
@@ -113,8 +118,8 @@ def test_tide_missing(base_dataset):
     """
     Test change_tide_system function for no provided tide_system and for 'missing' value
     """
-    with pytest.raises(ValueError):
-        change_tide_system(base_dataset, "mean_tide")
+    with pytest.raises(KeyError):
+        base_dataset.lnharmo.change_tide_system("mean_tide")
 
     base_dataset.attrs["tide_system"] = "missing"
     with pytest.raises(ValueError):
@@ -171,6 +176,22 @@ def test_raises_if_no_attrs_provided():
     )
     with pytest.raises(KeyError):
         change_reference(ds, NEW_RADIUS, NEW_GM)
+
+
+def test_apply_normal_zonal_correction(lenapy_paths, base_dataset):
+    ref_file = lenapy_paths.ref_data / "utils" / f"normal_zonal_correction.nc"
+    ref_ds = xr.open_dataset(ref_file)
+
+    ds_out = base_dataset.lnharmo.apply_normal_zonal_correction(
+        radius=LNPY_A_EARTH_GRS80, earth_gravity_constant=LNPY_GM_EARTH
+    )
+
+    xr.testing.assert_allclose(ds_out, ref_ds)
+
+
+def test_apply_normal_zonal_correction_error(base_dataset):
+    with pytest.raises(KeyError):
+        base_dataset.lnharmo.apply_normal_zonal_correction()
 
 
 def test_returns_dataarray():

@@ -1,9 +1,10 @@
 import os
 
+import pytest
 import xarray as xr
 
 
-def test_gravi_writers(lenapy_paths):
+def test_gravi_writer(lenapy_paths):
     ds_path = lenapy_paths.data / "COSTG_n12_2002_2022.nc"
     ds = xr.open_dataset(ds_path).isel(time=0)
     ds.attrs["max_degree"] = 12
@@ -15,14 +16,17 @@ def test_gravi_writers(lenapy_paths):
     assert os.path.isfile(output_file)
     assert os.path.getsize(output_file) > 0
 
+    # Test no overwriting
+    ds.lnharmo.to_gfc(output_file, overwrite=False)
+
     # Comparison
     ds_written = xr.open_dataset(output_file, engine="lenapyGfc").isel(time=0)
     xr.testing.assert_allclose(ds, ds_written)
 
 
-def test_gravi_writers_fast(lenapy_paths):
+def test_gravi_writer_fast(lenapy_paths):
     ds_path = lenapy_paths.data / "COSTG_n12_2002_2022.nc"
-    ds = xr.open_dataset(ds_path).isel(time=0)
+    ds = xr.open_dataset(ds_path).isel(time=[0])
     ds.attrs["max_degree"] = 12
 
     output_file = "tmp/test_fast.gfc"
@@ -35,3 +39,20 @@ def test_gravi_writers_fast(lenapy_paths):
     # Comparison
     ds_written = xr.open_dataset(output_file, engine="lenapyGfc").isel(time=0)
     xr.testing.assert_allclose(ds, ds_written)
+
+
+def test_gravi_writer_valueerror(lenapy_paths):
+    ds_path = lenapy_paths.data / "COSTG_n12_2002_2022.nc"
+    ds = xr.open_dataset(ds_path).isel(time=[0])
+
+    sub_ds = ds.isel(time=[0, 1, 2])
+    with pytest.raises(ValueError):
+        sub_ds.lnharmo.to_gfc("tmp/test_errors.gfc")
+
+    sub_ds = ds.sel(l=[1, 2, 3, 6])
+    with pytest.raises(ValueError):
+        sub_ds.lnharmo.to_gfc("tmp/test_errors.gfc", fast_save=True)
+
+    sub_ds = ds.drop_vars(["clm"])
+    with pytest.raises(ValueError):
+        sub_ds.lnharmo.to_gfc("tmp/test_errors.gfc")

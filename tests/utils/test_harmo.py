@@ -5,7 +5,7 @@ import pytest
 import xarray as xr
 from pre_commit.lang_base import setup_cmd
 
-from lenapy.utils.harmo import compute_plm, l_factor_conv
+from lenapy.utils.harmo import change_normalization, compute_plm, l_factor_conv
 from tests.utilities import subsample_xr
 
 
@@ -47,7 +47,7 @@ def test_sh_to_grid_mass_conservation(lenapy_paths):
     grid_ref = xr.open_dataarray(ref_grid_file)
 
     costg_ds = xr.open_dataset(lenapy_paths.data / "COSTG_n12_2002_2022.nc")
-    grid = costg_ds.lnharmo.to_grid()
+    grid = costg_ds.lnharmo.to_grid(force_mass_conservation=True)
     grid = subsample_xr(grid, 10)
     xr.testing.assert_allclose(grid_ref, grid)
 
@@ -119,18 +119,31 @@ def test_change_normalization(lenapy_paths):
         time=slice(0, 10)
     )
 
+    unchanged = costg_ds_n10.lnharmo.change_normalization("4pi", "4pi")
     ortho = costg_ds_n10.lnharmo.change_normalization("4pi", "ortho")
     schmidt = costg_ds_n10.lnharmo.change_normalization("4pi", "schmidt")
     ortho_to_schmidt = ortho.lnharmo.change_normalization("ortho", "schmidt")
     schmidt_to_ortho = schmidt.lnharmo.change_normalization("schmidt", "ortho")
     ortho_to_4pi = ortho.lnharmo.change_normalization("ortho", "4pi")
     schmidt_to_4pi = schmidt.lnharmo.change_normalization("schmidt", "4pi")
+
+    xr.testing.assert_allclose(unchanged, costg_ds_n10)
     xr.testing.assert_allclose(ortho, ds_ref_ortho)
     xr.testing.assert_allclose(schmidt, ds_ref_schmidt)
     xr.testing.assert_allclose(schmidt_to_ortho, ds_ref_ortho)
     xr.testing.assert_allclose(ortho_to_schmidt, ds_ref_schmidt)
     xr.testing.assert_allclose(ortho_to_4pi, costg_ds_n10)
     xr.testing.assert_allclose(schmidt_to_4pi, costg_ds_n10)
+
+
+def test_change_normalization_invalid(lenapy_paths):
+    costg_ds_n10 = xr.open_dataset(lenapy_paths.data / "COSTG_n12_2002_2022.nc").isel(
+        time=slice(0, 10)
+    )
+
+    del costg_ds_n10.attrs["norm"]
+    with pytest.raises(KeyError):
+        change_normalization(costg_ds_n10, "4pi")
 
 
 @pytest.mark.parametrize(
