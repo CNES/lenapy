@@ -1143,16 +1143,6 @@ def _compute_l_factor(
         if ellipsoidal_earth:
             l_factor = l_factor * a_div_r_lat ** (l + 2)
 
-    elif unit == "mewh_icgem":
-        l_factor = (
-            gm_earth
-            / (4 * np.pi * 6.673e-11 * a_earth**2)
-            * (2 * l + 1)
-            / (fraction * rho_water)
-        )
-        if ellipsoidal_earth:
-            l_factor = l_factor * a_div_r_lat ** (l + 2)
-
     elif unit == "mmgeoid":
         # mmgeoid, millimeters geoid height
         if ellipsoidal_earth:
