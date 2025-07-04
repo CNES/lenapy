@@ -38,21 +38,21 @@ def test_gravi_writer_fast(lenapy_paths):
 
     # Comparison
     ds_written = xr.open_dataset(output_file, engine="lenapyGfc").isel(time=0)
-    xr.testing.assert_allclose(ds, ds_written)
+    xr.testing.assert_allclose(ds.isel(time=0), ds_written)
 
 
 def test_gravi_writer_valueerror(lenapy_paths):
     ds_path = lenapy_paths.data / "COSTG_n12_2002_2022.nc"
-    ds = xr.open_dataset(ds_path).isel(time=[0])
+    ds = xr.open_dataset(ds_path)
 
     sub_ds = ds.isel(time=[0, 1, 2])
     with pytest.raises(ValueError):
         sub_ds.lnharmo.to_gfc("tmp/test_errors.gfc")
 
-    sub_ds = ds.sel(l=[1, 2, 3, 6])
+    sub_ds = ds.isel(time=0).sel(l=[1, 2, 3, 6])
     with pytest.raises(ValueError):
         sub_ds.lnharmo.to_gfc("tmp/test_errors.gfc", fast_save=True)
 
-    sub_ds = ds.drop_vars(["clm"])
+    sub_ds = ds.isel(time=0).drop_vars(["clm"])
     with pytest.raises(ValueError):
         sub_ds.lnharmo.to_gfc("tmp/test_errors.gfc")

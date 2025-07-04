@@ -66,8 +66,8 @@ def test_reference_conversion(dataset_love, old_frame, new_frame, expected):
 
 def test_reference_wrong_frame(dataset_love):
     with pytest.raises(ValueError):
-        dataset_love.copy(deep=True).lnharmo.change_love_reference_frame(
-            new_frame="AA", old_frame="CM"
+        change_love_reference_frame(
+            dataset_love.copy(deep=True), new_frame="AA", old_frame="CM"
         )
     with pytest.raises(ValueError):
         change_love_reference_frame(
