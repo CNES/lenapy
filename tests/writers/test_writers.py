@@ -16,7 +16,7 @@ def test_gravi_writers(lenapy_paths):
     assert os.path.getsize(output_file) > 0
 
     # Comparison
-    ds_written = xr.open_dataset(output_file, engine="lenapyGfc")
+    ds_written = xr.open_dataset(output_file, engine="lenapyGfc").isel(time=0)
     xr.testing.assert_allclose(ds, ds_written)
 
 
@@ -33,5 +33,5 @@ def test_gravi_writers_fast(lenapy_paths):
     assert os.path.getsize(output_file) > 0
 
     # Comparison
-    ds_written = xr.open_dataset(output_file, engine="lenapyGfc")
+    ds_written = xr.open_dataset(output_file, engine="lenapyGfc").isel(time=0)
     xr.testing.assert_allclose(ds, ds_written)
