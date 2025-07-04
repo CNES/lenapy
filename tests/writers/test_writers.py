@@ -3,6 +3,8 @@ import os
 import pytest
 import xarray as xr
 
+from lenapy.writers.gravi_writer import dataset_to_gfc
+
 
 def test_gravi_writer(lenapy_paths):
     ds_path = lenapy_paths.data / "COSTG_n12_2002_2022.nc"
@@ -55,4 +57,4 @@ def test_gravi_writer_valueerror(lenapy_paths):
 
     sub_ds = ds.isel(time=0).drop_vars(["clm"])
     with pytest.raises(ValueError):
-        sub_ds.lnharmo.to_gfc("tmp/test_errors.gfc")
+        dataset_to_gfc(sub_ds, "tmp/test_errors.gfc")
