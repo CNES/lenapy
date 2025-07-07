@@ -311,7 +311,7 @@ def sh_to_grid(
     With choice for constants, unit, love numbers, degree/order, spatial grid latitude and longitude, Earth hypothesis.
 
     For details on unit transformations, see :func:`l_factor_conv` and the
-    associated `PDF document <_static/Mathematics_consideration_for_LENAPY.pdf>`_.
+    associated `PDF document </_static/Mathematics_consideration_for_LENAPY.pdf>`_.
 
     Parameters
     ----------
@@ -553,7 +553,7 @@ def grid_to_sh(
     With choice for constants, unit of the spatial DataArray, love_numbers, degree/order, Earth hypothesis.
 
     For details on unit transformations, see :func:`l_factor_conv` and the
-    associated `PDF document <_static/Mathematics_consideration_for_LENAPY.pdf>`_.
+    associated `PDF document </_static/Mathematics_consideration_for_LENAPY.pdf>`_.
 
     Parameters
     ----------

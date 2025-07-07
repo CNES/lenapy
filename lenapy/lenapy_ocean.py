@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""This module implements some useful TEOS10 gsw functions on oceanic dataset
+"""The **lenapy_ocean** module implements some useful TEOS10 gsw functions on oceanic dataset
 
 """
 

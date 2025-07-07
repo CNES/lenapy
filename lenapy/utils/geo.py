@@ -189,7 +189,7 @@ def surface_cell(
     If surface_cell() is applied to a complete grid, the sum of all cells is equal to 4πR² for the spherical Earth.
     For the ellipsoidal Earth, the sum is equal to 2πa² + πb²/e*log((1 + e)/(1 - e))
 
-    Mathematics are detailed in this `PDF document <_static/Mathematics_consideration_for_LENAPY.pdf>`_.
+    Mathematics are detailed in this `PDF document </_static/Mathematics_consideration_for_LENAPY.pdf>`_.
 
 
     Parameters
