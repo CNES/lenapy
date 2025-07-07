@@ -1,3 +1,15 @@
+"""
+The **geo** module provides functions related to spatial grid.
+
+This module includes functions to:
+  * Standardize the coordinates names in cf conventions.
+  * Linearly interpolate a coordinate isosurface where a field equals a target.
+  * Change longitude origin.
+  * Estimate surface of grid cells.
+  * Compute distance from grid cells to a list of points.
+
+"""
+
 import numpy as np
 import xarray as xr
 
@@ -176,6 +188,8 @@ def surface_cell(
 
     If surface_cell() is applied to a complete grid, the sum of all cells is equal to 4πR² for the spherical Earth.
     For the ellipsoidal Earth, the sum is equal to 2πa² + πb²/e*log((1 + e)/(1 - e))
+
+    Mathematics are detailed in this `PDF document <_static/Mathematics_consideration_for_LENAPY.pdf>`_.
 
 
     Parameters

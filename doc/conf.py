@@ -25,7 +25,7 @@ project = "lenapy"
 copyright = f"2023 - {curr_year}, Sebastien Fourest"
 author = "Sebastien Fourest"
 # The short X.Y version.
-version = "0.7"
+version = "0.9"
 # The full version, including alpha/beta/rc tags.
 release = "First beta version on github"
 
@@ -82,7 +82,7 @@ html_theme_options = {
     "style_nav_header_background": "#2980B9",  # header color en haut à gauche
     # github_url for open access version
 }
-# html_static_path = ["_static"]
+html_static_path = ["_static"]
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {

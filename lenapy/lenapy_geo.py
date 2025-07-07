@@ -1,5 +1,5 @@
 """
-This module implements some usuals functions to be applied on gridded data (lat/lon)
+The **lenapy_geo** module implements some usual functions to be applied on gridded data (lat/lon)
 """
 
 # -*- coding: utf-8 -*-

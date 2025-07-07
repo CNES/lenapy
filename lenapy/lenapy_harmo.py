@@ -1,5 +1,5 @@
 """
-The lenapy_harmo module provides functionalities for spherical harmonics dataset (clm/slm) and
+The **lenapy_harmo** module provides functionalities for spherical harmonics dataset (clm/slm) and
 projections on latitude/longitude grids.
 
 This module includes two classes:

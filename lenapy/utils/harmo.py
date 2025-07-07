@@ -1,12 +1,13 @@
 """
-The harmo module provides functions for transforming spherical harmonics datasets into spatial grid representations
+The **harmo** module provides functions for transforming spherical harmonics datasets into spatial grid representations
 and vice versa.
 
 This module includes functions to:
-  * Convert spherical harmonics datasets into spatial grid dataarray.
-  * Convert spatial grid dataarray into spherical harmonics datasets.
+  * Convert spherical harmonics datasets into spatial grid DataArray.
+  * Convert spatial grid DataArray into spherical harmonics datasets.
   * Compute associated Legendre functions.
   * Calculate mid-month estimates for GRACE data products.
+  * Change the associated normalization to a spherical harmonics dataset.
   * Compute scaling factors for unit conversions between spherical harmonics and grid data.
   * Validate spherical harmonics and grid datasets.
 
@@ -309,7 +310,8 @@ def sh_to_grid(
     Transform Spherical Harmonics (SH) dataset into spatial DataArray.
     With choice for constants, unit, love numbers, degree/order, spatial grid latitude and longitude, Earth hypothesis.
 
-    For details on unit transformations, see :func:`l_factor_conv`.
+    For details on unit transformations, see :func:`l_factor_conv` and the
+    associated `PDF document <_static/Mathematics_consideration_for_LENAPY.pdf>`_.
 
     Parameters
     ----------
@@ -550,7 +552,8 @@ def grid_to_sh(
     Transform gravity field spatial representation DataArray into Spherical Harmonics (SH) dataset.
     With choice for constants, unit of the spatial DataArray, love_numbers, degree/order, Earth hypothesis.
 
-    For details on unit transformations, see :func:`l_factor_conv`.
+    For details on unit transformations, see :func:`l_factor_conv` and the
+    associated `PDF document <_static/Mathematics_consideration_for_LENAPY.pdf>`_.
 
     Parameters
     ----------

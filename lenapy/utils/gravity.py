@@ -1,12 +1,14 @@
 """
-The gravity module provides functions for manipulating spherical harmonics datasets with respect to different
-reference frames, tide systems and smoothing techniques.
+The **gravity** module provides functions for manipulating spherical harmonics datasets with respect to different
+reference frames, tide systems, normal gravity reference and smoothing techniques.
 
 This module includes functions to:
   * Change the reference frame of spherical harmonics datasets.
   * Change the tide system of spherical harmonics datasets.
   * Modify degree 1 Love numbers for different reference frames.
+  * Estimate normal gravity values.
   * Generate Gaussian weights for smoothing spherical harmonics datasets.
+  * Estimate time variable gravity field from a .gfc temporal file.
 
 Examples
 --------
