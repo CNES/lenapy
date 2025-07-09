@@ -1,4 +1,5 @@
-"""This module implements some usuals functions to be applied on timeseries
+"""
+The **lenapy_time** module implements some usuals functions to be applied on timeseries.
 
 """
 

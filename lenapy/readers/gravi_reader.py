@@ -1,5 +1,5 @@
 """
-The gravi_reader module provides functions to load time-variable gravity field data from different products and format
+The **gravi_reader** module provides functions to load time-variable gravity field data from different products and format
 the data with unified definitions for variables and coordinates.
 
 Standardized coordinates names:

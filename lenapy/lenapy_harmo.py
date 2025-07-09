@@ -1,5 +1,5 @@
 """
-The lenapy_harmo module provides functionalities for spherical harmonics dataset (clm/slm) and
+The **lenapy_harmo** module provides functionalities for spherical harmonics dataset (clm/slm) and
 projections on latitude/longitude grids.
 
 This module includes two classes:
@@ -162,6 +162,52 @@ class HarmoSet:
                 self.ds["slm"] = op(
                     self.ds.slm,
                     other.slm.sel(time=common_times, l=common_l, m=common_m),
+                )
+
+        elif isinstance(other, xr.DataArray):
+            if "l" in other.coords:
+                # change clm and slm size if other.l or other.m are different
+                common_l = self._obj.l.where(self._obj.l.isin(other.l)).dropna(dim="l")
+                other = other.sel(l=common_l)
+            else:
+                common_l = slice(None)
+
+            if "m" in other.coords:
+                common_m = self._obj.m.where(self._obj.m.isin(other.m)).dropna(dim="m")
+                other = other.sel(m=common_m)
+            else:
+                common_m = slice(None)
+
+            self.ds = self._obj.sel(l=common_l, m=common_m)
+
+            # case where other does not have a time dimension
+            if "time" not in other.coords:
+                self.ds["clm"] = op(self.ds.clm, other)
+                self.ds["slm"] = op(self.ds.slm, other)
+
+            elif (
+                "time" not in self._obj.coords
+            ):  # if the previous test, other has time dimension
+                raise AssertionError(
+                    "Cannot operate on a HarmoSet with time dimension to a Harmoset without it. "
+                    "Inverse the order of the HarmoSet in the operation."
+                )
+
+            # case where both xr.Dataset and other have a time dimension
+            else:
+                common_times = self._obj.time.where(
+                    self._obj.time.isin(other.time)
+                ).dropna(dim="time")
+                self.ds = self.ds.sel(time=common_times)
+
+                # change clm and slm on similar time
+                self.ds["clm"] = op(
+                    self.ds.clm,
+                    other.sel(time=common_times),
+                )
+                self.ds["slm"] = op(
+                    self.ds.slm,
+                    other.sel(time=common_times),
                 )
 
         else:

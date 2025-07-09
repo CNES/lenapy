@@ -32,3 +32,18 @@ def test_lenapy_gfc(lenapy_paths, op):
     assert np.allclose(
         op(gsm.clm.values), out.clm.values
     ), f"operator {lambda_source(op)} failed"
+
+
+def test_lenapy_operation_dataset(lenapy_paths):
+    gsm = xr.open_dataset(
+        lenapy_paths.data / "GSM-2_2002213-2002243_GRAC_COSTG_BF01_0100.gfc",
+        engine="lenapyGfc",
+    )
+
+    assert np.allclose(2 * gsm.clm.values, (gsm.lnharmo + gsm).clm.values)
+
+    with pytest.raises(AssertionError):
+        gsm.isel(time=0).lnharmo + np.array([0])
+
+    with pytest.raises(AssertionError):
+        gsm.isel(time=0).lnharmo ** np.array([0])

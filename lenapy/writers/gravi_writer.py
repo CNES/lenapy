@@ -1,5 +1,5 @@
 """
-The gravi_writer.py provides writer functions to save Spherical Harmonics dataset in text file.
+The **gravi_writer** module provides writer functions to save Spherical Harmonics dataset in .gfc ascii file.
 """
 
 import os

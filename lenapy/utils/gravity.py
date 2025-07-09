@@ -1,12 +1,14 @@
 """
-The gravity module provides functions for manipulating spherical harmonics datasets with respect to different
-reference frames, tide systems and smoothing techniques.
+The **gravity** module provides functions for manipulating spherical harmonics datasets with respect to different
+reference frames, tide systems, normal gravity reference and smoothing techniques.
 
 This module includes functions to:
   * Change the reference frame of spherical harmonics datasets.
   * Change the tide system of spherical harmonics datasets.
   * Modify degree 1 Love numbers for different reference frames.
+  * Estimate normal gravity values.
   * Generate Gaussian weights for smoothing spherical harmonics datasets.
+  * Estimate time variable gravity field from a .gfc temporal file.
 
 Examples
 --------
@@ -145,7 +147,7 @@ def change_tide_system(
 
     Raises
     ------
-    ValueError
+    ValueError | KeyError
         If the input tidal system is not provided and not found in the dataset attributes.
 
     Examples
@@ -172,7 +174,7 @@ def change_tide_system(
                     "You need to provide 'old_tide' param"
                 )
         else:
-            raise ValueError(
+            raise KeyError(
                 "No information ds.attrs['tide_system'] in dataset, you need to provide 'old_tide' param"
             )
 
@@ -392,6 +394,11 @@ def apply_normal_zonal_correction(
     -------
     ds_out : xr.Dataset
         Updated dataset with the correction.
+
+    Raises
+    ------
+    KeyError
+        If the current reference frame constants are not provided and not found in the dataset attributes.
 
     """
     try:

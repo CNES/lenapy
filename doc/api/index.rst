@@ -36,6 +36,7 @@ Utils modules
 .. autosummary::
     :toctree: _autosummary
 
+    lenapy.utils.geo
     lenapy.utils.harmo
     lenapy.utils.gravity
 

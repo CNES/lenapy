@@ -1,12 +1,13 @@
 """
-The harmo module provides functions for transforming spherical harmonics datasets into spatial grid representations
+The **harmo** module provides functions for transforming spherical harmonics datasets into spatial grid representations
 and vice versa.
 
 This module includes functions to:
-  * Convert spherical harmonics datasets into spatial grid dataarray.
-  * Convert spatial grid dataarray into spherical harmonics datasets.
+  * Convert spherical harmonics datasets into spatial grid DataArray.
+  * Convert spatial grid DataArray into spherical harmonics datasets.
   * Compute associated Legendre functions.
   * Calculate mid-month estimates for GRACE data products.
+  * Change the associated normalization to a spherical harmonics dataset.
   * Compute scaling factors for unit conversions between spherical harmonics and grid data.
   * Validate spherical harmonics and grid datasets.
 
@@ -309,7 +310,8 @@ def sh_to_grid(
     Transform Spherical Harmonics (SH) dataset into spatial DataArray.
     With choice for constants, unit, love numbers, degree/order, spatial grid latitude and longitude, Earth hypothesis.
 
-    For details on unit transformations, see :func:`l_factor_conv`.
+    For details on unit transformations, see :func:`l_factor_conv` and the
+    associated `PDF document <../../_static/Mathematics_consideration_for_LENAPY.pdf>`_.
 
     Parameters
     ----------
@@ -550,7 +552,8 @@ def grid_to_sh(
     Transform gravity field spatial representation DataArray into Spherical Harmonics (SH) dataset.
     With choice for constants, unit of the spatial DataArray, love_numbers, degree/order, Earth hypothesis.
 
-    For details on unit transformations, see :func:`l_factor_conv`.
+    For details on unit transformations, see :func:`l_factor_conv` and the
+    associated `PDF document <../../_static/Mathematics_consideration_for_LENAPY.pdf>`_.
 
     Parameters
     ----------
@@ -940,8 +943,8 @@ def change_normalization(
             ds.attrs["norm"] if old_normalization is None else old_normalization
         )
 
-    except ValueError:
-        raise ValueError(
+    except KeyError:
+        raise KeyError(
             "If you provide no information about the current normalization of your ds dataset using "
             "'old_normalization' parameters, those information need to be contained in ds.attrs dict as "
             "ds.attrs['norm']."
@@ -1087,6 +1090,7 @@ def _compute_l_factor(
     f_earth: float,
     omega_earth: float,
     rho_earth: float,
+    rho_water: float,
     fraction: xr.DataArray,
     a_div_r_lat: np.ndarray | xr.DataArray | None,
 ) -> xr.DataArray:
@@ -1115,6 +1119,8 @@ def _compute_l_factor(
         Earth's rotation rate
     rho_earth: float
         Earth density
+    rho_water: float
+        Water density
     fraction: xr.DataArray
         Redistribution factor
     a_div_r_lat: np.ndarray | xr.DataArray | None
@@ -1136,7 +1142,7 @@ def _compute_l_factor(
         # mewh, meters equivalent water height [kg.m-2]
         # the exact formula is l_factor*(1 - f) (see [Ditmar2018]_ after eq. 17)
         # it is an approximation of the order of 0.3% to be coherent with the common formula from Wahr 1998
-        l_factor = rho_earth * a_earth * (2 * l + 1) / (3 * fraction * 1e3)
+        l_factor = rho_earth * a_earth * (2 * l + 1) / (3 * fraction * rho_water)
         if ellipsoidal_earth:
             l_factor = l_factor * a_div_r_lat ** (l + 2)
 
@@ -1218,6 +1224,7 @@ def l_factor_conv(
     f_earth: float = LNPY_F_EARTH_GRS80,
     omega_earth: float = LNPY_OMEGA_EARTH_GRS80,
     rho_earth: float = LNPY_RHO_EARTH,
+    rho_water: float = 1000,
     attrs: dict | None = None,
 ) -> tuple[xr.DataArray, dict]:
     """
@@ -1258,7 +1265,9 @@ def l_factor_conv(
     omega_earth : float, optional
         Earth's rotation rate [rad.s⁻¹]. Default is LNPY_OMEGA_EARTH.
     rho_earth : float, optional
-        Earth density [kg.m⁻³]. Default is LNPY_RHO_EARTH.
+        Earth density [kg.m⁻³] for Equivalent Water Height formula. Default is LNPY_RHO_EARTH.
+    rho_water : float, optional
+        Water density [kg.m⁻³] for Equivalent Water Height formula. Default is 1000 Kg.m⁻³.
     attrs : dict | None, optional
         ds.attrs information that might help to estimate l_factor if no parameters are given.
 
@@ -1310,6 +1319,7 @@ def l_factor_conv(
         f_earth,
         omega_earth,
         rho_earth,
+        rho_water,
         fraction,
         a_div_r_lat,
     )
