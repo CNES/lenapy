@@ -16,12 +16,12 @@ authors:
     affiliation: "1", "2"
   - name: Alejandro Blazquez
     orcid: 0000-0002-7719-7468
-    affiliation: "1"
+    affiliation: "1, 2"
 affiliations:
  - name: Université de Toulouse, LEGOS (CNES/CNRS/IRD/UT3), France #Laboratoire d’Études en Géophysique et Océanographie Spatiales (LEGOS)
    index: 1
    ror: 02chvqy57
- - name: National Centre for Space Studies (CNES), France
+ - name: Centre national d'Études Spatiales (CNES), France
    index: 2
    ror: 04h1h0y33
 date: 10 July 2025
@@ -30,7 +30,7 @@ bibliography: paper.bib
 
 # Summary
 
-`Lenapy` is a Python library designed to facilitate the processing and analysis of geophysical and climate datasets, such as those used in oceanography, geodesy, and Earth observation. 
+`Lenapy` is a Python library designed to facilitate the processing and analysis of geophysical and climate datasets, such as those used in oceanography, geodesy, and Earth observation in general. 
 Built on top of `xarray` and fully compatible with `dask`, it enables scalable and reproducible workflows on multidimensional datasets by leveraging community standards for data formats (NetCDF) and metadata conventions (CF).
 
 `Lenapy` provides high-level accessors that extend `xarray.Dataset` and `xarray.DataArray` objects, allowing direct application of specialized methods.
@@ -55,7 +55,7 @@ Existing libraries address specific aspects of these requirements:
 
 While `gsw-xarray` is more complete than our GSW wrapper in `Lenapy`, our library propose complementary geodetic tools for spatial and spherical harmonics operations.
 
-To our knowledge, no existing Python library offers a coherent suite of oceanographic and geophysical operations (detailed below) within a unified, xarray-native framework supporting both scalability (via Dask [@Dask_2016]) and labeled, multidimensional arrays.
+To our knowledge, no other existing Python library offers a coherent suite of oceanographic and geophysical operations (detailed below) within a unified, xarray-native framework supporting both scalability (via Dask [@Dask_2016]) and labeled, multidimensional arrays.
 Moreover, critical geospatial utilities (such as surface-aware averaging, weighted statistics, spherical distance computation, and climatology fitting) remain fragmented across ecosystems or require custom implementations.
 
 `Lenapy` addresses this gap by providing a modular Python package built on xarray and Dask, exposing accessors (.lngeo, .lnharmo, .lnocean, .lntime) for direct and simple application of domain-specific methods to xarray.Dataset or xarray.DataArray objects. 
@@ -123,9 +123,14 @@ Notable projects include:
 In addition, `Lenapy` has been employed in related research studies [@Bouih_2025] for consistent and reproducible treatment of steric, manometric, or relative sea level.
 `Lenapy` gravity field and spherical harmonics operation are used at LEGOS for the processing GRACE and GRACE Follow-On Level 2 dataset to create a Level 3 time-variable gravity solution [@Blazquez_2018].
 
+## Origin and research context
+
+`Lenapy` originated from a set of geophysical tools developed within the LEGOS research laboratory during PhD works focused on the regional and global variability of sea level and the characterization of ocean–continent water exchanges [@Meyssignac_2012, @Dieng_2017, @Blazquez_2020]. 
+These early tools have since been generalized and integrated into a modern Python framework, making them more accessible and reusable by the broader Earth science community.
+
 # Acknowledgements
 
-Fundings ?
+Fundings ? Faudra parler du financement pour le boulot de CLS 
 
 We thank all the contributors to the early version of `Lenapy`: Robin Guillaume-Castel, Arthur Vincent.
 
