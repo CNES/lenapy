@@ -49,17 +49,19 @@ For the oceanography part, the accurate computation of seawater properties is es
 The Thermodynamic Equation of Seawater (TEOS-10) framework provides consistent definitions and algorithms for quantities such as potential temperature, conservative temperature, and density [@Mcdougall_2011].
 
 Existing libraries address specific aspects of these requirements:
-    - `gsw-xarray` [@Caneill_2024] provides implementations of the TEOS-10, facilitating oceanographic computations. It offers a wrapper around GSW-Python for xarray objects, but remains limited in scope.
     - `pyshtools` [@Wieczorek_2018] is a comprehensive package for spherical harmonic transforms and spectral analysis, particularly in geophysics. Yet, it operates on standalone arrays and does not natively support xarray, limiting its compatibility with NetCDF-based workflows.
     - `grates` [@Kvas] provides object-oriented tools for spherical harmonics and geodetic computations, but similarly lacks integration with labeled multidimensional data structures like xarray.
+    - `gsw-xarray` [@Caneill_2024] provides implementations of the TEOS-10, facilitating oceanographic computations. It offers a wrapper around `GSW-Python` for xarray objects, but without Dask support.
+
+While `gsw-xarray` is more complete than our GSW wrapper in `Lenapy`, our library propose complementary geodetic tools for spatial and spherical harmonics operations.
 
 To our knowledge, no other existing Python library provides geophysical tools within a unified, xarray-based framework supporting both scalability (via Dask [@Dask_2016]) and labeled, multidimensional arrays.
-Moreover, critical geospatial utilities—such as surface-aware averaging, weighted statistics, spherical distance computation, and climatological decomposition—are scattered across ecosystems or require manual implementation.
+Moreover, critical geospatial utilities (such as surface-aware averaging, weighted statistics, spherical distance computation, and climatological decomposition) are scattered across ecosystems or require manual implementation.
 
-`Lenapy` addresses this gap by providing a modular Python package built on xarray and Dask, exposing high-level accessors (.lnocean, .lngeo, .lntime, .lnharmo) for direct and simple application of domain-specific methods to xarray.Dataset or xarray.DataArray objects. 
+`Lenapy` addresses this gap by providing a modular Python package built on xarray and Dask, exposing accessors (.lnocean, .lngeo, .lntime, .lnharmo) for direct and simple application of domain-specific methods to xarray.Dataset or xarray.DataArray objects. 
 For example, users can compute area-weighted means via ds.lngeo.mean() or extract the global ocean heat content using ds.lnocean.gohc().
 
-`Lenapy` is designed for Earth scientists, oceanographers, climate researchers, and geodesists who routinely manipulate global or regional gridded datasets and require advanced yet streamlined processing workflows.
+`Lenapy` is designed for Earth scientists, oceanographers, climate researchers, and geodesists who routinely manipulate global or regional gridded datasets and require specific processing workflows.
 `Lenapy` is maintaining full compatibility with the PyData ecosystem.
 
 Furthermore, `Lenapy` offers a unified approach for calculating Global Mean Sea Level (GMSL) by integrating both steric and manometric components, as well as relative sea-level changes [@Gregory_2019].
