@@ -1,5 +1,9 @@
 # Getting started with LENAPY
 
+## Documentaion
+
+Documentation can be found [here](https://lenapy.readthedocs.io/en/latest/)
+
 ## Installation
 
 
