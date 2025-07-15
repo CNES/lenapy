@@ -9,11 +9,6 @@ Documentation can be found [here](https://lenapy.readthedocs.io/en/latest/)
 
 To install Lenapy, follow the steps :
 
-* Download lenapy code ::
-
-    ```
-    git clone git@github.com:CNES/lenapy.git
-    ```
 
 * Create a conda environment and activate it ::
     ```
@@ -21,16 +16,10 @@ To install Lenapy, follow the steps :
     conda activate lenapy
     ```
  
-* Manually install esmpy ::
+* Install lenapy from conda-forge ::
 
     ```
-    conda install -c conda-forge esmpy
-    ```
-
-* Go into the lenapy source directory and install it ::
-
-    ```
-    pip install . 
+    conda install -c conda-forge lenapy
     ```
     
 ## Use
