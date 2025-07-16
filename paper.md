@@ -12,7 +12,7 @@ authors:
     orcid: 0000-0002-7007-4748
     affiliation: "1"
   - name: Sebastien Fourest
-    orcid: x
+    orcid: 0009-0001-3123-1026
     affiliation: "1", "2"
   - name: Alejandro Blazquez
     orcid: 0000-0002-7719-7468
@@ -89,11 +89,15 @@ The `lnharmo` accessor offers dedicated methods for working with spherical harmo
 ## Oceanography (`.lnocean`)
 
 The `lnocean` accessor provides a lightweight wrapper around selected GSW (TEOS-10) routines [@Mcdougall_2011], exposing them as native xarray methods for oceanographic datasets. 
-It includes:
-
-- Conservative and potential temperature;
-- Absolute and practical salinity;
-- Density and dynamic height.
+Based on any dataset containing :
+- any of insitu, conservative or potential temperature
+- any of practical, relative or absolute salinity
+- depth coordinate
+it provides through the .lncoean extension direct access to selected GSW routines, and integrated values over all or part of the water column :
+- Ocean heat content;
+- Steric sea levels;
+- Density and dynamic height;
+- ...
 
 ## Time series and climatology tools (`.lntime`)
 
@@ -101,7 +105,8 @@ The `lntime` accessor enables common temporal operations on geophysical time ser
 
 - Climatological signal extraction and fitting (e.g., seasonal decomposition);
 - Filtering of time series;
-- Polynomial or harmonic regressions over specified periods.
+- Polynomial or harmonic regressions over specified periods;
+- Detrending, interpolation, derivating, evaluation of missing values,...
 
 ## Input/Output utilities
 
