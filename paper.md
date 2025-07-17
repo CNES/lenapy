@@ -21,7 +21,7 @@ affiliations:
  - name: "Université de Toulouse, LEGOS (CNES/CNRS/IRD/UT3), France"
    index: 1
    ror: 02chvqy57
- - name: "Centre national d'Études Spatiales (CNES), France"
+ - name: "Centre national d Études Spatiales (CNES), France"
    index: 2
    ror: 04h1h0y33
 date: 10 July 2025
