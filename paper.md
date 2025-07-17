@@ -1,5 +1,5 @@
 ---
-title: 'Lenapy: Enhancing xarray for multidimensional geophysical data analysis'
+title: "Lenapy: Enhancing xarray for multidimensional geophysical data analysis"
 tags:
   - Python
   - xarray
@@ -18,7 +18,7 @@ authors:
     orcid: 0000-0002-7719-7468
     affiliation: "1, 2"
 affiliations:
- - name: Université de Toulouse, LEGOS (CNES/CNRS/IRD/UT3), France #Laboratoire d’Études en Géophysique et Océanographie Spatiales (LEGOS)
+ - name: Université de Toulouse, LEGOS (CNES/CNRS/IRD/UT3), France
    index: 1
    ror: 02chvqy57
  - name: Centre national d'Études Spatiales (CNES), France
