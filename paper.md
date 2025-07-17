@@ -21,7 +21,7 @@ affiliations:
  - name: "Université de Toulouse, LEGOS (CNES/CNRS/IRD/UT3), France"
    index: 1
    ror: 02chvqy57
- - name: "Centre national d Études Spatiales (CNES), France"
+ - name: "Centre national d'Études Spatiales (CNES), France"
    index: 2
    ror: 04h1h0y33
 date: 10 July 2025
@@ -49,9 +49,10 @@ For the oceanography part, the accurate computation of seawater properties is es
 The Thermodynamic Equation of Seawater (TEOS-10) framework provides consistent definitions and algorithms for quantities such as potential temperature, conservative temperature, and density [@Mcdougall_2011].
 
 Existing libraries address specific aspects of these requirements:
-    - `pyshtools` [@Wieczorek_2018] is a comprehensive package for spherical harmonic transforms and spectral analysis, particularly in geophysics. Yet, it operates on standalone arrays and does not natively support xarray, limiting its compatibility with NetCDF-based workflows.
-    - `grates` [@Kvas] provides object-oriented tools for spherical harmonics and geodetic computations, but similarly lacks integration with labeled multidimensional data structures like xarray.
-    - `gsw-xarray` [@Caneill_2024] provides implementations of the TEOS-10, facilitating oceanographic computations. It offers a wrapper around `GSW-Python` for xarray objects, but without Dask support.
+
+- `pyshtools` [@Wieczorek_2018] is a comprehensive package for spherical harmonic transforms and spectral analysis, particularly in geophysics. Yet, it operates on standalone arrays and does not natively support xarray, limiting its compatibility with NetCDF-based workflows.
+- `grates` [@Kvas] provides object-oriented tools for spherical harmonics and geodetic computations, but similarly lacks integration with labeled multidimensional data structures like xarray.
+- `gsw-xarray` [@Caneill_2024] provides implementations of the TEOS-10, facilitating oceanographic computations. It offers a wrapper around `GSW-Python` for xarray objects, but without Dask support.
 
 While `gsw-xarray` is more complete than our GSW wrapper in `Lenapy`, our library propose complementary geodetic tools for spatial and spherical harmonics operations.
 
