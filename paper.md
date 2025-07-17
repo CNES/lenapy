@@ -91,11 +91,13 @@ The `lnharmo` accessor offers dedicated methods for working with spherical harmo
 
 The `lnocean` accessor provides a lightweight wrapper around selected GSW (TEOS-10) routines [@Mcdougall_2011], exposing them as native xarray methods for oceanographic datasets. 
 Based on any dataset containing :
+
 - any of insitu, conservative or potential temperature
 - any of practical, relative or absolute salinity
 - depth coordinate
 
 it provides through the .lncoean extension direct access to selected GSW routines, and integrated values over all or part of the water column, including :
+
 - Ocean heat content;
 - Steric sea levels;
 - Density and dynamic height;
