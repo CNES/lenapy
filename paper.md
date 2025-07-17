@@ -16,12 +16,12 @@ authors:
     affiliation: "1", "2"
   - name: Alejandro Blazquez
     orcid: 0000-0002-7719-7468
-    affiliation: "1, 2"
+    affiliation: "1", "2"
 affiliations:
  - name: "Université de Toulouse, LEGOS (CNES/CNRS/IRD/UT3), France"
    index: 1
    ror: 02chvqy57
- - name: "Centre national d\'Études Spatiales (CNES), France"
+ - name: "Centre national d'Études Spatiales (CNES), France"
    index: 2
    ror: 04h1h0y33
 date: 10 July 2025
