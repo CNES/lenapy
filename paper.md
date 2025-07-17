@@ -60,7 +60,7 @@ To our knowledge, no other existing Python library offers a coherent suite of oc
 Moreover, critical geospatial utilities (such as surface-aware averaging, weighted statistics, spherical distance computation, and climatology fitting) remain fragmented across ecosystems or require custom implementations.
 
 `Lenapy` addresses this gap by providing a modular Python package built on xarray and Dask, exposing accessors (.lngeo, .lnharmo, .lnocean, .lntime) for direct and simple application of domain-specific methods to xarray.Dataset or xarray.DataArray objects. 
-For example, users can compute area-weighted means via ds.lngeo.mean() or extract the global ocean heat content using ds.lnocean.gohc().
+For example, users can compute area-weighted means via `ds.lngeo.mean()` or extract the global ocean heat content using `ds.lnocean.gohc()`.
 
 `Lenapy` is designed for Earth scientists, oceanographers, climate researchers, and geodesists who routinely manipulate global or regional gridded datasets and require specific processing workflows.
 `Lenapy` aims to maintain full compatibility with the PyData ecosystem.
@@ -77,7 +77,7 @@ The `lngeo` accessor provides geodetic tools designed for gridded data on spheri
 - Geodetic estimation of grid cell surface areas and distances;
 - Support for geographical weighted operations (e.g., mean or sum) based on grid cell surface areas;
 - Isosurface computation;
-- A wrapper to the `xESMF` regridding library [@Zhuang_2022], enabling seamless interpolation between different spatial grids with xarray compatibility.
+- A wrapper to the `xESMF` regridding library [@Zhuang_2025], enabling seamless interpolation between different spatial grids with xarray compatibility.
 
 ## Spherical harmonics operations and gravity field processing (`.lnharmo`)
 
@@ -131,7 +131,7 @@ In addition, `Lenapy` has been employed in related research studies [@Bouih_2025
 
 ## Origin and research context
 
-`Lenapy` originated from a set of geophysical tools developed within the LEGOS research laboratory during PhD works focused on the regional and global variability of sea level and the characterization of ocean–continent water exchanges [@Meyssignac_2012, @Dieng_2017, @Blazquez_2020]. 
+`Lenapy` originated from a set of geophysical tools developed within the LEGOS research laboratory during PhD works focused on the regional and global variability of sea level and the characterization of ocean–continent water exchanges [@Meyssignac_2012; @Dieng_2017; @Blazquez_2020]. 
 These early tools have since been generalized and integrated into a modern Python framework, making them more accessible and reusable by the broader Earth science community.
 
 # Acknowledgements
