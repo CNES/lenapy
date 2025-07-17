@@ -13,10 +13,10 @@ authors:
     affiliation: "1"
   - name: Sebastien Fourest
     orcid: 0009-0001-3123-1026
-    affiliation: "1", "2"
+    affiliation: "1, 2"
   - name: Alejandro Blazquez
     orcid: 0000-0002-7719-7468
-    affiliation: "1", "2"
+    affiliation: "1, 2"
 affiliations:
  - name: "Université de Toulouse, LEGOS (CNES/CNRS/IRD/UT3), France"
    index: 1
