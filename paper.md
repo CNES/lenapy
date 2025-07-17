@@ -93,11 +93,11 @@ Based on any dataset containing :
 - any of insitu, conservative or potential temperature
 - any of practical, relative or absolute salinity
 - depth coordinate
-it provides through the .lncoean extension direct access to selected GSW routines, and integrated values over all or part of the water column :
+
+it provides through the .lncoean extension direct access to selected GSW routines, and integrated values over all or part of the water column, including :
 - Ocean heat content;
 - Steric sea levels;
 - Density and dynamic height;
-- ...
 
 ## Time series and climatology tools (`.lntime`)
 
@@ -135,8 +135,8 @@ These early tools have since been generalized and integrated into a modern Pytho
 
 # Acknowledgements
 
-Fundings ? Faudra parler du financement pour le boulot de CLS 
+Lenapy benefited of CNES support to improve its maintainability and its documentation.
 
-We thank all the contributors to the early version of `Lenapy`: Robin Guillaume-Castel, Arthur Vincent.
+We thank the contributors to the early version of `Lenapy`: Robin Guillaume-Castel, Arthur Vincent.
 
 # References
