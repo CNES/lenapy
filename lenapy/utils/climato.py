@@ -238,9 +238,9 @@ class Signal_climato:
     def climatology(self, coefficients=None, x=None):
         res = self.expl(x) * self.result
         if coefficients is None:
-            return res.sum("coeffs")
+            return res.sum("coeffs",min_count=1)
         else:
-            return res.sel(coeffs=np.ravel(coefficients)).sum("coeffs")
+            return res.sel(coeffs=np.ravel(coefficients)).sum("coeffs",min_count=1)
 
     def residuals(self, coefficients=None):
         if type(self.ds) is xr.Dataset:
