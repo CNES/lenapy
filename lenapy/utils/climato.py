@@ -240,7 +240,9 @@ class Signal_climato:
         if coefficients is None:
             return res.sum("coeffs", min_count=1)
         else:
-            return res.sel(coeffs=np.ravel(coefficients)).sum("coeffs", min_count=1)
+            return res.sel(coeffs=np.ravel(coefficients)).sum(
+                "coeffs", min_count=(0 if coefficients == [] else 1)
+            )
 
     def residuals(self, coefficients=None):
         if type(self.ds) is xr.Dataset:
@@ -280,8 +282,4 @@ class Signal_climato:
             dask_gufunc_kwargs={"output_sizes": {self.dim: x.shape[0]}},
         )
 
-        return resid_interp + (
-            self.climatology(coefficients=coefficients, x=x)
-            if coefficients != []
-            else 0
-        )
+        return resid_interp + self.climatology(coefficients=coefficients, x=x)
