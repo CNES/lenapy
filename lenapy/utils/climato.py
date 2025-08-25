@@ -280,4 +280,8 @@ class Signal_climato:
             dask_gufunc_kwargs={"output_sizes": {self.dim: x.shape[0]}},
         )
 
-        return resid_interp + self.climatology(coefficients=coefficients, x=x)
+        return resid_interp + (
+            self.climatology(coefficients=coefficients, x=x)
+            if coefficients != []
+            else 0
+        )
