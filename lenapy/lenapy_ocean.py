@@ -643,9 +643,13 @@ class OceanArray:
               * longitude  (longitude) float32 1.0 2.0 3.0 4.0 ... 357.0 358.0 359.0 360.0
 
         """
-        d = xr.where(self._obj.depth.max() < depth, self._obj.depth.max(), depth)
-        return (
-            self.cum_integ_depth()
-            .lnocean.add_value_surface(0.0)
-            .interp({"depth": d}, **kwargs)
+        target = xr.apply_ufunc(
+            np.minimum, depth, self._obj.depth.max(), dask="parallelized"
         )
+        if not hasattr(self, "_cum_cache") or self._cum_cache is None:
+            cum = self.cum_integ_depth().lnocean.add_value_surface(0.0)
+            try:
+                self._cum_cache = cum.persist()
+            except Exception:
+                self._cum_cache = cum
+        return self._cum_cache.interp({"depth": target}, **kwargs)
