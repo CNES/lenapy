@@ -2,8 +2,8 @@ from setuptools import setup
 
 setup(
     name="lenapy",
-    version="0.9",
-    description="Second beta release of lenapy on github",
+    version="1.0",
+    description="First official release of lenapy on github",
     url="#",
     author="Sebastien Fourest & EMC2 team",
     author_email="sebastien.fourest@cnes.fr",

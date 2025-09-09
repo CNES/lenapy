@@ -2,6 +2,9 @@
 
 All notable changes to **LENAPY** will be documented in this file.
 
+## [1.0] - 2025-07-15
+Introduction of the first official release of lenapy
+
 ## [0.9] - 2024-12-17
 Introduction of the lenapyHarmo module
 
