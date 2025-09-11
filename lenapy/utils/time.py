@@ -1,5 +1,5 @@
-import cftime
-import dask.array as da
+from typing import Union
+
 import netCDF4
 import numpy as np
 import pandas as pd
@@ -9,6 +9,33 @@ from scipy.special import factorial as factorial
 from lenapy.constants import *
 from lenapy.utils import filters
 from lenapy.utils.climato import Coeffs_climato
+
+
+def is_dimension_chunked(da: Union[xr.DataArray, xr.Dataset], dim: str):
+    """
+    Check if a dimension of an xarray DataArray or Dataset is chunked.
+
+    Parameters
+    ----------
+    da : xarray.DataArray or xarray.Dataset
+        The object to check.
+    dim : str
+        The name of the dimension to check.
+
+    Returns
+    -------
+    bool
+        True if the dimension is chunked, False if it is non-chunked.
+    """
+    if dim not in da.dims:
+        raise ValueError(f"Dimension '{dim}' does not exist in the DataArray/Dataset")
+
+    if da.chunks is None:
+        return False
+
+    dim_index = da.get_axis_num(dim)
+    chunks_dim = da.chunks[dim_index]
+    return len(chunks_dim) > 1 or chunks_dim[0] != da.sizes[dim]
 
 
 def filter(
@@ -148,6 +175,9 @@ def climato(
         The requested components as an xarray.Dataset. If `return_coeffs=True`,
         returns a tuple `(dataset, coeffs)` where `coeffs` contains the cycle and trend coefficients.
     """
+    if is_dimension_chunked(data, "time"):
+        raise ValueError("time dimension must be unchunked")
+
     a = Coeffs_climato(xr.Dataset(dict(measure=data)), Nmin=Nmin)
     res = a.solve("measure", t_min=t_min, t_max=t_max)
     ret = []
