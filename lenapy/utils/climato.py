@@ -254,26 +254,37 @@ class Signal_climato:
         if x is None:
             x = self.ds[self.var]
         X_in = self.ds[self.var].astype("float").values
+        x_vals = x.astype("float").values
 
-        def interp_residuals(data_in):
+        def interp_residuals(data_in, x_new):
             ok = ~np.isnan(data_in)
-            if sum(ok) > 1:
+            if np.count_nonzero(ok) > 1:
                 Y_in_nona = data_in[ok]
                 X_in_nona = X_in[ok]
-                return interp1d(
-                    X_in_nona,
-                    Y_in_nona,
-                    kind=method,
-                    bounds_error=False,
-                    fill_value=(Y_in_nona[0], Y_in_nona[-1]),
-                )(x.astype("float").values)
+                if method == "linear":
+                    return np.interp(
+                        x_new,
+                        X_in_nona,
+                        Y_in_nona,
+                        left=Y_in_nona[0],
+                        right=Y_in_nona[-1],
+                    )
+                else:
+                    return interp1d(
+                        X_in_nona,
+                        Y_in_nona,
+                        kind=method,
+                        bounds_error=False,
+                        fill_value=(Y_in_nona[0], Y_in_nona[-1]),
+                    )(x_new)
             else:
-                return x.astype("float").values + np.nan
+                return np.full_like(x_new, np.nan, dtype=float)
 
         resid_interp = xr.apply_ufunc(
             interp_residuals,
             self.residuals(),
-            input_core_dims=[[self.dim]],
+            x_vals,
+            input_core_dims=[[self.dim], [self.dim]],
             output_core_dims=[[self.dim]],
             exclude_dims=set((self.dim,)),
             vectorize=True,
