@@ -1,6 +1,6 @@
 # Getting started with LENAPY
 
-## Documentaion
+## Documentation
 
 Documentation can be found [here](https://lenapy.readthedocs.io/en/latest/)
 
