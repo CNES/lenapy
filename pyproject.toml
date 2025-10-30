@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lenapy"
-version = "0.9"
-description = "Second beta release of lenapy on github"
+version = "1.0"
+description = "First official release of lenapy on github"
 readme = "README.md"
 authors = [
     { name = "Sebastien Fourest & EMC2 team", email = "sebastien.fourest@cnes.fr" }
