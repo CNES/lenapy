@@ -20,7 +20,7 @@ def rename_data(data, **kwargs):
     """
     Standardization of coordinates names of a product.
     Looks for different possible names for latitude, longitude, and time, and turn them into a standardized name.
-    Definitions are specified in setup.py and are based on standard cf attributes and units : https://cfconventions.org
+    Definitions are based on standard cf attributes and units : https://cfconventions.org
     Custom names changes can also be performed with kwargs parameter.
 
     Parameters
