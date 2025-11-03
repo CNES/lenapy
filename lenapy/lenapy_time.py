@@ -5,11 +5,7 @@ The **lenapy_time** module implements some usuals functions to be applied on tim
 
 # -*- coding: utf-8 -*-
 
-import os.path
-
-import numpy as np
 import xarray as xr
-import xesmf as xe
 
 from lenapy.plots.plotting import *
 from lenapy.utils.climato import *
