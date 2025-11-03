@@ -51,6 +51,22 @@ def moving_average(cutoff):
 
 
 def linear(cutoff):
+    """
+    TODO:
+    Here we may need some explanation for the linear filter
+    Implementation of a linear filter, averaging values over "npoints" samples centered on the current point
+
+    Parameters
+    ----------
+    cutoff : integer
+        width of the temporal window (in samples)
+
+    Returns
+    -------
+    filter : DataArray
+        linear_average kernel
+
+    """
     x = np.arange(-cutoff, cutoff + 1)
     y = cutoff - np.abs(x)
     y = y / np.sum(y)
