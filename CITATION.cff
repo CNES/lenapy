@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+preferred-citation:
+  type: article
+  authors:
+  - family-names: "Lecomte"
+    given-names: "Hugo"
+    orcid: "https://orcid.org/0000-0002-7007-4748"
+  - family-names: "Fourest"
+    given-names: "Sebastien"
+    orcid: "https://orcid.org/0009-0001-3123-1026"
+  - family-names: "Blazquez"
+    given-names: "Alejandro"
+    orcid: "https://orcid.org/0000-0002-7719-7468"
+  title: "Lenapy: Enhancing xarray for multidimensional geophysical data analysis"
+  journal: "Journal of Open Source Software"
+  doi: "(submitted)"
+  volume: xx
+  issue: xx
+  start: xxxx
+  year: 2025
