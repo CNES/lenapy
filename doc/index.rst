@@ -13,7 +13,7 @@ Welcome to lenapy's documentation!
 * lenapy_time: common operations on time series (filtering, climatology, regressions, etc.)
 * lenapy_harmo: operations related to spherical harmonics decomposition and their projections on latitude/longitude grids
 
-This library is based on the principle of class extension, i.e. functions can be applied directly to Datasets or DataArrays, by adding the extension of the module concerned and the name of the method. Ex: ds.lntime.filter(...), ds.lngeo.mean(...), de.lnocean.gohc, etc.
+This library is based on the principle of class extension, i.e. functions can be applied directly to Datasets or DataArrays, by adding the extension of the module concerned and the name of the method. Each module extension is an abbreviation of the module name with the logic **lenapy_xxx** abbreviate by **ds.lnxxx**. e.g.: ds.lntime.filter(...), ds.lngeo.mean(...), de.lnocean.gohc
 
 Reading interfaces are implemented, enabling netcdf files to be opened with a compatible formalism from the **lenapy** library.
 
