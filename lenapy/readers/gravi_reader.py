@@ -949,7 +949,7 @@ class ReadGFC(BackendEntrypoint):
 
         # Read file with pandas, delim_whitespace for variable space delimiters
         data = pd.read_csv(
-            file, delim_whitespace=True, header=None, names=col_names, engine="python"
+            file, sep="\s+", header=None, names=col_names, engine="python"
         )
 
         # test if gfct key then have to deal with time
