@@ -31,7 +31,7 @@ bibliography: paper.bib
 # Summary
 
 `Lenapy` is a Python library designed to facilitate the processing and analysis of geophysical and climate datasets, such as those used in oceanography, geodesy, and Earth observation in general. 
-Built on top of `xarray` and fully compatible with `dask`, it enables scalable workflows on multidimensional datasets using community standards for data formats (NetCDF) and metadata conventions (CF).
+Built on top of `xarray` and fully compatible with `Dask`, it enables scalable workflows on multidimensional datasets using community standards for data formats (NetCDF) and metadata conventions (CF).
 
 `Lenapy` provides high-level accessors that extend `xarray.Dataset` and `xarray.DataArray` objects, allowing application of specialized methods.
 
@@ -48,31 +48,33 @@ Analyzing these data requires specialized operations such as harmonic analysis, 
 For the oceanography part, the accurate computation of seawater properties is essential in physical oceanography.
 The Thermodynamic Equation of Seawater (TEOS-10) framework provides consistent definitions and algorithms for quantities such as potential temperature, conservative temperature, and density [@Mcdougall_2011].
 
-Existing libraries address specific aspects of these requirements:
-
-- `pyshtools` [@Wieczorek_2018] is a comprehensive package for spherical harmonic transforms and spectral analysis, particularly in geophysics. Yet, it operates on standalone arrays and does not natively support xarray, limiting its compatibility with NetCDF-based workflows.
-- `grates` [@Kvas] provides object-oriented tools for spherical harmonics, but similarly only operates on standalone arrays.
-- `gsw-xarray` [@Caneill_2024] provides implementations of the TEOS-10, facilitating oceanographic computations. It offers a wrapper around `GSW-Python` for xarray objects, but without Dask support.
-
-While `gsw-xarray` is more complete than our GSW wrapper in `Lenapy`, our library propose complementary geodetic tools for spatial and spherical harmonics operations.
-
-To our knowledge, no other existing Python library offers a coherent suite of oceanographic and geophysical operations (detailed below) within a unified, xarray-native framework supporting both scalability (via Dask [@Dask_2016]) and labeled, multidimensional arrays.
-Moreover, critical geospatial utilities (such as surface-aware averaging, weighted statistics, spherical distance computation, and climatology fitting) remain fragmented across ecosystems or require custom implementations.
-
-`Lenapy` addresses this gap by providing a modular Python package built on xarray and Dask, exposing accessors (.lngeo, .lnharmo, .lnocean, .lntime) for direct and simple application of domain-specific methods to xarray.Dataset or xarray.DataArray objects. 
-For example, users can compute area-weighted means via `ds.lngeo.mean()` or extract the global ocean heat content using `ds.lnocean.gohc()`.
-
 `Lenapy` is designed for Earth scientists, oceanographers, climate researchers, and geodesists who routinely manipulate global or regional gridded datasets and require specific processing workflows.
 `Lenapy` aims to maintain full compatibility with the PyData ecosystem.
 
 Furthermore, `Lenapy` offers a unified approach for calculating Global Mean Sea Level by integrating both steric and manometric components, as well as relative sea-level changes [@Gregory_2019].
 `Lenapy` facilitates this decomposition with a unique Python library that compute these components directly from xarray-based datasets, enabling researchers to analyze sea-level changes comprehensively within a consistent framework.
 
+# State of the field
+Existing Python libraries address specific needs in geophysical and climate data analysis, but often in a fragmented or domain-specific manner.
+`pyshtools` [@Wieczorek_2018] and `grates` [@Kvas] offer tools for gravity spherical harmonic analysis.
+They operate on standalone arrays and lack support for `xarray`. `windspharm` [@Dawson_2016] implements `xarray` spherical harmonics analysis but without the gravity and geodetic related operations.
+`gsw-xarray` [@Caneill_2024] wraps the TEOS-10 framework for oceanographic computations within `xarray`, but does not support `Dask`.
+While `Lenapy` GSW wrapper is less complete, it proposes complementary geodetic tools for spatial and spherical harmonics operations.
+
+Other libraries built on `xarray` offer analysis capabilities that complement `Lenapy` specific focus, allowing users to apply advanced statistical or climate diagnostics to datasets.
+For example, `xeof` [@Rieger_2024] provides tools for Empirical Orthogonal Function analysis, enabling statistical decomposition and `xclim` [@Bourgault_2023] delivers a suite of climate indicators and climate processing routines.
+
+To our knowledge, no other existing Python library offers a coherent suite of oceanographic and geophysical operations (detailed below) within a unified, xarray-native framework supporting both scalability (via `Dask` [@Dask_2016]) and labeled, multidimensional arrays.
+Moreover, critical geospatial utilities (such as surface-aware averaging, weighted statistics, spherical distance computation, and climatology fitting) remain fragmented across ecosystems or require custom implementations.
 
 # Key Features
+`Lenapy` addresses this gap by providing a modular Python package built on `xarray` and `Dask`, exposing accessors (.lngeo, .lnharmo, .lnocean, .lntime) for direct and simple application of domain-specific methods to xarray.Dataset or xarray.DataArray objects. 
+For example, users can compute area-weighted means via `ds.lngeo.mean()` or extract the global ocean heat content using `ds.lnocean.gohc()`.
+
+
 ## Spatial operations (`.lngeo`)
 
-The `lngeo` accessor provides geodetic tools designed for gridded data on spherical or ellipsoidal Earth models. It includes:
+The `lngeo` accessor provides geodetic tools designed for gridded data on spherical or ellipsoidal Earth models, including:
 
 - Geodetic estimation of grid cell surface areas and distances and geographical weighted operations (e.g., mean or sum);
 - Isosurface computation;
@@ -80,15 +82,15 @@ The `lngeo` accessor provides geodetic tools designed for gridded data on spheri
 
 ## Spherical harmonics operations and gravity field processing (`.lnharmo`)
 
-The `lnharmo` accessor offers dedicated methods for working with spherical harmonic representations, particularly in the context of Earth gravity field modeling. It includes:
+The `lnharmo` accessor offers dedicated methods for working with spherical harmonic representations, particularly in the context of Earth gravity field modeling, including:
 
 - Reading, handling, and manipulating datasets containing spherical harmonic coefficients (variables `clm`, `slm`), with options to change reference frames;
 - Converting spherical harmonic representations into gridded spatial fields and inverse transformation.
 
 ## Oceanography (`.lnocean`)
 
-The `lnocean` accessor provides a lightweight wrapper around selected GSW (TEOS-10) routines [@Mcdougall_2011], exposing them as native xarray methods for oceanographic datasets. 
-Based on any dataset containing any temperature or any salinity with depth coordinate it provides integrated values over all or part of the water column, including :
+The `lnocean` accessor provides a lightweight wrapper around selected GSW (TEOS-10) routines [@Mcdougall_2011], exposing them as native `xarray` methods for oceanographic datasets. 
+Based on any dataset containing any temperature or any salinity with depth coordinate it provides integrated values over all or part of the water column, including:
 
 - Ocean heat content;
 - Steric sea levels;
@@ -125,7 +127,7 @@ In addition, `Lenapy` has been employed in related research studies [@Bouih_2025
 ## Origin and research context
 
 `Lenapy` originated from geophysical tools developed within the LEGOS research laboratory during PhD works focused on the variability of sea level and ocean–continent water exchanges [@Meyssignac_2012; @Dieng_2017; @Blazquez_2020]. 
-These early tools have been generalized and integrated into a modern Python framework, making them accessible and reusable by the broader Earth science community.
+These early tools have been generalized and integrated into a modern Python framework.
 
 # Acknowledgements
 
