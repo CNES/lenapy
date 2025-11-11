@@ -59,10 +59,7 @@ Existing Python libraries address specific needs in geophysical and climate data
 `pyshtools` [@Wieczorek_2018] and `grates` [@Kvas] offer tools for gravity spherical harmonic analysis.
 They operate on standalone arrays and lack support for `xarray`. `windspharm` [@Dawson_2016] implements `xarray` spherical harmonics analysis but without the gravity and geodetic related operations.
 `gsw-xarray` [@Caneill_2024] wraps the TEOS-10 framework for oceanographic computations within `xarray`, but does not support `Dask`.
-While `Lenapy` GSW wrapper is less complete, it proposes complementary geodetic tools for spatial and spherical harmonics operations.
-
-Other libraries built on `xarray` offer analysis capabilities that complement `Lenapy` specific focus, allowing users to apply advanced statistical or climate diagnostics to datasets.
-For example, `xeof` [@Rieger_2024] provides tools for Empirical Orthogonal Function analysis, enabling statistical decomposition and `xclim` [@Bourgault_2023] delivers a suite of climate indicators and climate processing routines.
+While `Lenapy` GSW wrapper is less complete than `gsw-xarray`, it proposes complementary geodetic tools for spatial and spherical harmonics operations.
 
 To our knowledge, no other existing Python library offers a coherent suite of oceanographic and geophysical operations (detailed below) within a unified, xarray-native framework supporting both scalability (via `Dask` [@Dask_2016]) and labeled, multidimensional arrays.
 Moreover, critical geospatial utilities (such as surface-aware averaging, weighted statistics, spherical distance computation, and climatology fitting) remain fragmented across ecosystems or require custom implementations.
