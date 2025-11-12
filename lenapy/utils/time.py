@@ -136,12 +136,11 @@ def climato(
         If True (default), returns the trend (in day⁻¹).
     cycle : bool, optional
         If True (default is False), returns the annual and semi-annual cycles.
-    return_coeffs : bool, optional
-        If True (default is False), also returns the coefficients of the cycles and the
-        linear trend.
-    time_period : slice, optional
+    Nmin : int, default=0
+        Minimum number of measure to compute climatology
+    t_min, t_max : dates, optional
         Reference period over which the climatology is computed.
-        Default is `slice(None, None)` (i.e., the entire time range).
+        Default is `(None, None)` (i.e., the entire time range).
 
     Returns
     -------
