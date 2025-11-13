@@ -1,5 +1,10 @@
 # Getting started with LENAPY
 
+[![Docs](https://img.shields.io/badge/documentation-darkgreen.svg)](https://lenapy.readthedocs.io/en/latest/)
+[![conda-forge](https://img.shields.io/conda/vn/conda-forge/lenapy)](
+https://anaconda.org/conda-forge/lenapy)
+[![status](https://joss.theoj.org/papers/bee28b7acdd65939a408b1c8ce921111/status.svg)](https://joss.theoj.org/papers/bee28b7acdd65939a408b1c8ce921111)
+
 `Lenapy` is a Python library designed to facilitate the processing and analysis of geophysical and climate datasets, such as those used in oceanography, geodesy, and Earth observation in general.
 Built on top of `xarray` and compatible with `dask`, it enables scalable workflows on multidimensional datasets using community standards for data formats (NetCDF) and metadata conventions (CF).
 
