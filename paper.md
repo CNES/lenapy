@@ -10,19 +10,22 @@ tags:
 authors:
   - name: Hugo Lecomte
     orcid: 0000-0002-7007-4748
-    affiliation: "1"
+    affiliation: "1, 2"
   - name: Sebastien Fourest
     orcid: 0009-0001-3123-1026
-    affiliation: "1, 2"
+    affiliation: "1, 3"
   - name: Alejandro Blazquez
     orcid: 0000-0002-7719-7468
-    affiliation: "1, 2"
+    affiliation: "1, 3"
 affiliations:
  - name: "Université de Toulouse, LEGOS (CNES/CNRS/IRD/UT3), France"
    index: 1
    ror: 02chvqy57
- - name: "Centre national d'Études Spatiales (CNES), France"
+ - name: "Finnish Geospatial Research Institute, National Land Survey of Finland, Finland"
    index: 2
+   ror: 05tkycb73
+ - name: "Centre national d'Études Spatiales (CNES), France"
+   index: 3
    ror: 04h1h0y33
 date: 10 July 2025
 bibliography: paper.bib
