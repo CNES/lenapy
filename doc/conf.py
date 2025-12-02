@@ -8,6 +8,8 @@ import inspect
 import os
 import sys
 
+import lenapy
+
 __location__ = os.path.join(
     os.getcwd(), os.path.dirname(inspect.getfile(inspect.currentframe()))
 )
@@ -25,7 +27,7 @@ project = "lenapy"
 copyright = f"2023 - {curr_year}, Sebastien Fourest"
 author = "Sebastien Fourest"
 # The short X.Y version.
-version = "0.9"
+version = lenapy.__version__
 # The full version, including alpha/beta/rc tags.
 release = "First beta version on github"
 
