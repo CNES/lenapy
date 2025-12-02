@@ -9,7 +9,6 @@ from glob import glob
 import gsw
 import numpy as np
 import xarray as xr
-import xesmf as xe
 from xarray.backends import BackendEntrypoint
 
 
