@@ -1,5 +1,5 @@
-from importlib.metadata import version as _version
 import warnings
+from importlib.metadata import version as _version
 
 from lenapy import constants, lenapy_geo, lenapy_harmo, lenapy_time
 
