@@ -2,6 +2,11 @@
 
 All notable changes to **LENAPY** will be documented in this file.
 
+## [1.1] - 2025-12-03
+- Performance improvement for climato functions
+- Typo correction in documentation, versions and README
+- Publication describing lenapy functionalities and applications to Journal of Open Source Software (JOSS)
+
 ## [1.0] - 2025-07-15
 Introduction of the first official release of lenapy
 

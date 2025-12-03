@@ -1,8 +1,18 @@
 # Getting started with LENAPY
 
+[![Docs](https://img.shields.io/badge/documentation-darkgreen.svg)](https://lenapy.readthedocs.io/en/latest/)
+[![conda-forge](https://img.shields.io/conda/vn/conda-forge/lenapy)](
+https://anaconda.org/conda-forge/lenapy)
+[![status](https://joss.theoj.org/papers/bee28b7acdd65939a408b1c8ce921111/status.svg)](https://joss.theoj.org/papers/bee28b7acdd65939a408b1c8ce921111)
+
+`Lenapy` is a Python library designed to facilitate the processing and analysis of geophysical and climate datasets, such as those used in oceanography, geodesy, and Earth observation in general.
+Built on top of `xarray` and compatible with `dask`, it enables scalable workflows on multidimensional datasets using community standards for data formats (NetCDF) and metadata conventions (CF).
+
+A key feature of `lenapy` is its ability to produce consistent computations of the Global Mean Sea Level components from various data sources, including satellite altimetry, GRACE/GRACE-FO, thermo-steric datasets, and climate model outputs.
+
 ## Documentation
 
-Documentation can be found [here](https://lenapy.readthedocs.io/en/latest/)
+Documentation can be found at [https://lenapy.readthedocs.io/en/latest/](https://lenapy.readthedocs.io/en/latest/).
 
 ## Installation
 
@@ -27,7 +37,7 @@ conda --version
 
 ### Step 2: Install lenapy Using Conda
 
-Once Conda is installed, you can install lenapy by following these steps:
+Once Conda is installed, you can install `lenapy` by following these steps:
 
 #### 1. Create a new Conda environment (recommended):
 ```bash
@@ -44,7 +54,7 @@ conda activate lenapy_env
 conda install -c conda-forge lenapy
 ```
 
-This installs lenapy and its dependencies from the conda-forge channel.
+This installs `lenapy` and its dependencies from the conda-forge channel.
 
 ## Use
 
@@ -54,12 +64,20 @@ In your python code, simply import the library with ::
   import lenapy
   ```
   
-You can now use all the functionnalities of lenapy by adding the right suffixe after your Dataset or DataArray ::
+You can now use all the functionalities of `lenapy` by adding the right suffix after your Dataset or DataArray ::
   ```
   import xarray as xr
   import lenapy
   ds = lenapy.utils.geo.rename_data(xr.tutorial.open_dataset('air_temperature'))
   ds.air.lngeo.mean(['latitude','longitude'],weights=['latitude']).lntime.climato().plot()
   ```
-  
-  
+More complete notebooks tutorials and functions descriptions can be found in the documentation.
+
+[Notebooks tutorials](https://lenapy.readthedocs.io/en/latest/tutorials.html)
+
+[Functions reference](https://lenapy.readthedocs.io/en/latest/api/index.html)
+
+## Contributing
+We welcome contributions to `lenapy`!
+
+Guidelines: [https://lenapy.readthedocs.io/en/latest/contributing.html](https://lenapy.readthedocs.io/en/latest/contributing.html)
