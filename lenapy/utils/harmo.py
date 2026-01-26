@@ -238,7 +238,7 @@ def _init_degrees(
     mmax: int = None,
     used_l: np.ndarray = None,
     used_m: np.ndarray = None,
-) -> tuple[np.ndarray, np.ndarray, int, int, int, int]:
+) -> tuple[xr.Dataset, np.ndarray, np.ndarray, int, int, int, int]:
     """
     Initialize spherical harmonic degrees and orders to be used.
 
@@ -257,6 +257,8 @@ def _init_degrees(
 
     Returns
     -------
+    sub_data : xr.Dataset
+        Reduced dataset with selected degrees and orders.
     used_l: np.ndarray
         Degrees to use.
     used_m: np.ndarray
@@ -276,7 +278,8 @@ def _init_degrees(
     mmin = int(data.m.min()) if mmin is None else mmin
     used_l = np.arange(lmin, lmax + 1) if used_l is None else used_l
     used_m = np.arange(mmin, mmax + 1) if used_m is None else used_m
-    return used_l, used_m, lmin, lmax, mmin, mmax
+    sub_data = data.sel(l=used_l, m=used_m)
+    return sub_data, used_l, used_m, lmin, lmax, mmin, mmax
 
 
 def sh_to_grid(
@@ -304,6 +307,8 @@ def sh_to_grid(
     include_elastic: bool = True,
     plm: xr.DataArray = None,
     normalization_plm: Literal["4pi", "ortho", "schmidt"] = "4pi",
+    use_dask: bool = False,
+    chunks_plm: dict | None = None,
     **kwargs,
 ) -> xr.DataArray:
     """
@@ -374,6 +379,11 @@ def sh_to_grid(
         Either '4pi', 'ortho', or 'schmidt' for 4pi normalized, orthonormalized, or Schmidt semi-normalized SH
         functions, respectively. Default is '4pi'.
 
+    use_dask : bool, optional
+        If True, use dask to chunk plm for memory optimization. Default is False.
+    chunks_plm : dict, optional
+        Define the chunking of plm when use_dask is True. Default is None, which set the chunking to {'latitude': 1}.
+
     **kwargs :
         Supplementary parameters used by the function l_factor_conv to modify defaults constants used in the computation
         for the unit conversion. These parameters include (see :func:`l_factor_conv` documentation for more details) :
@@ -386,7 +396,7 @@ def sh_to_grid(
     """
     # add mask in output variable
 
-    used_l, used_m, lmin, lmax, mmin, mmax = _init_degrees(
+    sub_data, used_l, used_m, lmin, lmax, mmin, mmax = _init_degrees(
         data, lmin, lmax, mmin, mmax, used_l, used_m
     )
     used_l, use_czero_coef, force_mass_conservation = _handle_mass_conservation(
@@ -415,22 +425,22 @@ def sh_to_grid(
             plm = compute_plm(
                 lmax,
                 np.cos(geocentric_colat),
+                latitude=latitude,
                 mmax=mmax,
                 normalization=normalization_plm,
+                use_dask=use_dask,
+                chunks=chunks_plm,
             )
         else:
             plm = compute_plm(
-                lmax, sin_latitude, mmax=mmax, normalization=normalization_plm
+                lmax,
+                sin_latitude,
+                latitude=latitude,
+                mmax=mmax,
+                normalization=normalization_plm,
+                use_dask=use_dask,
+                chunks=chunks_plm,
             )
-        plm = xr.DataArray(
-            plm,
-            dims=["l", "m", "latitude"],
-            coords={
-                "l": np.arange(lmax + 1),
-                "m": np.arange(mmax + 1),
-                "latitude": latitude,
-            },
-        )
 
     else:
         # Verify plm integrity
@@ -463,7 +473,7 @@ def sh_to_grid(
         include_elastic=include_elastic,
         ellipsoidal_earth=ellipsoidal_earth,
         geocentric_colat=geocentric_colat,
-        attrs=data.attrs,
+        attrs=sub_data.attrs,
         **kwargs,
     )
 
@@ -484,14 +494,14 @@ def sh_to_grid(
 
     # summation over all spherical harmonic degrees
     if not errors:
-        d_clm = (plm_lfactor * data.sel(l=used_l, m=used_m).clm).sum(dim="l")
-        d_slm = (plm_lfactor * data.sel(l=used_l, m=used_m).slm).sum(dim="l")
+        d_clm = (plm_lfactor * sub_data.clm).sum(dim="l")
+        d_slm = (plm_lfactor * sub_data.slm).sum(dim="l")
 
         # Final calcul on the grid
         xgrid = c_cos.dot(d_clm) + s_sin.dot(d_slm)
     else:
-        d_clm = (plm_lfactor**2 * data.sel(l=used_l, m=used_m).clm ** 2).sum(dim="l")
-        d_slm = (plm_lfactor**2 * data.sel(l=used_l, m=used_m).slm ** 2).sum(dim="l")
+        d_clm = (plm_lfactor**2 * sub_data.clm ** 2).sum(dim="l")
+        d_slm = (plm_lfactor**2 * sub_data.slm ** 2).sum(dim="l")
 
         # Final calcul of sigma on the grid
         xgrid = np.sqrt((c_cos**2).dot(d_clm) + (s_sin**2).dot(d_slm))
@@ -518,17 +528,17 @@ def sh_to_grid(
         # restore C0 mass
         if use_czero_coef:
             lfactor_zero = l_factor_conv(
-                np.array([0]), unit=unit, attrs=data.attrs, **kwargs
+                np.array([0]), unit=unit, attrs=sub_data.attrs, **kwargs
             )[0]
-            xgrid = xgrid + (lfactor_zero * data.clm.sel(l=0, m=0)).values
+            xgrid = xgrid + (lfactor_zero * sub_data.clm.sel(l=0, m=0)).values
 
     xgrid = xgrid.transpose("latitude", "longitude", ...)
 
     xgrid.attrs = {"units": unit, "max_degree": int(lmax)}
-    if "radius" in data.attrs:
-        xgrid.attrs["radius"] = data.attrs["radius"]
-    if "earth_gravity_constant" in data.attrs:
-        xgrid.attrs["earth_gravity_constant"] = data.attrs["earth_gravity_constant"]
+    if "radius" in sub_data.attrs:
+        xgrid.attrs["radius"] = sub_data.attrs["radius"]
+    if "earth_gravity_constant" in sub_data.attrs:
+        xgrid.attrs["earth_gravity_constant"] = sub_data.attrs["earth_gravity_constant"]
 
     return xgrid
 
@@ -546,6 +556,8 @@ def grid_to_sh(
     include_elastic: bool = True,
     plm: xr.DataArray | None = None,
     normalization_plm: Literal["4pi", "ortho", "schmidt"] = "4pi",
+    use_dask: bool = False,
+    chunks_plm: dict | None = None,
     **kwargs,
 ) -> xr.Dataset:
     """
@@ -590,6 +602,11 @@ def grid_to_sh(
         If plm need to be computed, choice of the norm.  Either '4pi', 'ortho', or 'schmidt' for
         4pi normalized, orthonormalized, or Schmidt semi-normalized SH functions, respectively. Default is '4pi'.
         Output SH coefficient will be normalized according to this parameter.
+
+    use_dask : bool, optional
+        If True, use dask to chunk plm for memory optimization. Default is False.
+    chunks_plm : dict, optional
+        Define the chunking of plm when use_dask is True. Default is None, which set the chunking to {'latitude': 1}.
 
     **kwargs :
         Supplementary parameters used by the function l_factor_conv to modify defaults constants used in the computation
@@ -651,22 +668,21 @@ def grid_to_sh(
             plm = compute_plm(
                 lmax,
                 np.cos(geocentric_colat),
+                latitude=grid.cf["latitude"],
                 mmax=mmax,
                 normalization=normalization_plm,
+                use_dask=use_dask,
+                chunks=chunks_plm,
             )
         else:
             plm = compute_plm(
-                lmax, sin_latitude, mmax=mmax, normalization=normalization_plm
+                lmax, sin_latitude,
+                latitude=grid.cf["latitude"],
+                mmax=mmax,
+                normalization=normalization_plm,
+                use_dask = use_dask,
+                chunks = chunks_plm,
             )
-        plm = xr.DataArray(
-            plm,
-            dims=["l", "m", "latitude"],
-            coords={
-                "l": np.arange(lmax + 1),
-                "m": np.arange(lmax + 1),
-                "latitude": grid.cf["latitude"],
-            },
-        )
 
     else:
         # Verify plm integrity
@@ -736,10 +752,13 @@ def grid_to_sh(
 def compute_plm(
     lmax: int,
     z: np.ndarray,
+    latitude: np.ndarray = None,
     mmax: int = None,
     normalization: Literal["4pi", "ortho", "schmidt"] = "4pi",
     dtype: complex | float | type[complex] | type[float] = np.float128,
-) -> np.ndarray:
+    use_dask: bool = False,
+    chunks: dict | None = None,
+) -> xr.DataArray:
     """
     Compute all the associated Legendre functions up to a maximum degree and
     order using the recursion relation from [Holmes2002]_
@@ -751,6 +770,8 @@ def compute_plm(
         Maximum degree of legrendre functions.
     z : np.ndarray
         Argument of the associated Legendre functions.
+    latitude : np.ndarray, optional
+        Latitude values in degrees. Default is None and latitude is made from z.
     mmax : int or NoneType, optional
         Maximum order of associated legrendre functions.
     normalization : {'4pi', 'ortho', 'schmidt'}, optional
@@ -759,10 +780,15 @@ def compute_plm(
     dtype : dtype, optional
         Data type of the output array. Default is np.float128.
 
+    use_dask : bool, optional
+        If True, use dask to chunk plm for memory optimization. Default is False.
+    chunks : dict, optional
+        Define the chunking of plm when use_dask is True. Default is None, which set the chunking to {'latitude': 1}.
+
     Returns
     -------
-    plm : np.ndarray
-        Fully-normalized Legendre functions as a 3D array with "l", "m" and z dimensions.
+    plm : xr.DataArray
+        Fully-normalized Legendre functions as a DataArray with "l", "m" and "latitude" dimensions.
 
     References
     ----------
@@ -788,6 +814,9 @@ def compute_plm(
 
     # if default mmax, set mmax to be maximal degree
     mmax = lmax if mmax is None else mmax
+
+    # if default latitude, set it from z
+    latitude = z if latitude is None else latitude
 
     f1, f2, norm_p10, norm_4pi = _compute_factors(lmax, normalization)
 
@@ -851,8 +880,24 @@ def compute_plm(
     ind = np.tril_indices(lmax + 1)
     plm[ind] = p
 
+    plm = xr.DataArray(
+        plm[:, : mmax + 1, :],
+        dims=["l", "m", "latitude"],
+        coords={
+            "l": np.arange(lmax + 1),
+            "m": np.arange(mmax + 1),
+            "latitude": latitude, #grid.cf["latitude"]
+        },
+    )
+
+    # Chunking plm for dask usage and memory optimization
+    if use_dask:
+        if chunks is None:
+            chunks = {"latitude": 1}
+        plm = plm.chunk(chunks)
+
     # return the legendre polynomials and truncating orders to mmax
-    return plm[:, : mmax + 1, :]
+    return plm
 
 
 def mid_month_grace_estimate(
