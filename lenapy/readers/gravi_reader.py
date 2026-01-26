@@ -366,10 +366,10 @@ class ReadGFC(BackendEntrypoint):
         ext = os.path.splitext(filename)[-1]
 
         if ext.lower() == ".gfc":
-            return open(filename, "r"), ext
+            return open(filename, "r", encoding="latin-1"), ext
 
         elif ext in (".gz", ".gzip"):
-            return gzip.open(filename, "rb"), ext
+            return gzip.open(filename, "rb", encoding="latin-1"), ext
 
         elif ext in (".zip", ".ZIP"):
             zip_file = zipfile.ZipFile(filename, "r")
@@ -927,8 +927,12 @@ class ReadGFC(BackendEntrypoint):
 
         lmax = header["max_degree"]
 
+        # -- Fortran-style double-precision float converter for pandas
+        d_float = lambda x: float(x.replace("D", "e").replace("d", "e"))
+
         # -- Load clm and slm data
         clm, slm = np.zeros((lmax + 1, lmax + 1, 1)), np.zeros((lmax + 1, lmax + 1, 1))
+        convert = {"clm": d_float, "slm": d_float}
 
         col_names = ["tag", "degree", "order", "clm", "slm"]
         if (
@@ -940,6 +944,7 @@ class ReadGFC(BackendEntrypoint):
             eclm, eslm = np.zeros((lmax + 1, lmax + 1, 1)), np.zeros(
                 (lmax + 1, lmax + 1, 1)
             )
+            convert.update({"eclm": d_float, "eslm": d_float})
 
         if "t" in legend:
             col_names.append("ref_time")
@@ -949,7 +954,7 @@ class ReadGFC(BackendEntrypoint):
 
         # Read file with pandas, delim_whitespace for variable space delimiters
         data = pd.read_csv(
-            file, sep="\s+", header=None, names=col_names, engine="python"
+            file, sep=r"\s+", header=None, names=col_names, engine="python", converters=convert
         )
 
         # test if gfct key then have to deal with time
@@ -1089,8 +1094,8 @@ class ReadGRACEL2(BackendEntrypoint):
         """
         ext = os.path.splitext(filename)[-1]
         if ext in (".gz", ".gzip"):
-            return gzip.open(filename, "rb")
-        return open(filename, "r")
+            return gzip.open(filename, "rb", encoding="latin-1")
+        return open(filename, "r", encoding="latin-1")
 
     @staticmethod
     def _read_cnes_header(file: any, ext: str) -> dict:
