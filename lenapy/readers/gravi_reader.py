@@ -369,7 +369,7 @@ class ReadGFC(BackendEntrypoint):
             return open(filename, "r", encoding="latin-1"), ext
 
         elif ext in (".gz", ".gzip"):
-            return gzip.open(filename, "rb", encoding="latin-1"), ext
+            return gzip.open(filename, "rb"), ext
 
         elif ext in (".zip", ".ZIP"):
             zip_file = zipfile.ZipFile(filename, "r")
@@ -954,7 +954,12 @@ class ReadGFC(BackendEntrypoint):
 
         # Read file with pandas, delim_whitespace for variable space delimiters
         data = pd.read_csv(
-            file, sep=r"\s+", header=None, names=col_names, engine="python", converters=convert
+            file,
+            sep=r"\s+",
+            header=None,
+            names=col_names,
+            engine="python",
+            converters=convert,
         )
 
         # test if gfct key then have to deal with time
@@ -1094,7 +1099,7 @@ class ReadGRACEL2(BackendEntrypoint):
         """
         ext = os.path.splitext(filename)[-1]
         if ext in (".gz", ".gzip"):
-            return gzip.open(filename, "rb", encoding="latin-1")
+            return gzip.open(filename, "rb")
         return open(filename, "r", encoding="latin-1")
 
     @staticmethod
