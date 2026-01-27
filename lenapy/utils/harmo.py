@@ -500,8 +500,8 @@ def sh_to_grid(
         # Final calcul on the grid
         xgrid = c_cos.dot(d_clm) + s_sin.dot(d_slm)
     else:
-        d_clm = (plm_lfactor**2 * sub_data.clm ** 2).sum(dim="l")
-        d_slm = (plm_lfactor**2 * sub_data.slm ** 2).sum(dim="l")
+        d_clm = (plm_lfactor**2 * sub_data.clm**2).sum(dim="l")
+        d_slm = (plm_lfactor**2 * sub_data.slm**2).sum(dim="l")
 
         # Final calcul of sigma on the grid
         xgrid = np.sqrt((c_cos**2).dot(d_clm) + (s_sin**2).dot(d_slm))
@@ -676,12 +676,13 @@ def grid_to_sh(
             )
         else:
             plm = compute_plm(
-                lmax, sin_latitude,
+                lmax,
+                sin_latitude,
                 latitude=grid.cf["latitude"],
                 mmax=mmax,
                 normalization=normalization_plm,
-                use_dask = use_dask,
-                chunks = chunks_plm,
+                use_dask=use_dask,
+                chunks=chunks_plm,
             )
 
     else:
@@ -876,28 +877,32 @@ def compute_plm(
             p[k - lmax, :] = p[k - lmax, :] * rescalem
 
     # reshape Legendre polynomials to output dimensions (lower triangle array)
-    plm = np.zeros((lmax + 1, lmax + 1, len(z)))
-    ind = np.tril_indices(lmax + 1)
-    plm[ind] = p
+    plm = np.zeros((lmax + 1, mmax + 1, len(z)))
+    p_ind = np.tril_indices(lmax + 1)[1] < mmax + 1
+    plm[np.tril_indices(lmax + 1, m=mmax + 1)] = p[p_ind]
 
-    plm = xr.DataArray(
-        plm[:, : mmax + 1, :],
+    # reduce peak memory usage with large lmax
+    del p
+
+    plm_da = xr.DataArray(
+        plm,
         dims=["l", "m", "latitude"],
         coords={
             "l": np.arange(lmax + 1),
             "m": np.arange(mmax + 1),
-            "latitude": latitude, #grid.cf["latitude"]
+            "latitude": latitude,
         },
+        name="plm",
     )
 
     # Chunking plm for dask usage and memory optimization
     if use_dask:
         if chunks is None:
             chunks = {"latitude": 1}
-        plm = plm.chunk(chunks)
+        plm_da = plm_da.chunk(chunks)
 
     # return the legendre polynomials and truncating orders to mmax
-    return plm
+    return plm_da
 
 
 def mid_month_grace_estimate(
