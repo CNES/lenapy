@@ -42,7 +42,7 @@ def change_reference(
     new_earth_gravity_constant: float = LNPY_GM_EARTH,
     old_radius: float | None = None,
     old_earth_gravity_constant: float | None = None,
-    apply: bool = False,
+    apply: bool = True,
 ) -> xr.Dataset:
     """
     Spherical Harmonics dataset are associated with an earth radius *a* and *µ* or *GM* the earth gravity constant.
@@ -66,7 +66,7 @@ def change_reference(
         Current gravitational constant of the Earth of the dataset ds in m³/s².
         If not provided, uses `ds.attrs['earth_gravity_constant']`.
     apply : bool, optional
-        If True, apply the update to the current dataset without making a deep copy. Default is False.
+        If True, apply the update to the current dataset without making a deep copy. Default is True.
 
     Returns
     -------
@@ -100,8 +100,13 @@ def change_reference(
     gravity_constant_ratio = old_earth_gravity_constant / new_earth_gravity_constant
     update_factor = gravity_constant_ratio * (old_radius / new_radius) ** ds.l
 
-    # if apply = False : Copy the dataset to avoid modifying the input dataset
-    ds_out = ds if apply else ds.copy(deep=True)
+    if apply:
+        ds_out = ds
+    else:
+        ds_out = ds.copy(deep=True)
+        # need also clm and slm copy because .loc behave weirdly
+        ds_out["clm"].data = ds_out["clm"].data.copy()
+        ds_out["slm"].data = ds_out["slm"].data.copy()
 
     # Update the clm and slm values
     ds_out["clm"] *= update_factor
@@ -119,7 +124,7 @@ def change_tide_system(
     new_tide: Literal["tide_free", "zero_tide", "mean_tide"],
     old_tide: Literal["tide_free", "zero_tide", "mean_tide"] | None = None,
     k20: float | None = None,
-    apply: bool = False,
+    apply: bool = True,
 ) -> xr.Dataset:
     """
     Apply a C20 offset to the dataset to change the tide system.
@@ -138,7 +143,7 @@ def change_tide_system(
     k20 : float | None, optional
         k20 Earth tide external potential Love numbers. If not provided, the default value from [IERS2010]_ is used.
     apply : bool, optional
-        If True, apply the update to the current dataset without making a deep copy. Default is False.
+        If True, apply the update to the current dataset without making a deep copy. Default is True.
 
     Returns
     -------
@@ -200,8 +205,12 @@ def change_tide_system(
     else:
         conv = 0
 
-    # if apply = False : Copy the dataset to avoid modifying the input dataset
-    ds_out = ds if apply else ds.copy(deep=True)
+    if apply:
+        ds_out = ds
+    else:
+        ds_out = ds.copy(deep=True)
+        # need also clm copy because .loc behave weirdly
+        ds_out["clm"].data = ds_out["clm"].data.copy()
 
     ds_out.clm.loc[dict(l=2, m=0)] += conv * A0 * H0
     ds_out.attrs["tide_system"] = new_tide
@@ -214,7 +223,7 @@ def change_love_reference_frame(
     ds: xr.Dataset,
     new_frame: Literal["CM", "CE", "CF", "CL", "CH"],
     old_frame: Literal["CM", "CE", "CF", "CL", "CH"],
-    apply: bool = False,
+    apply: bool = True,
 ) -> xr.Dataset:
     """
     Modify degree 1 love numbers of the dataset to change the reference frame.
@@ -238,7 +247,7 @@ def change_love_reference_frame(
     old_frame : str
         Reference frame of the input dataset. Either 'CM', 'CE', 'CF', 'CL' or 'CH'.
     apply : bool
-        If True, apply the update to the current dataset without making a deep copy. Default is False.
+        If True, apply the update to the current dataset without making a deep copy. Default is True.
 
     Returns
     -------
@@ -253,8 +262,13 @@ def change_love_reference_frame(
         *Journal of Geophysical Research: Solid Earth*, 108, 2103, (2003).
         doi: 10.1029/2002JB002082 <https://doi.org/10.1029/2002JB002082>`_
     """
-    # if apply = False : Copy the dataset to avoid modifying the input dataset
-    ds_love = ds if apply else ds.copy(deep=True)
+    if apply:
+        ds_love = ds
+    else:
+        ds_love = ds.copy(deep=True)
+        # need also var copy because .loc behave weirdly
+        for var in ["hl", "ll", "kl"]:
+            ds_love[var].data = ds_love[var].data.copy()
 
     # compute k1, h1 and l1 into CE
     if old_frame == "CE":
@@ -367,7 +381,7 @@ def apply_normal_zonal_correction(
     f_earth: float = LNPY_F_EARTH_GRS80,
     omega_earth: float = LNPY_OMEGA_EARTH_GRS80,
     reverse: bool = False,
-    apply: bool = False,
+    apply: bool = True,
 ) -> xr.Dataset:
     """
     Apply a correction of the normal gravity field on zonal coefficients on a SH dataset for a specified ellipsoid.
@@ -388,7 +402,7 @@ def apply_normal_zonal_correction(
     reverse : bool, optional
         False to apply the correction, True to remove the correction.
     apply : bool, optional
-        If True, apply the update to the current dataset without making a deep copy. Default is False.
+        If True, apply the update to the current dataset without making a deep copy. Default is True.
 
     Returns
     -------
@@ -416,8 +430,12 @@ def apply_normal_zonal_correction(
             "contained in ds.attrs dict as ds.attrs['radius'] and ds.attrs['earth_gravity_constant']."
         )
 
-    # if apply = False : Copy the dataset to avoid modifying the input dataset
-    ds_out = ds if apply else ds.copy(deep=True)
+    if apply:
+        ds_out = ds
+    else:
+        ds_out = ds.copy(deep=True)
+        # need also clm copy because .loc behave weirdly
+        ds_out["clm"].data = ds_out["clm"].data.copy()
 
     e_prime = np.sqrt(2 * f_earth - f_earth**2) / (1 - f_earth)
     q0 = (0.5 + 1.5 / e_prime**2) * np.arctan(e_prime) - 1.5 / e_prime

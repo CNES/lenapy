@@ -958,7 +958,7 @@ def change_normalization(
     ds: xr.Dataset,
     new_normalization: Literal["4pi", "ortho", "schmidt"] = "4pi",
     old_normalization: Literal["4pi", "ortho", "schmidt"] | None = None,
-    apply: bool = False,
+    apply: bool = True,
 ) -> xr.Dataset:
     """
     Spherical Harmonics (SH) dataset are associated with a Legendre polynomial normalization.
@@ -977,7 +977,7 @@ def change_normalization(
         4pi normalized, orthonormalized, Schmidt semi-normalized, or unnormalized SH functions, respectively.
         Default is '4pi'. If not provided, uses `ds.attrs['norm']`.
     apply : bool, optional
-        If True, apply the update to the current dataset without making a deep copy. Default is False.
+        If True, apply the update to the current dataset without making a deep copy. Default is True.
 
     Returns
     -------
@@ -1044,8 +1044,13 @@ def change_normalization(
     else:
         update_factor = 1
 
-    # if apply = False : Copy the dataset to avoid modifying the input dataset
-    ds_out = ds if apply else ds.copy(deep=True)
+    if apply:
+        ds_out = ds
+    else:
+        ds_out = ds.copy(deep=True)
+        # need also clm and slm copy because .loc behave weirdly
+        ds_out["clm"].data = ds_out["clm"].data.copy()
+        ds_out["slm"].data = ds_out["slm"].data.copy()
 
     # Update the clm and slm values
     ds_out["clm"] *= update_factor
