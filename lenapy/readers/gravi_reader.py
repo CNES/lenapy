@@ -337,8 +337,10 @@ class ReadGFC(BackendEntrypoint):
             )
 
         header["max_degree"] = int(header["max_degree"])
-        header["earth_gravity_constant"] = float(header["earth_gravity_constant"])
-        header["radius"] = float(header["radius"])
+        header["earth_gravity_constant"] = float(
+            header["earth_gravity_constant"].replace("D", "e").replace("d", "e")
+        )
+        header["radius"] = float(header["radius"].replace("D", "e").replace("d", "e"))
         return header, legend_before_end_header
 
     @staticmethod
