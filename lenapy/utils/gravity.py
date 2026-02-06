@@ -444,7 +444,7 @@ def apply_normal_zonal_correction(
         2 * omega_earth**2 * radius**3 * np.sqrt(2 * f_earth - f_earth**2)
     ) / (45 * earth_gravity_constant * q0)
 
-    l = ds.sel(l=slice(2, None, 2)).l
+    l = ds.sel(l=slice(0, None, 2)).l
 
     correction = (
         (-1) ** (l // 2 + 1)
@@ -458,7 +458,7 @@ def apply_normal_zonal_correction(
 
     sign = -1 if reverse else 1
 
-    ds_out.clm.loc[dict(l=slice(2, None, 2), m=0)] = (
+    ds_out.clm.loc[dict(l=slice(0, None, 2), m=0)] = (
         ds_out.clm.sel(m=0) + sign * correction
     )
 
