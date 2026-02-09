@@ -437,24 +437,25 @@ def apply_normal_zonal_correction(
         # need also clm copy because .loc behave weirdly
         ds_out["clm"].data = ds_out["clm"].data.copy()
 
-    e_prime = np.sqrt(2 * f_earth - f_earth**2) / (1 - f_earth)
-    q0 = (0.5 + 1.5 / e_prime**2) * np.arctan(e_prime) - 1.5 / e_prime
-
-    k = 1 / 3 - (
-        2 * omega_earth**2 * radius**3 * np.sqrt(2 * f_earth - f_earth**2)
-    ) / (45 * earth_gravity_constant * q0)
-
     l = ds.sel(l=slice(0, None, 2)).l
+    if f_earth == 0:
+        correction = -(l == 0).astype(int)
 
-    correction = (
-        (-1) ** (l // 2 + 1)
-        * 3
-        * np.sqrt(2 * f_earth - f_earth**2) ** l
-        * (1 + l / 2 * (5 * k - 1))
-        / (l + 3)
-        / (l + 1)
-        / np.sqrt(2 * l + 1)
-    )
+    else:
+        e_prime = np.sqrt(2 * f_earth - f_earth**2) / (1 - f_earth)
+        q0 = (0.5 + 1.5 / e_prime**2) * np.arctan(e_prime) - 1.5 / e_prime
+
+        k = 1 / 3 - (
+            2 * omega_earth**2 * radius**3 * np.sqrt(2 * f_earth - f_earth**2)
+        ) / (45 * earth_gravity_constant * q0)
+
+        correction = (
+            (-1) ** (l // 2 + 1)
+            * 3
+            * np.sqrt(2 * f_earth - f_earth**2) ** l
+            * (1 + l / 2 * (5 * k - 1))
+            / ((l**2 + 4 * l + 3) * np.sqrt(2 * l + 1))
+        )
 
     sign = -1 if reverse else 1
 
