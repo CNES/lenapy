@@ -803,10 +803,10 @@ def compute_plm(
         *Geochemistry, Geophysics, Geosystems*, 19, 2574–2592, (2018).
         `doi: 10.1029/2018GC007529 <https://doi.org/10.1029/2018GC007529>`_
     """
-    if lmax > 2000:
+    if lmax > 2200:
         warnings.warn(
-            "No validation made with lmax > 2000, the "
-            "Legendre functions may be unstable because of IEEE754-2008 norm."
+            "No validation made with lmax > 2200, the "
+            "Legendre functions may be unstable near the poles because of IEEE754-2008 norm."
         )
 
     # removing singleton dimensions of x
