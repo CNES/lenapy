@@ -17,7 +17,7 @@ import datetime
 import inspect
 import pathlib
 import warnings
-from typing import Literal
+from typing import Literal, Optional
 
 import cf_xarray as cfxr
 import numpy as np
@@ -27,84 +27,6 @@ import xarray as xr
 
 from lenapy.constants import *
 from lenapy.utils.gravity import estimate_normal_gravity
-
-
-def _compute_factors(
-    lmax: int, normalization: Literal["4pi", "ortho", "schmidt"]
-) -> tuple[np.ndarray, np.ndarray, float, float]:
-    """
-    Compute recurrence coefficients f1 and f2 for the Legendre recursion.
-
-    Parameters
-    ----------
-    lmax : int
-        Maximum degree.
-    normalization : {'4pi', 'ortho', 'schmidt'}
-        Normalization scheme.
-
-    Returns
-    -------
-    f1 : np.ndarray
-        Recurrence factor f1.
-    f2 : np.ndarray
-        Recurrence factor f2.
-    norm_p10 : float
-        Normalization for P(1,0).
-    norm_4pi : float
-        Overall normalization factor.
-    """
-    size = (lmax + 1) * (lmax + 2) // 2
-    f1 = np.zeros(size)
-    f2 = np.zeros(size)
-
-    k = 2
-    if normalization in ("4pi", "ortho"):
-        norm_p10 = np.sqrt(3)
-        norm_4pi = 1 if normalization == "4pi" else 4 * np.pi
-        for l in range(2, lmax + 1):
-            k += 1
-            f1[k] = np.sqrt(2 * l - 1) * np.sqrt(2 * l + 1) / l
-            f2[k] = (l - 1) * np.sqrt(2 * l + 1) / (np.sqrt(2 * l - 3) * l)
-            for m in range(1, l - 1):
-                k += 1
-                f1[k] = (
-                    np.sqrt(2 * l + 1)
-                    * np.sqrt(2 * l - 1)
-                    / (np.sqrt(l + m) * np.sqrt(l - m))
-                )
-                f2[k] = (
-                    np.sqrt(2 * l + 1)
-                    * np.sqrt(l - m - 1)
-                    * np.sqrt(l + m - 1)
-                    / (np.sqrt(2 * l - 3) * np.sqrt(l + m) * np.sqrt(l - m))
-                )
-            k += 2
-    elif normalization == "schmidt":
-        norm_p10 = 1
-        norm_4pi = 1
-        for l in range(2, lmax + 1):
-            k += 1
-            f1[k] = (2 * l - 1) / l
-            f2[k] = (l - 1) / l
-            for m in range(1, l - 1):
-                k += 1
-                f1[k] = (2 * l - 1) / (np.sqrt(l + m) * np.sqrt(l - m))
-                f2[k] = (
-                    np.sqrt(l - m - 1)
-                    * np.sqrt(l + m - 1)
-                    / (np.sqrt(l + m) * np.sqrt(l - m))
-                )
-            k += 2
-    else:
-        raise ValueError(
-            (
-                f"Unknown normalization '{normalization}'. "
-                "It should be either "
-                "'4pi', 'ortho' or 'schmidt'"
-            )
-        )
-
-    return f1, f2, norm_p10, norm_4pi
 
 
 def _generate_grid(
@@ -443,28 +365,7 @@ def sh_to_grid(
             )
 
     else:
-        # Verify plm integrity
-        if (
-            not isinstance(plm, xr.DataArray)
-            or "l" not in plm.coords
-            or "m" not in plm.coords
-            or "latitude" not in plm.coords
-        ):
-            raise TypeError(
-                'Given argument "plm" has to be a DataArray with 3 coordinates [l, m, latitude]'
-            )
-        elif plm.l.max() < lmax:
-            raise AssertionError(
-                'Given argument "plm" maximal degree is too small ',
-                plm.l.max(),
-                "<",
-                lmax,
-            )
-        elif (plm.latitude.values != latitude).all():
-            raise AssertionError(
-                'Given argument "plm" latitude does not correspond to the wanted latitude ',
-                latitude,
-            )
+        _assert_plm(plm, lmax, latitude)
 
     # scale factor for each degree
     lfactor, cst = l_factor_conv(
@@ -686,30 +587,7 @@ def grid_to_sh(
             )
 
     else:
-        # Verify plm integrity
-        align = xr.align(
-            plm.latitude, grid.cf["latitude"]
-        )  # return the intersection of latitudes for each input
-        if (
-            not isinstance(plm, xr.DataArray)
-            or "l" not in plm.coords
-            or "m" not in plm.coords
-            or "latitude" not in plm.coords
-        ):
-            raise TypeError(
-                'Given argument "plm" has to be a DataArray with 3 coordinates [l, m, latitude]'
-            )
-        elif plm.l.max() < lmax:
-            raise AssertionError(
-                'Given argument "plm" maximal degree is too small ',
-                plm.l.max(),
-                "<",
-                lmax,
-            )
-        elif align[0] != plm.latitude.size or align[1].size != grid.cf["latitude"].size:
-            raise AssertionError(
-                'Given argument "plm" latitude does not correspond to the grid latitude'
-            )
+        _assert_plm(plm, lmax, grid.cf["latitude"].values)
 
     # convolve unit over degree
     plm_lfactor = plm.sel(l=used_l, m=used_m) / lfactor
@@ -750,12 +628,226 @@ def grid_to_sh(
     return ds_out
 
 
+def _scale_plm_factors(
+    lmax: int,
+    normalization: Literal["4pi", "ortho", "schmidt"],
+    derivative: bool = False,
+) -> tuple[np.ndarray, np.ndarray, float, float, Optional[np.ndarray]]:
+    """
+    Compute recurrence coefficients f1 and f2 for the Legendre recursion.
+    Compute df recurrence coefficients for the derivative if requested.
+
+    Parameters
+    ----------
+    lmax : int
+        Maximum degree.
+    normalization : {'4pi', 'ortho', 'schmidt'}
+        Normalization scheme.
+    derivative : bool
+        Whether to compute factors for the derivative of plm. Default is False.
+
+    Returns
+    -------
+    f1 : np.ndarray
+        Recurrence factor f1.
+    f2 : np.ndarray
+        Recurrence factor f2.
+    norm_p10 : float
+        Normalization for P(1,0).
+    norm_4pi : float
+        Overall normalization factor.
+    df : np.ndarray, optional
+        Recurrence factor for the derivative of plm, only returned if derivative is True.
+    """
+    size = (lmax + 1) * (lmax + 2) // 2
+    f1 = np.zeros(size)
+    f2 = np.zeros(size)
+    df = np.zeros(size) if derivative else None
+
+    k = 2
+    if normalization in ("4pi", "ortho"):
+        norm_p10 = np.sqrt(3)
+        norm_4pi = 1 if normalization == "4pi" else 4 * np.pi
+        for l in range(2, lmax + 1):
+            k += 1
+            f1[k] = np.sqrt(2 * l - 1) * np.sqrt(2 * l + 1) / l
+            f2[k] = (l - 1) * np.sqrt(2 * l + 1) / (np.sqrt(2 * l - 3) * l)
+            if derivative:
+                df[k] = np.sqrt(2 * l + 1) / np.sqrt(2 * l - 1)
+            for m in range(1, l - 1):
+                k += 1
+                f1[k] = (
+                    np.sqrt(2 * l + 1)
+                    * np.sqrt(2 * l - 1)
+                    / (np.sqrt(l + m) * np.sqrt(l - m))
+                )
+                f2[k] = (
+                    np.sqrt(2 * l + 1)
+                    * np.sqrt(l - m - 1)
+                    * np.sqrt(l + m - 1)
+                    / (np.sqrt(2 * l - 3) * np.sqrt(l + m) * np.sqrt(l - m))
+                )
+                if derivative:
+                    df[k] = (
+                        np.sqrt(2 * l + 1)
+                        * np.sqrt(l + m)
+                        * np.sqrt(l - m)
+                        / np.sqrt(2 * l - 1)
+                    )
+            k += 2
+    elif normalization == "schmidt":
+        norm_p10 = 1
+        norm_4pi = 1
+        for l in range(2, lmax + 1):
+            k += 1
+            f1[k] = (2 * l - 1) / l
+            f2[k] = (l - 1) / l
+            if derivative:
+                df[k] = 1
+            for m in range(1, l - 1):
+                k += 1
+                f1[k] = (2 * l - 1) / (np.sqrt(l + m) * np.sqrt(l - m))
+                f2[k] = (
+                    np.sqrt(l - m - 1)
+                    * np.sqrt(l + m - 1)
+                    / (np.sqrt(l + m) * np.sqrt(l - m))
+                )
+                if derivative:
+                    df[k] = np.sqrt(l + m) * np.sqrt(l - m)
+            k += 2
+    else:
+        raise ValueError(
+            (
+                f"Unknown normalization '{normalization}'. "
+                "It should be either "
+                "'4pi', 'ortho' or 'schmidt'"
+            )
+        )
+
+    return f1, f2, norm_p10, norm_4pi, df
+
+
+def _compute_plm_vector(
+    p: np.ndarray,
+    dp: np.ndarray,
+    z: np.ndarray,
+    lmax: int,
+    normalization: Literal["4pi", "ortho", "schmidt"],
+    derivative: bool,
+    dtype: np.dtype,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Compute associated Legendre functions P(l,m) and optionally their derivatives as a array.
+
+    Parameters
+    ----------
+    p : np.ndarray
+        Preallocated array for P(l,m) values.
+    dp : np.ndarray
+        Preallocated array for derivatives of P(l,m) values.
+    lmax : int
+        Maximum degree of legrendre functions.
+    z : np.ndarray
+        Argument of the associated Legendre functions.
+    normalization : {'4pi', 'ortho', 'schmidt'}
+        '4pi', 'ortho', or 'schmidt' for use with geodesy 4pi normalized, orthonormalized, or Schmidt semi-normalized
+        spherical harmonic functions, respectively.
+    derivative : bool
+        If True, compute the first derivative of the associated Legendre functions.
+    dtype : dtype
+        Data type of the output array.
+    """
+    f1, f2, norm_p10, norm_4pi, df = _scale_plm_factors(lmax, normalization)
+
+    # scale factor based on Holmes2002
+    scalef = 1e-280
+
+    # u is sine of colatitude (cosine of latitude), for z=cos(th): u=sin(th)
+    u = np.sqrt(1 - z**2)
+    # update where u==0 to minimal numerical precision different from 0 to prevent invalid divisions
+    u[u == 0] = np.finfo(dtype).eps
+
+    # Calculate P(l,0) (not scaled)
+    p[0, :] = 1 / np.sqrt(norm_4pi)
+    if lmax:  # test for the case where lmax=0
+        p[1, :] = norm_p10 * z / np.sqrt(norm_4pi)
+
+    if derivative:
+        dp[0, :] = 0
+        if lmax:
+            dp[1, :] = norm_p10 / np.sqrt(norm_4pi)
+
+    k = 1
+    for l in range(2, lmax + 1):
+        k += l
+        p[k, :] = f1[k] * z * p[k - l, :] - f2[k] * p[k - 2 * l + 1, :]
+        if derivative:
+            dp[k, :] = l * (df[k] * p[k - l, :] - z * p[k, :]) / u**2
+
+    # Calculate P(m,m), P(m+1,m), and P(l,m)
+    pmm = np.sqrt(2) * scalef / np.sqrt(norm_4pi)
+    rescalem = 1 / scalef
+    kstart = 0
+
+    for m in range(1, lmax + 1):
+        rescalem = rescalem * u
+        # Calculate P(m,m)
+        kstart += m + 1
+        pmm = pmm * np.sqrt(2 * m + 1) / np.sqrt(2 * m)
+        if normalization in ("4pi", "ortho"):
+            p[kstart, :] = pmm
+        elif normalization == "schmidt":
+            p[kstart, :] = pmm / np.sqrt(2 * m + 1)
+
+        if derivative:
+            dp[kstart, :] = (-m * z * p[kstart, :] / u**2) * rescalem
+
+        if m != lmax:  # test if P(m+1,m) exist
+            # Calculate P(m+1,m)
+            k = kstart + m + 1
+            if normalization in ("4pi", "ortho"):
+                p[k, :] = z * np.sqrt(2 * m + 3) * pmm
+                if derivative:
+                    dp[k, :] = (
+                        (np.sqrt(2 * m + 3) * p[kstart, :] - (m + 1) * z * p[k, :])
+                        / u**2
+                    ) * rescalem
+            elif normalization == "schmidt":
+                p[k, :] = z * pmm
+                if derivative:
+                    dp[k, :] = (
+                        (np.sqrt(2 * m + 1) * p[kstart, :] - (m + 1) * z * p[k, :])
+                        / u**2
+                    ) * rescalem
+
+        else:
+            # set up k for rescale P(lmax,lmax)
+            k = kstart
+
+        # Calculate P(l,m)
+        for l in range(m + 2, lmax + 1):
+            k += l
+            p[k, :] = z * f1[k] * p[k - l, :] - f2[k] * p[k - 2 * l + 1, :]
+            p[k - 2 * l + 1, :] = p[k - 2 * l + 1, :] * rescalem
+
+            if derivative:
+                dp[k, :] = ((df[k] * p[k - l, :] - z * l * p[k, :]) / u**2) * rescalem
+
+        # rescale
+        p[k, :] = p[k, :] * rescalem
+        if m != lmax:
+            p[k - lmax, :] = p[k - lmax, :] * rescalem
+
+    return p, dp
+
+
 def compute_plm(
     lmax: int,
     z: np.ndarray,
     latitude: np.ndarray = None,
     mmax: int = None,
     normalization: Literal["4pi", "ortho", "schmidt"] = "4pi",
+    derivative: bool = False,
     dtype: complex | float | type[complex] | type[float] = np.float128,
     use_dask: bool = False,
     chunks: dict | None = None,
@@ -778,6 +870,8 @@ def compute_plm(
     normalization : {'4pi', 'ortho', 'schmidt'}, optional
         '4pi', 'ortho', or 'schmidt' for use with geodesy 4pi normalized, orthonormalized, or Schmidt semi-normalized
         spherical harmonic functions, respectively. Default is '4pi'.
+    derivative : bool, optional
+        If True, compute the first derivative of the associated Legendre functions. Default is False.
     dtype : dtype, optional
         Data type of the output array. Default is np.float128.
 
@@ -789,7 +883,8 @@ def compute_plm(
     Returns
     -------
     plm : xr.DataArray
-        Fully-normalized Legendre functions as a DataArray with "l", "m" and "latitude" dimensions.
+        Fully-normalized Legendre functions (or first derivative if derivative=True)
+        as a DataArray with "l", "m" and "latitude" dimensions.
 
     References
     ----------
@@ -819,70 +914,23 @@ def compute_plm(
     # if default latitude, set it from z
     latitude = z if latitude is None else latitude
 
-    f1, f2, norm_p10, norm_4pi = _compute_factors(lmax, normalization)
-
-    # scale factor based on Holmes2002
-    scalef = 1e-280
-
     p = np.zeros(((lmax + 1) * (lmax + 2) // 2, len(z)))
-    # u is sine of colatitude (cosine of latitude), for z=cos(th): u=sin(th)
-    u = np.sqrt(1 - z**2)
-    # update where u==0 to minimal numerical precision different from 0 to prevent invalid divisions
-    u[u == 0] = np.finfo(dtype).eps
+    dp = np.zeros(((lmax + 1) * (lmax + 2) // 2, len(z))) if derivative else None
 
-    # Calculate P(l,0) (not scaled)
-    p[0, :] = 1 / np.sqrt(norm_4pi)
-    if lmax:  # test for the case where lmax=0
-        p[1, :] = norm_p10 * z / np.sqrt(norm_4pi)
-    k = 1
-    for l in range(2, lmax + 1):
-        k += l
-        p[k, :] = f1[k] * z * p[k - l, :] - f2[k] * p[k - 2 * l + 1, :]
-
-    # Calculate P(m,m), P(m+1,m), and P(l,m)
-    pmm = np.sqrt(2) * scalef / np.sqrt(norm_4pi)
-    rescalem = 1 / scalef
-    kstart = 0
-
-    for m in range(1, lmax + 1):
-        rescalem = rescalem * u
-        # Calculate P(m,m)
-        kstart += m + 1
-        pmm = pmm * np.sqrt(2 * m + 1) / np.sqrt(2 * m)
-        if normalization in ("4pi", "ortho"):
-            p[kstart, :] = pmm
-        elif normalization == "schmidt":
-            p[kstart, :] = pmm / np.sqrt(2 * m + 1)
-
-        if m != lmax:  # test if P(m+1,m) exist
-            # Calculate P(m+1,m)
-            k = kstart + m + 1
-            if normalization in ("4pi", "ortho"):
-                p[k, :] = z * np.sqrt(2 * m + 3) * pmm
-            elif normalization == "schmidt":
-                p[k, :] = z * pmm
-        else:
-            # set up k for rescale P(lmax,lmax)
-            k = kstart
-
-        # Calculate P(l,m)
-        for l in range(m + 2, lmax + 1):
-            k += l
-            p[k, :] = z * f1[k] * p[k - l, :] - f2[k] * p[k - 2 * l + 1, :]
-            p[k - 2 * l + 1, :] = p[k - 2 * l + 1, :] * rescalem
-
-        # rescale
-        p[k, :] = p[k, :] * rescalem
-        if m != lmax:
-            p[k - lmax, :] = p[k - lmax, :] * rescalem
+    d, dp = _compute_plm_vector(p, dp, z, lmax, normalization, derivative, dtype)
 
     # reshape Legendre polynomials to output dimensions (lower triangle array)
     plm = np.zeros((lmax + 1, mmax + 1, len(z)))
     p_ind = np.tril_indices(lmax + 1)[1] < mmax + 1
-    plm[np.tril_indices(lmax + 1, m=mmax + 1)] = p[p_ind]
+    if not derivative:
+        plm[np.tril_indices(lmax + 1, m=mmax + 1)] = p[p_ind]
+    else:
+        plm[np.tril_indices(lmax + 1, m=mmax + 1)] = dp[p_ind]
 
     # reduce peak memory usage with large lmax
     del p
+    if derivative:
+        del dp
 
     plm_da = xr.DataArray(
         plm,
@@ -1262,14 +1310,16 @@ def _compute_l_factor(
     else:
         raise ValueError(
             "Invalid 'unit' parameter value in l_factor_conv function, valid values are: "
-            "(norm, mewh, mmgeoid, microGal, bar, mvcu)"
+            "(norm, mewh, mmgeoid, microGal, potential, pascal, mvcu, mecu)"
         )
     return l_factor
 
 
 def l_factor_conv(
     l: np.ndarray,
-    unit: Literal["mewh", "mmgeoid", "microGal", "pascal", "mvcu", "norm"] = "mewh",
+    unit: Literal[
+        "mewh", "mmgeoid", "microGal", "potential", "pascal", "mvcu", "norm"
+    ] = "mewh",
     include_elastic: bool = True,
     ellipsoidal_earth: bool = False,
     geocentric_colat: xr.DataArray | None = None,
@@ -1383,6 +1433,57 @@ def l_factor_conv(
     return l_factor, cst
 
 
+def _assert_plm(plm: xr.DataArray, lmax: int, latitude: np.ndarray) -> bool:
+    """
+    Verify if the dataset plm is valid for spherical harmonics computations.
+    Raise Type error or Assertion error if not.
+
+    Parameters
+    ----------
+    plm : xr.DataArray
+        DataArray to verify.
+    lmax : int
+        Maximum degree of the Legendre polynomials.
+    latitude : np.ndarray
+        Latitude values in degrees.
+
+    Returns
+    -------
+    True : bool
+        Returns True if the dataset ds has dimensions 'l' and 'm' as well as variables 'clm' and 'slm'.
+
+    Raises
+    ------
+    TypeError
+        This function raise TypeError if plm is not a xr.DataArray with 3 coordinates [l, m, latitude]
+    AssertionError
+        This function raise AssertionError if ds is not a xr.Dataset corresponding to spherical harmonics
+    """
+    # Verify plm integrity
+    if (
+        not isinstance(plm, xr.DataArray)
+        or "l" not in plm.coords
+        or "m" not in plm.coords
+        or "latitude" not in plm.coords
+    ):
+        raise TypeError(
+            'Given argument "plm" has to be a DataArray with 3 coordinates [l, m, latitude]'
+        )
+    elif plm.l.max() < lmax:
+        raise AssertionError(
+            'Given argument "plm" maximal degree is too small ',
+            plm.l.max(),
+            "<",
+            lmax,
+        )
+    elif (plm.latitude.values != latitude).all():
+        raise AssertionError(
+            'Given argument "plm" latitude does not correspond to the wanted latitude ',
+            latitude,
+        )
+    return True
+
+
 def assert_sh(ds: xr.Dataset) -> bool:
     """
     Verify if the dataset ds has dimensions 'l' and 'm' as well as variables 'clm' and 'slm'
@@ -1401,7 +1502,7 @@ def assert_sh(ds: xr.Dataset) -> bool:
     Raises
     ------
     AssertionError
-        This function raise AssertionError is ds is not a xr.Dataset corresponding to spherical harmonics
+        This function raise AssertionError if ds is not a xr.Dataset corresponding to spherical harmonics
     """
     if "l" not in ds.coords:
         raise AssertionError(
