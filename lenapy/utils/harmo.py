@@ -26,7 +26,6 @@ import scipy as sc
 import xarray as xr
 
 from lenapy.constants import *
-from lenapy.utils.gravity import estimate_normal_gravity
 
 
 def _generate_grid(
@@ -631,7 +630,7 @@ def grid_to_sh(
 def _scale_plm_factors(
     lmax: int,
     normalization: Literal["4pi", "ortho", "schmidt"],
-    derivative: bool = False,
+    derivative: bool,
 ) -> tuple[np.ndarray, np.ndarray, float, float, Optional[np.ndarray]]:
     """
     Compute recurrence coefficients f1 and f2 for the Legendre recursion.
@@ -656,7 +655,7 @@ def _scale_plm_factors(
         Normalization for P(1,0).
     norm_4pi : float
         Overall normalization factor.
-    df : np.ndarray, optional
+    df : np.ndarray | None
         Recurrence factor for the derivative of plm, only returned if derivative is True.
     """
     size = (lmax + 1) * (lmax + 2) // 2
@@ -734,7 +733,7 @@ def _compute_plm_vector(
     lmax: int,
     normalization: Literal["4pi", "ortho", "schmidt"],
     derivative: bool,
-    dtype: np.dtype,
+    dtype: complex | float | type[complex] | type[float],
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Compute associated Legendre functions P(l,m) and optionally their derivatives as a array.
@@ -757,7 +756,7 @@ def _compute_plm_vector(
     dtype : dtype
         Data type of the output array.
     """
-    f1, f2, norm_p10, norm_4pi, df = _scale_plm_factors(lmax, normalization)
+    f1, f2, norm_p10, norm_4pi, df = _scale_plm_factors(lmax, normalization, derivative)
 
     # scale factor based on Holmes2002
     scalef = 1e-280
@@ -862,7 +861,7 @@ def compute_plm(
     lmax : int
         Maximum degree of legrendre functions.
     z : np.ndarray
-        Argument of the associated Legendre functions.
+        Argument of the associated Legendre functions, either cos of the colatitude or sin of the latitude.
     latitude : np.ndarray, optional
         Latitude values in degrees. Default is None and latitude is made from z.
     mmax : int or NoneType, optional
@@ -1252,6 +1251,8 @@ def _compute_l_factor(
     elif unit == "mmgeoid":
         # mmgeoid, millimeters geoid height
         if ellipsoidal_earth:
+            from lenapy.utils.gravity import estimate_normal_gravity
+
             gamma_0 = estimate_normal_gravity(
                 np.deg2rad(geocentric_colat.latitude),
                 a_earth,
