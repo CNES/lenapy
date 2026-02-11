@@ -178,20 +178,20 @@ def test_raises_if_no_attrs_provided():
         change_reference(ds, NEW_RADIUS, NEW_GM)
 
 
-def test_apply_normal_zonal_correction(lenapy_paths, base_dataset):
+def normal_zonal_correction(lenapy_paths, base_dataset):
     ref_file = lenapy_paths.ref_data / "utils" / f"normal_zonal_correction.nc"
     ref_ds = xr.open_dataset(ref_file)
 
-    ds_out = base_dataset.lnharmo.apply_normal_zonal_correction(
+    ds_out = base_dataset.lnharmo.normal_zonal_correction(
         radius=LNPY_A_EARTH_GRS80, earth_gravity_constant=LNPY_GM_EARTH
     )
 
     xr.testing.assert_allclose(ds_out, ref_ds)
 
 
-def test_apply_normal_zonal_correction_error(base_dataset):
+def test_normal_zonal_correction_error(base_dataset):
     with pytest.raises(KeyError):
-        base_dataset.lnharmo.apply_normal_zonal_correction()
+        base_dataset.lnharmo.normal_zonal_correction()
 
 
 def test_returns_dataarray():

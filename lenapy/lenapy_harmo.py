@@ -30,9 +30,9 @@ import xarray as xr
 from lenapy.plots.plotting import plot_hs, plot_power
 from lenapy.utils.geo import assert_grid
 from lenapy.utils.gravity import (
-    apply_normal_zonal_correction,
     change_reference,
     change_tide_system,
+    normal_zonal_correction,
 )
 from lenapy.utils.harmo import *
 from lenapy.writers.gravi_writer import dataset_to_gfc
@@ -337,7 +337,7 @@ class HarmoSet:
             apply=apply,
         )
 
-    def apply_normal_zonal_correction(self, **kwargs) -> xr.Dataset:
+    def normal_zonal_correction(self, **kwargs) -> xr.Dataset:
         """
         Apply a correction of the normal gravity field on zonal coefficients on a SH dataset.
         For details on the function, see :func:`lenapy.utils.gravity.apply_normal_zonal_correction` documentation.
@@ -352,7 +352,7 @@ class HarmoSet:
         ds_out : xr.Dataset
             Updated dataset with the correction.
         """
-        return apply_normal_zonal_correction(self._obj, **kwargs)
+        return normal_zonal_correction(self._obj, **kwargs)
 
     def plot_hs(self, **kwargs):
         """
