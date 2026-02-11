@@ -424,7 +424,44 @@ def distance(
         )
 
 
-def assert_grid(ds):
+def latitude_to_geocentric_colatitude(
+    latitude: xr.DataArray | np.ndarray, ellipsoidal_earth: bool = False, **kwargs
+) -> xr.DataArray:
+    """
+    Compute the geocentric colatitude in radians from the geographic / geodetic latitude in degree.
+
+    Parameters
+    ----------
+    latitude : xr.DataArray | np.ndarray
+        Geographic latitude in degrees, either as array or as DataArray.
+    ellipsoidal_earth : bool, optional
+        Whether to compute the geocentric colatitude for an ellipsoidal Earth. Default is False (spherical Earth).
+    **kwargs
+        Supplementary parameters 'f_earth' for the ellipsoidal Earth case.
+        If `ellipsoidal_earth` is True, used LNPY_F_EARTH_GRS80 by default if `f_earth` is not provided in kwargs.
+
+    Returns
+    -------
+    geocentric_colat : xr.DataArray
+        Geocentric colatitude in radians, with the latitude dimensions and coordinates.
+    """
+    if ellipsoidal_earth:
+        f_earth = kwargs["f_earth"] if "f_earth" in kwargs else LNPY_F_EARTH_GRS80
+        geocentric_colatitude = np.arctan2(
+            np.cos(np.deg2rad(latitude)),
+            (1 - f_earth) ** 2 * np.sin(np.deg2rad(latitude)),
+        )
+    else:
+        geocentric_colatitude = np.pi / 2 - np.deg2rad(latitude)
+
+    return xr.DataArray(
+        geocentric_colatitude,
+        dims=["latitude"],
+        coords={"latitude": latitude},
+    )
+
+
+def assert_grid(ds: xr.DataArray) -> bool:
     """
     Verify if the given xr.Dataset have dimensions 'longitude' and 'latitude'. Raise Assertion error if not.
 

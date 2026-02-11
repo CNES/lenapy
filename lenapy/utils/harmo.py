@@ -26,6 +26,7 @@ import scipy as sc
 import xarray as xr
 
 from lenapy.constants import *
+from lenapy.utils.geo import latitude_to_geocentric_colatitude
 
 
 def _generate_grid(
@@ -205,7 +206,9 @@ def _init_degrees(
 
 def sh_to_grid(
     data: xr.Dataset,
-    unit: Literal["mewh", "mmgeoid", "microGal", "bar", "mvcu", "norm"] = "mewh",
+    unit: Literal[
+        "mewh", "mmgeoid", "microGal", "potential", "pascal", "mvcu", "norm"
+    ] = "mewh",
     errors=False,
     lmax: int | None = None,
     mmax: int | None = None,
@@ -244,7 +247,7 @@ def sh_to_grid(
     data : xr.Dataset
         xr.Dataset that corresponds to SH data to convert into spatial representation.
     unit : str, optional
-        'mewh', 'mmgeoid', 'microGal', 'bar', 'mvcu', or 'norm'
+        'mewh', 'mmgeoid', 'microGal', 'potential', 'pascal', 'mvcu', or 'norm'
         Unit of the spatial data used in the transformation. Default is 'mewh' for meters of Equivalent Water Height.
         See utils.harmo.l_factor_conv() doc for details on the units.
     errors : bool, optional
@@ -285,11 +288,11 @@ def sh_to_grid(
         List of latitude to use for the grid computation (if given, others latitude information are not considered).
 
     force_mass_conservation : bool, optional
-        If True, force that the grid resulting from all coefficients except C0 has a null global mass. Default is False
+        If True, force that the grid resulting from all coefficients except C0 has a null global mass. Default is False.
     ellipsoidal_earth : bool, optional
         If True, consider the Earth as an ellipsoid following [Ditmar2018]. Default is False for a spherical Earth.
     include_elastic : bool, optional
-        If True, the Earth behavior is elastic. Default is True
+        If True, the Earth behavior is elastic. Default is True.
 
     plm : xr.DataArray, optional
         Precomputed plm values as a xr.DataArray variable. For example with the code :
@@ -315,8 +318,7 @@ def sh_to_grid(
     xgrid : xr.DataArray
         Spatial representation of the SH Dataset in the chosen unit.
     """
-    # add mask in output variable
-
+    # Get parameters for computation of the grid and for the unit conversion
     sub_data, used_l, used_m, lmin, lmax, mmin, mmax = _init_degrees(
         data, lmin, lmax, mmin, mmax, used_l, used_m
     )
@@ -330,38 +332,22 @@ def sh_to_grid(
         bounds, dlon, dlat, longitude, latitude, radians_in
     )
 
-    cos_latitude = np.cos(np.deg2rad(latitude))
-    sin_latitude = np.sin(np.deg2rad(latitude))
-    f_earth = kwargs["f_earth"] if "f_earth" in kwargs else LNPY_F_EARTH_GRS80
-    geocentric_colat = xr.DataArray(
-        np.arctan2(cos_latitude, (1 - f_earth) ** 2 * sin_latitude),
-        dims=["latitude"],
-        coords={"latitude": latitude},
+    geocentric_colat = latitude_to_geocentric_colatitude(
+        latitude, ellipsoidal_earth=ellipsoidal_earth, **kwargs
     )
 
     # -- beginning of computation
     # Computing plm for converting to spatial domain
     if plm is None:
-        if ellipsoidal_earth:
-            plm = compute_plm(
-                lmax,
-                np.cos(geocentric_colat),
-                latitude=latitude,
-                mmax=mmax,
-                normalization=normalization_plm,
-                use_dask=use_dask,
-                chunks=chunks_plm,
-            )
-        else:
-            plm = compute_plm(
-                lmax,
-                sin_latitude,
-                latitude=latitude,
-                mmax=mmax,
-                normalization=normalization_plm,
-                use_dask=use_dask,
-                chunks=chunks_plm,
-            )
+        plm = compute_plm(
+            lmax,
+            np.cos(geocentric_colat),
+            latitude=latitude,
+            mmax=mmax,
+            normalization=normalization_plm,
+            use_dask=use_dask,
+            chunks=chunks_plm,
+        )
 
     else:
         _assert_plm(plm, lmax, latitude)
@@ -446,7 +432,9 @@ def sh_to_grid(
 def grid_to_sh(
     grid: xr.DataArray,
     lmax: int,
-    unit: Literal["mewh", "mmgeoid", "microGal", "bar", "mvcu", "norm"] = "mewh",
+    unit: Literal[
+        "mewh", "mmgeoid", "microGal", "potential", "pascal", "mvcu", "norm"
+    ] = "mewh",
     mmax: int | None = None,
     lmin: int = 0,
     mmin: int = 0,
@@ -524,19 +512,14 @@ def grid_to_sh(
     used_l = np.arange(lmin, lmax + 1) if used_l is None else used_l
     used_m = np.arange(mmin, mmax + 1) if used_m is None else used_m
 
-    cos_latitude = np.cos(np.deg2rad(grid.cf["latitude"].values))
-    sin_latitude = np.sin(np.deg2rad(grid.cf["latitude"].values))
-
-    f_earth = kwargs["f_earth"] if "f_earth" in kwargs else LNPY_F_EARTH_GRS80
-    geocentric_colat = xr.DataArray(
-        np.arctan2(cos_latitude, (1 - f_earth) ** 2 * sin_latitude),
-        dims=["latitude"],
-        coords={"latitude": grid.cf["latitude"]},
+    geocentric_colat = latitude_to_geocentric_colatitude(
+        grid.cf["latitude"].values, ellipsoidal_earth=ellipsoidal_earth, **kwargs
     )
 
     # create DataArray corresponding to the integration factor for each cell
     # case for ellipsoidal earth where integration over ellipsoidal cell
     if ellipsoidal_earth:
+        f_earth = kwargs["f_earth"] if "f_earth" in kwargs else LNPY_F_EARTH_GRS80
         surface = grid.lngeo.surface_cell(ellipsoidal_earth=True, f_earth=f_earth)
         int_fact = surface / surface.sum()
 
@@ -564,26 +547,15 @@ def grid_to_sh(
     # -- prepare variables for the computation of SH
     # Computing plm for converting to spatial domain
     if plm is None:
-        if ellipsoidal_earth:
-            plm = compute_plm(
-                lmax,
-                np.cos(geocentric_colat),
-                latitude=grid.cf["latitude"],
-                mmax=mmax,
-                normalization=normalization_plm,
-                use_dask=use_dask,
-                chunks=chunks_plm,
-            )
-        else:
-            plm = compute_plm(
-                lmax,
-                sin_latitude,
-                latitude=grid.cf["latitude"],
-                mmax=mmax,
-                normalization=normalization_plm,
-                use_dask=use_dask,
-                chunks=chunks_plm,
-            )
+        plm = compute_plm(
+            lmax,
+            np.cos(geocentric_colat),
+            latitude=grid.cf["latitude"],
+            mmax=mmax,
+            normalization=normalization_plm,
+            use_dask=use_dask,
+            chunks=chunks_plm,
+        )
 
     else:
         _assert_plm(plm, lmax, grid.cf["latitude"].values)
@@ -1158,29 +1130,6 @@ def load_default_love_numbers() -> xr.Dataset:
     return ds
 
 
-def _compute_a_div_r_lat(
-    geocentric_colat: xr.DataArray, f_earth: float
-) -> np.ndarray | xr.DataArray:
-    """
-    Compute a/r(θ) for ellipsoidal Earth correction.
-
-    Parameters
-    ----------
-    geocentric_colat : xr.DataArray
-        Geocentric colatitudes in radians.
-    f_earth : float
-        Earth flattening.
-
-    Returns
-    -------
-    a_div_r_lat : np.ndarray | xr.DataArray
-    """
-    # e = sqrt(2f - f**2)
-    e_earth = np.sqrt(2 * f_earth - f_earth**2)
-    # a_div_r_lat = a / r(theta)  with r(theta) = a(1-f)/sqrt(1 - e**2*sin(theta)**2)
-    return np.sqrt(1 - e_earth**2 * np.sin(geocentric_colat) ** 2) / (1 - f_earth)
-
-
 def _compute_l_factor(
     l: np.ndarray | xr.DataArray,
     unit: str,
@@ -1362,7 +1311,6 @@ def l_factor_conv(
     a_earth : float, optional
         Earth semi-major axis [m]. If not provided, uses `data.attrs['radius']` and
         if it does not exist, uses LNPY_A_EARTH_GRS80.
-        if it does not exist, uses LNPY_A_EARTH_GRS80.
     gm_earth : float, optional
         Standard gravitational parameter for Earth [m³.s⁻²]. If not provided, uses
         `data.attrs['earth_gravity_constant']` and if it does not exist, uses LNPY_GM_EARTH.
@@ -1412,7 +1360,12 @@ def l_factor_conv(
                 "the parameter 'geocentric_colat' in l_factor_conv function"
             )
 
-        a_div_r_lat = _compute_a_div_r_lat(geocentric_colat, f_earth)
+        # e = sqrt(2f - f**2)
+        e_earth_square = 2 * f_earth - f_earth**2
+        # a_div_r_lat = a / r(theta)  with r(theta) = a(1-f)/sqrt(1 - e**2*sin(theta)**2)
+        a_div_r_lat = np.sqrt(1 - e_earth_square * np.sin(geocentric_colat) ** 2) / (
+            1 - f_earth
+        )
 
     l_factor = _compute_l_factor(
         l,
