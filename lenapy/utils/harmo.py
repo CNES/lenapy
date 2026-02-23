@@ -201,9 +201,7 @@ def _init_degrees(
 
 def sh_to_grid(
     data: xr.Dataset,
-    unit: Literal[
-        "mewh", "mmgeoid", "microGal", "potential", "pascal", "mvcu", "norm"
-    ] = "mewh",
+    unit: str = "mewh",
     errors=False,
     lmax: int | None = None,
     mmax: int | None = None,
@@ -244,7 +242,6 @@ def sh_to_grid(
     data : xr.Dataset
         xr.Dataset that corresponds to SH data to convert into spatial representation.
     unit : str, optional
-        'mewh', 'mmgeoid', 'microGal', 'potential', 'pascal', 'mvcu', or 'norm'
         Unit of the spatial data used in the transformation. Default is 'mewh' for meters of Equivalent Water Height.
         See utils.harmo.l_factor_conv() doc for details on the units.
     errors : bool, optional
@@ -447,9 +444,7 @@ def sh_to_grid(
 def grid_to_sh(
     grid: xr.DataArray,
     lmax: int,
-    unit: Literal[
-        "mewh", "mmgeoid", "microGal", "potential", "pascal", "mvcu", "norm"
-    ] = "mewh",
+    unit: str = "mewh",
     mmax: int | None = None,
     lmin: int = 0,
     mmin: int = 0,
@@ -1227,6 +1222,49 @@ def load_default_love_numbers() -> xr.Dataset:
     return ds
 
 
+def _prefix_parser(unit: str) -> float:
+    """
+    Parse a SI-style prefix from a unit string and return its numeric multiplier.
+
+    Parameters
+    ----------
+    unit : str
+        Unit name that may include a prefix. The function accepts common ASCII and Unicode forms for the micro prefix
+        (both 'u' and 'µ') and is case\-sensitive where relevant (e.g. 'M' for mega vs 'm' for milli).
+
+        Unit cannot be defined using 'm' for milli because it is used for meter unit,
+        so 'milli' or 'mm' should be used instead. Same for 'p' for pico, 'pico' should be used instead.
+
+        Goes from 'giga' / 'G' to 'pico', including 'mega', 'kilo', 'hecto', 'deca', 'deci', 'centi', 'milli',
+        'micro', and 'nano'.
+
+    Returns
+    -------
+    scale : float
+        Multiplicative factor corresponding to the detected prefix.
+        If no recognized prefix is found, returns 1.0 (indicating no scaling).
+    """
+    prefixes = {
+        ("G", "giga"): 1e-9,
+        ("M", "mega"): 1e-6,
+        ("k", "kilo"): 1e-3,
+        ("h", "hecto"): 1e-2,
+        ("deca",): 1e-1,
+        ("d", "deci"): 1e1,
+        ("c", "centi"): 1e2,
+        ("milli", "mm"): 1e3,  # cannot accept 'm' because it is used for meter unit
+        ("µ", "u", "micro"): 1e6,
+        ("n", "nano"): 1e9,
+        ("pico",): 1e12,  # cannot accept 'p' because it is used for pressure unit
+    }
+
+    for prefix, multiplier in prefixes.items():
+        if unit.startswith(prefix):
+            return multiplier
+
+    return 1.0
+
+
 def _compute_l_factor(
     l: np.ndarray | xr.DataArray,
     unit: str,
@@ -1249,7 +1287,7 @@ def _compute_l_factor(
     l: np.ndarray or xr.DataArray
         Degrees
     unit: str
-        Unit type for conversion
+        Unit type for conversion ending with the unit name
     geocentric_colat : xr.DataArray
         Geocentric colatitude
     ds_love: xr.Dataset, optional
@@ -1277,7 +1315,7 @@ def _compute_l_factor(
         Degree-dependent conversion factor.
     """
     # l_factor is degree dependant
-    if unit.endswith(("norm")):
+    if unit.endswith(("norm",)):
         # norm, fully normalized spherical harmonics
         l_factor = xr.ones_like(l)
         if a_div_r is not None:
@@ -1286,7 +1324,7 @@ def _compute_l_factor(
     elif unit.endswith(
         ("ewh", "equivalent_water_height", "lwe", "lwe_thickness", "water_column")
     ):
-        # equivalent water height [kg.m-2]
+        # equivalent water height [kg.m⁻²]
         # the exact formula is l_factor*(1 - f) (see [Ditmar2018]_ after eq. 17)
         # it is an approximation of the order of 0.3% to be coherent with the common formula from Wahr 1998
         l_factor = rho_earth * a_earth * (2 * l + 1) / (3 * fraction * rho_water)
@@ -1294,7 +1332,7 @@ def _compute_l_factor(
             l_factor = l_factor * a_div_r ** (l + 2)
 
     elif unit.endswith(("geoid", "geoid_height")):
-        # mmgeoid, millimeters geoid height
+        # meter of geoid height [m]
         if a_div_r is not None:
             from lenapy.utils.gravity import estimate_normal_gravity
 
@@ -1305,67 +1343,67 @@ def _compute_l_factor(
                 f_earth,
                 omega_earth,
             )
-            l_factor = gm_earth / a_earth / gamma_0 * 1e3 * a_div_r ** (l + 1)
+            l_factor = gm_earth / a_earth / gamma_0 * a_div_r ** (l + 1)
 
         else:
             # Simplification of the formula for the spherical case
-            l_factor = xr.ones_like(l) * a_earth * 1e3
+            l_factor = xr.ones_like(l) * a_earth
 
-    elif unit.endswith(("Gal", "gravity", "potential_gradient")):
-        # microGal, microGal gravity perturbations
-        l_factor = gm_earth * (l + 1) / (a_earth**2) * 1e8
+    elif unit.endswith(("gravity", "potential_gradient")):
+        # gravity perturbations [m.s⁻²]
+        l_factor = gm_earth * (l + 1) / (a_earth**2)
         if a_div_r is not None:
             l_factor = l_factor * a_div_r ** (l + 2)
 
-    elif unit.endswith(("potential")):
-        # potential, meters².seconds⁻²
+    elif unit.endswith(("Gal", "gal", "galileo")):
+        # Gal, Gal gravity perturbations [m.s⁻²]
+        l_factor = gm_earth * (l + 1) / (a_earth**2) * 1e2
+        if a_div_r is not None:
+            l_factor = l_factor * a_div_r ** (l + 2)
+
+    elif unit.endswith(("potential",)):
+        # potential, [m².s⁻²]
         l_factor = gm_earth / a_earth
         if a_div_r is not None:
             l_factor = l_factor * a_div_r ** (l + 1)
 
-    elif unit.endswith(("pascal")):  # TODO bar, hPa, mbar
+    elif unit.endswith(("pascal",)):
         # pascal, equivalent surface pressure
         l_factor = LNPY_G_WMO * rho_earth * a_earth * (2 * l + 1) / (3 * fraction)
         if a_div_r is not None:
             l_factor = l_factor * a_div_r ** (l + 1)
 
-    elif unit.endswith(("mvcu")):
-        # mvcu, meters viscoelastic crustal uplift
+    elif unit.endswith(("bar",)):
+        # bar, equivalent surface pressure
+        l_factor = (
+            LNPY_G_WMO * rho_earth * a_earth * (2 * l + 1) * 1e-5 / (3 * fraction)
+        )
+        if a_div_r is not None:
+            l_factor = l_factor * a_div_r ** (l + 1)
+
+    elif unit.endswith(("vcu",)):
+        # vcu, meters viscoelastic crustal uplift
         l_factor = a_earth * (2 * l + 1) / 2
         if a_div_r is not None:
             l_factor = l_factor * a_div_r ** (l + 1)
 
-    elif unit.endswith(("mecu")):
-        # mecu, meters elastic crustal deformation (uplift)
+    elif unit.endswith(("ecu",)):
+        # ecu, meters elastic crustal deformation (uplift)
         l_factor = a_earth * ds_love.hl / fraction
         if a_div_r is not None:
             l_factor = l_factor * a_div_r ** (l - 1)
 
-    elif unit.endswith(("int_radial_mag")):
-        # internal radial magnetic field in nT
-        l_factor = l + 1
-        if a_div_r is not None:
-            pass
-
-    elif unit.endswith(("ext_radial_mag")):
-        # external radial magnetic field in nT
-        l_factor = -l
-        if a_div_r is not None:
-            pass
-
+    # Possible to add magnetic field unit in the future
     else:
         raise ValueError(
-            "Invalid 'unit' parameter value in l_factor_conv function, it should end with "
-            "either 'norm', 'ewh', 'geoid', 'Gal', 'gravity', 'potential', 'pascal', 'mvcu', 'mecu'."  # TODO
+            "Invalid unit for l_factor conversion. See documentation or code for accepted units."
         )
     return l_factor
 
 
 def l_factor_conv(
     l: np.ndarray,
-    unit: Literal[
-        "mewh", "mmgeoid", "microGal", "potential", "pascal", "mvcu", "norm"
-    ] = "mewh",
+    unit: str = "mewh",
     include_elastic: bool = True,
     ellipsoidal_earth: bool = False,
     geocentric_colat: xr.DataArray | None = None,
@@ -1392,11 +1430,20 @@ def l_factor_conv(
     l : np.ndarray
         Degree for which the scale factor is estimated.
     unit : str, optional
-        'mewh', 'mmgeoid', 'microGal', 'pascal', 'mvcu', or 'norm'
         Unit of the spatial data used in the transformation. Default is 'mewh' for meters of Equivalent Water Height.
-        'mmgeoid' represents millimeters mmgeoid height, 'microGal' represents microGal gravity perturbations,
-        'pascal' represents equivalent surface pressure in pascal and
-        'mvcu' represents meters viscoelastic crustal uplift
+        str composed of a prefix (optional) and a unit type.
+        The unit prefix parser function accepts common ASCII and Unicode forms for the micro prefix
+        (both 'u' and 'µ') and is case\-sensitive where relevant (e.g. 'M' for mega vs 'm' for milli).
+        Unit cannot be defined using 'm' for milli because it is used for meter unit,
+        so 'milli' or 'mm' should be used instead. Same for 'p' for pico, 'pico' should be used instead.
+        Goes from 'giga' / 'G' to 'pico', including 'mega', 'kilo', 'hecto', 'deca', 'deci', 'centi', 'milli',
+        'micro', and 'nano'.
+        The unit type can be usual gravity related units such as 'geoid' for geoid height in meter,
+        'gravity' for gravity perturbations in m.s⁻², 'Gal' for gravity perturbations in Gal,
+        'potential' for potential in m².s⁻², 'pascal' for equivalent surface pressure,
+        'vcu' for viscoelastic crustal uplift in meter and 'ecu' for elastic crustal deformation (uplift) in meter.
+        It can also be 'ewh', 'equivalent_water_height', 'lwe', 'lwe_thickness' or 'water_column' for equivalent water
+        height in kg.m⁻².
     include_elastic : bool, optional
         If True, the Earth behavior is elastic.
     ellipsoidal_earth : bool, optional
@@ -1492,14 +1539,18 @@ def l_factor_conv(
         a_div_r,
     )
 
+    scale = _prefix_parser(unit)
+
+    l_factor_scale = scale * l_factor
+
     # Chunking plm for dask usage and memory optimization
-    if use_dask and type(l_factor) is not float:
+    if use_dask and type(l_factor_scale) is not float:
         if chunks is None:
             chunks = {"l": 20}
-        l_factor = l_factor.chunk(chunks)
+        l_factor_scale = l_factor_scale.chunk(chunks)
 
     cst = {"gm_earth": gm_earth, "a_earth": a_earth}
-    return l_factor, cst
+    return l_factor_scale, cst
 
 
 def _assert_plm(plm: xr.DataArray, lmax: int, latitude: np.ndarray) -> bool:
