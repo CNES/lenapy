@@ -461,6 +461,32 @@ def latitude_to_geocentric_colatitude(
     )
 
 
+def assert_latitude(ds: xr.DataArray) -> bool:
+    """
+    Verify if the given xr.Dataset have a coordinate named 'latitude'. Raise Assertion error if not.
+
+    Parameters
+    ----------
+    ds : xr.DataArray
+        Spatial grid to verify.
+
+    Returns
+    -------
+    True : bool
+        Returns True if the dataset has a coordinate named 'latitude'.
+
+    Raise
+    -----
+    AssertionError
+        This function raises AssertionError is self._obj is not a xr.Dataset with coordinates named 'latitude'.
+    """
+    if "latitude" not in ds.coords:
+        raise AssertionError(
+            "The latitude coordinates that should be named 'latitude' does not exist"
+        )
+    return True
+
+
 def assert_grid(ds: xr.DataArray) -> bool:
     """
     Verify if the given xr.Dataset have dimensions 'longitude' and 'latitude'. Raise Assertion error if not.
@@ -478,7 +504,8 @@ def assert_grid(ds: xr.DataArray) -> bool:
     Raise
     -----
     AssertionError
-        This function raises AssertionError is self._obj is not a xr.Dataset corresponding to spherical harmonics.
+        This function raises AssertionError is self._obj is not a xr.Dataset with coordinates named
+        'latitude' and 'longitude'.
     """
     if "latitude" not in ds.coords:
         raise AssertionError(

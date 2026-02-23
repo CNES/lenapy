@@ -34,12 +34,11 @@ import numpy as np
 import xarray as xr
 
 from lenapy.constants import *
-from lenapy.utils.geo import latitude_to_geocentric_colatitude
+from lenapy.utils.geo import assert_latitude, latitude_to_geocentric_colatitude
 from lenapy.utils.harmo import (
     _assert_plm,
     _generate_grid,
     _get_earth_parameters,
-    _init_bounds_and_grid,
     compute_plm,
     l_factor_conv,
 )
@@ -477,6 +476,7 @@ def normal_zonal_correction(
 
 def sh_to_gravity_disturbance(
     data: xr.Dataset,
+    surface: Literal[None, "reference", "geoid"] | float | xr.DataArray = None,
     lonmin: float = -180,
     lonmax: float = 180,
     latmin: float = -90,
@@ -490,17 +490,24 @@ def sh_to_gravity_disturbance(
     ellipsoidal_earth: bool = False,
     normalization_plm: Literal["4pi", "ortho", "schmidt"] = "4pi",
     use_dask: bool = False,
+    chunks_lfactor: dict | None = None,
     chunks_plm: dict | None = None,
+    test=True,
     **kwargs,
 ) -> xr.DataArray:
     """
     Transform Spherical Harmonics (SH) dataset into a grid corresponding to the gravity disturbance.
+    This grid can be the reference surface (sphere or ellipsoid) or another surface.
     With choice for constants, unit, love numbers, degree/order, spatial grid latitude and longitude, Earth hypothesis.
 
     Parameters
     ----------
     data : xr.Dataset
         xr.Dataset that corresponds to SH data to convert into spatial representation.
+    surface : float | xr.DataArray | Literal[None, "reference", "geoid"], optional
+        Surface to consider for the computation of the grid. If None or "reference", consider the reference sphere or
+        ellipsoid. If "geoid", consider the geoid as surface computed from the given field.
+        If a float or xr.DataArray is given, consider it as the surface height in meter to add to the reference surface.
 
     lonmin : float, optional
         Minimal longitude of the future grid.
@@ -538,6 +545,8 @@ def sh_to_gravity_disturbance(
 
     use_dask : bool, optional
         If True, use dask to chunk plm for memory optimization. Default is False.
+    chunks_lfactor : dict, optional
+        Define the chunking of lfactor when use_dask is True. Default is None, which set the chunking to {'l': 20}.
     chunks_plm : dict, optional
         Define the chunking of plm when use_dask is True. Default is None, which set the chunking to {'latitude': 1}.
 
@@ -552,12 +561,17 @@ def sh_to_gravity_disturbance(
         Spatial representation of the SH Dataset in gravity disturbance.
     """
     # Get parameters for computation of the grid and for the unit conversion
-    bounds, dlon, dlat = _init_bounds_and_grid(
-        bounds, lonmin, lonmax, latmin, latmax, dlon, dlat, radians_in
-    )
-
     longitude, latitude = _generate_grid(
-        bounds, dlon, dlat, longitude, latitude, radians_in
+        bounds,
+        lonmin,
+        lonmax,
+        latmin,
+        latmax,
+        dlon,
+        dlat,
+        radians_in,
+        longitude,
+        latitude,
     )
 
     data_null = xr.zeros_like(data)
@@ -589,89 +603,11 @@ def sh_to_gravity_disturbance(
     )
 
     # -- beginning of computation
-    ds_centrifugal = centrifugal_potential_partial_derivative(
-        latitude, ellipsoidal_earth, **kwargs
-    )
-
-    potential_dradius = data.lnharmo.to_grid(
-        unit="potential",
-        longitude=longitude,
-        latitude=latitude,
-        ellipsoidal_earth=ellipsoidal_earth,
-        plm=plm,
-        normalization_plm=normalization_plm,
-        use_dask=use_dask,
-        chunks_plm=chunks_plm,
-        **kwargs,
-    )
-
-    normal_dradius = normal_field.lnharmo.to_grid(
-        unit="potential",
-        longitude=longitude,
-        latitude=latitude,
-        ellipsoidal_earth=ellipsoidal_earth,
-        plm=plm,
-        normalization_plm=normalization_plm,
-        use_dask=use_dask,
-        chunks_plm=chunks_plm,
-        **kwargs,
-    )
-
-    potential_dlongitude = sh_to_potential_partial_derivative_longitude(
-        data,
-        longitude=longitude,
-        latitude=latitude,
-        ellipsoidal_earth=ellipsoidal_earth,
-        plm=plm,
-        normalization_plm=normalization_plm,
-        use_dask=use_dask,
-        chunks_plm=chunks_plm,
-        **kwargs,
-    )
-    normal_dlongitude = sh_to_potential_partial_derivative_longitude(
-        normal_field,
-        longitude=longitude,
-        latitude=latitude,
-        ellipsoidal_earth=ellipsoidal_earth,
-        plm=plm,
-        normalization_plm=normalization_plm,
-        use_dask=use_dask,
-        chunks_plm=chunks_plm,
-        **kwargs,
-    )
-
-    potential_dlatitude = (
-        data.lnharmo.to_grid(
-            unit="microGal",
-            longitude=longitude,
-            latitude=latitude,
-            ellipsoidal_earth=ellipsoidal_earth,
-            plm=dplm,
-            normalization_plm=normalization_plm,
-            use_dask=use_dask,
-            chunks_plm=chunks_plm,
-            **kwargs,
-        )
-        * 1e-8
-    )
-
-    normal_dlatitude = (
-        normal_field.lnharmo.to_grid(
-            unit="microGal",
-            longitude=longitude,
-            latitude=latitude,
-            ellipsoidal_earth=ellipsoidal_earth,
-            plm=dplm,
-            normalization_plm=normalization_plm,
-            use_dask=use_dask,
-            chunks_plm=chunks_plm,
-            **kwargs,
-        )
-        * 1e-8
-    )
-
     a_earth = kwargs["a_earth"] if "a_earth" in kwargs else LNPY_A_EARTH_GRS80
     f_earth = kwargs["f_earth"] if "f_earth" in kwargs else LNPY_F_EARTH_GRS80
+    omega_earth = (
+        kwargs["omega_earth"] if "omega_earth" in kwargs else LNPY_OMEGA_EARTH_GRS80
+    )
     if ellipsoidal_earth:
         r_theta = (
             a_earth
@@ -681,23 +617,132 @@ def sh_to_gravity_disturbance(
     else:
         r_theta = a_earth
 
-    nabla_w = np.sqrt(
-        (potential_dradius + ds_centrifugal.dV_dradius) ** 2
-        + (potential_dlongitude + ds_centrifugal.dV_dlongitude) ** 2
-        / (r_theta**2 * np.sin(geoc_colat) ** 2)
-        + (potential_dlatitude + ds_centrifugal.dV_dlatitude) ** 2 / r_theta**2
+    if surface == "geoid":
+        if test == 1:
+            h_geoid = (
+                data.lnharmo.normal_zonal_correction(
+                    f_earth=f_earth, omega_earth=omega_earth, apply=False
+                )
+            ).lnharmo.to_grid(
+                unit="mmgeoid",
+                longitude=longitude,
+                latitude=latitude,
+                ellipsoidal_earth=ellipsoidal_earth,
+                plm=plm,
+                normalization_plm=normalization_plm,
+                use_dask=use_dask,
+                chunks_lfactor=chunks_lfactor,
+                **kwargs,
+            ) * 1e-3
+            radius = r_theta + h_geoid
+
+        else:
+            radius = (
+                data.lnharmo.to_grid(
+                    unit="mmgeoid",
+                    longitude=longitude,
+                    latitude=latitude,
+                    ellipsoidal_earth=ellipsoidal_earth,
+                    plm=plm,
+                    normalization_plm=normalization_plm,
+                    use_dask=use_dask,
+                    chunks_lfactor=chunks_lfactor,
+                    **kwargs,
+                )
+                * 1e-3
+            )
+
+    elif surface is not None and surface != "reference":
+        radius = r_theta + surface
+
+    else:
+        radius = r_theta
+
+    ds_centrifugal = centrifugal_potential_partial_derivate_radius(
+        radius=radius * xr.ones_like(geoc_colat),
+        ellipsoidal_earth=ellipsoidal_earth,
+        **kwargs,
     )
 
+    potential_dradius = (
+        data.lnharmo.to_grid(
+            unit="microGal",
+            radius=radius,
+            ellipsoidal_earth=ellipsoidal_earth,
+            plm=plm,
+            normalization_plm=normalization_plm,
+            use_dask=use_dask,
+            chunks_lfactor=chunks_lfactor,
+            **kwargs,
+        )
+        * 1e-8
+    )
+
+    normal_dradius = (
+        normal_field.lnharmo.to_grid(
+            unit="microGal",
+            radius=radius,
+            ellipsoidal_earth=ellipsoidal_earth,
+            plm=plm,
+            normalization_plm=normalization_plm,
+            use_dask=use_dask,
+            chunks_lfactor=chunks_lfactor,
+            **kwargs,
+        )
+        * 1e-8
+    )
+
+    potential_dlongitude = sh_to_potential_partial_derivative_longitude(
+        data,
+        radius=radius,
+        ellipsoidal_earth=ellipsoidal_earth,
+        plm=plm,
+        normalization_plm=normalization_plm,
+        use_dask=use_dask,
+        chunks_lfactor=chunks_lfactor,
+        **kwargs,
+    )
+
+    potential_dlatitude = data.lnharmo.to_grid(
+        unit="potential",
+        radius=radius,
+        ellipsoidal_earth=ellipsoidal_earth,
+        plm=dplm,
+        normalization_plm=normalization_plm,
+        use_dask=use_dask,
+        chunks_lfactor=chunks_lfactor,
+        **kwargs,
+    )
+
+    normal_dlatitude = normal_field.lnharmo.to_grid(
+        unit="potential",
+        radius=radius,
+        ellipsoidal_earth=ellipsoidal_earth,
+        plm=dplm,
+        normalization_plm=normalization_plm,
+        use_dask=use_dask,
+        chunks_lfactor=chunks_lfactor,
+        **kwargs,
+    )
+
+    nabla_w = np.sqrt(
+        (potential_dradius + ds_centrifugal.dV_dradius) ** 2
+        + potential_dlongitude**2 / (radius**2 * np.sin(geoc_colat) ** 2)
+        + (potential_dlatitude + ds_centrifugal.dV_dlatitude) ** 2 / radius**2
+    )
+
+    # dlongitude is equal to 0 for the normal field
     nabla_u = np.sqrt(
         (normal_dradius + ds_centrifugal.dV_dradius) ** 2
-        + (normal_dlongitude + ds_centrifugal.dV_dlongitude) ** 2
-        / (r_theta**2 * np.sin(geoc_colat) ** 2)
-        + (normal_dlatitude + ds_centrifugal.dV_dlatitude) ** 2 / r_theta**2
+        + (normal_dlatitude + ds_centrifugal.dV_dlatitude) ** 2 / radius**2
     )
 
     gravity_disturbance = nabla_w - nabla_u
 
-    gravity_disturbance.attrs = {"units": "", "max_degree": int(data.l.max().values)}
+    gravity_disturbance.attrs = {
+        "units": "gravity_disturbance",
+        "max_degree": int(data.l.max().values),
+    }
     if "radius" in data.attrs:
         gravity_disturbance.attrs["radius"] = data.attrs["radius"]
     if "earth_gravity_constant" in data.attrs:
@@ -707,41 +752,87 @@ def sh_to_gravity_disturbance(
     return gravity_disturbance
 
 
+def _compute_centrifugal_potential_partial_derivative(
+    radius: xr.DataArray,
+    geocentric_colatitude: xr.DataArray,
+    omega_earth: float,
+    f_earth: float,
+) -> tuple[xr.DataArray, xr.DataArray, xr.DataArray]:
+    """
+    Compute the partial derivative of the centrifugal potential on the surface of reference with respect to
+    radius, longitude and geographic latitude at given geocentric colatitude.
+
+    Parameters
+    ----------
+    radius: xr.DataArray
+        Earth radius depending on latitude and possibly longitude.
+    geocentric_colatitude : xr.DataArray | None, optional
+        Geocentric colatitude in radians, the dimension is geographic latitude.
+    omega_earth : float, optional
+        Earth's rotation rate [rad.s⁻¹]. Default is LNPY_OMEGA_EARTH.
+    f_earth : float, optional
+        Earth flattening. Default is LNPY_F_EARTH_GRS80 if ellipsoidal_earth is True else it is set to 0.
+    """
+    e_earth_square = 2 * f_earth - f_earth**2
+
+    # Partial derivatives of the centrifugal potential
+    centrifugal_r = omega_earth**2 * radius * np.sin(geocentric_colatitude) ** 2
+    centrifugal_longitude = radius * 0
+    centrifugal_latitude = -(omega_earth**2) * radius**2 * np.cos(
+        geocentric_colatitude
+    ) * np.sin(geocentric_colatitude) - omega_earth**2 * radius**2 * np.sin(
+        geocentric_colatitude
+    ) ** 2 * (
+        e_earth_square * np.cos(geocentric_colatitude) * np.sin(geocentric_colatitude)
+    ) / (
+        1 - e_earth_square * np.sin(geocentric_colatitude) ** 2
+    )
+
+    return centrifugal_r, centrifugal_longitude, centrifugal_latitude
+
+
 def centrifugal_potential_partial_derivative(
-    latitude: xr.DataArray | np.ndarray,
+    latitude: xr.DataArray | np.ndarray | None = None,
+    dlat: float = 1,
     ellipsoidal_earth: bool = False,
-    a_earth: float = LNPY_A_EARTH_GRS80,
+    a_earth: float | None = None,
     omega_earth: float = LNPY_OMEGA_EARTH_GRS80,
     f_earth: float = LNPY_F_EARTH_GRS80,
     attrs: dict | None = None,
 ) -> xr.Dataset:
     """
-    Estimate the partial derivative of the centrifugal potential with respect to
-    radius, longitude and geographic latitude at given geographic latitude for a specified ellipsoid.
+    Estimate the partial derivative of the centrifugal potential on the surface of reference with respect to
+    radius, longitude and geographic latitude at given geographic latitude.
 
     Parameters
     ----------
-    latitude: xr.DataArray | np.ndarray
+    latitude: xr.DataArray | np.ndarray | None, optional
         Geographic latitude in degree, either as array or as DataArray.
+    dlat: float
+        Latitude resolution in degrees.
     ellipsoidal_earth : bool, optional
         If True, consider the Earth as an ellipsoid for the computation of the centrifugal potential.
         Default is False.
     a_earth : float, optional
-        Earth radius for spherical case of Earth semi-major axis [m]. Default is LNPY_A_EARTH_GRS80.
+        Earth radius for spherical case or Earth semi-major axis [m]. If not provided, uses `attrs['radius']` and
+        if it does not exist, uses LNPY_A_EARTH_GRS80.
     omega_earth : float, optional
         Earth's rotation rate [rad.s⁻¹]. Default is LNPY_OMEGA_EARTH.
     f_earth : float, optional
         Earth flattening. Default is LNPY_F_EARTH_GRS80 if ellipsoidal_earth is True else it is set to 0.
     attrs : dict | None, optional
-        ds.attrs information that might help to estimate radius if no parameters are given.
+        ds.attrs information that might help to estimate a_earth if no parameters are given.
 
     Returns
     -------
     ds_centrifugal : xr.Dataset
-        Dataset with the partial derivatives of the centrifugal potential, named 'dV_radius', 'dV_longitude' and
-        'dV_latitude', with respect to radius, longitude and latitude.
+        Dataset with the partial derivatives of the centrifugal potential of the surface of reference,
+        named 'dV_radius', 'dV_longitude' and 'dV_latitude', with respect to radius, longitude and latitude.
         The dataset has a latitude dimension and coordinate set with the latitude input.
     """
+    if latitude is None:
+        latitude = np.arange(-90 + dlat / 2, 90 + dlat / 2, dlat)
+
     # Change latitude to DataArray if it is not already
     if type(latitude) != xr.DataArray:
         latitude = xr.DataArray(
@@ -754,6 +845,7 @@ def centrifugal_potential_partial_derivative(
     geoc_colat = latitude_to_geocentric_colatitude(
         latitude, ellipsoidal_earth=ellipsoidal_earth, f_earth=f_earth
     )
+
     if ellipsoidal_earth:
         r_theta = (
             a_earth
@@ -764,29 +856,120 @@ def centrifugal_potential_partial_derivative(
         r_theta = a_earth
         f_earth = 0
 
-    e_earth_square = 2 * f_earth - f_earth**2
-
-    # Partial derivatives of the centrifugal potential
-    centrifugal_r = omega_earth**2 * r_theta * np.sin(geoc_colat) ** 2
-    centrifugal_longitude = latitude * 0
-    centrifugal_latitude = -(omega_earth**2) * r_theta**2 * np.cos(
-        geoc_colat
-    ) * np.sin(geoc_colat) - omega_earth**2 * r_theta**2 * np.sin(
-        geoc_colat
-    ) ** 2 * (
-        e_earth_square * np.cos(geoc_colat) * np.sin(geoc_colat)
-    ) / (
-        1 - e_earth_square * np.sin(geoc_colat) ** 2
+    centrifugal_r, centrifugal_lon, centrifugal_lat = (
+        _compute_centrifugal_potential_partial_derivative(
+            r_theta, geoc_colat, omega_earth, f_earth
+        )
     )
 
     # Return the partial derivatives as a dataset
     return xr.Dataset(
         {
-            "dV_dradius": (["latitude"], centrifugal_r),
-            "dV_dlongitude": (["latitude"], centrifugal_longitude),
-            "dV_dlatitude": (["latitude"], centrifugal_latitude),
+            "dV_dradius": centrifugal_r,
+            "dV_dlongitude": centrifugal_lon,
+            "dV_dlatitude": centrifugal_lat,
         },
-        coords={"latitude": latitude},
+        attrs={
+            "name": "centrifugal_potential_partial_derivative",
+            "radius": a_earth,
+            "omega_earth": omega_earth,
+            "f_earth": f_earth,
+        },
+    )
+
+
+def centrifugal_potential_partial_derivate_radius(
+    radius: xr.DataArray | None = None,
+    height: xr.DataArray | None = None,
+    ellipsoidal_earth: bool = False,
+    a_earth: float | None = None,
+    f_earth: float = LNPY_F_EARTH_GRS80,
+    omega_earth: float = LNPY_OMEGA_EARTH_GRS80,
+    attrs: dict | None = None,
+) -> xr.Dataset:
+    """
+    Estimate the partial derivative of the centrifugal potential on a defined surface (that can be the geoid).
+    The surface is defined either by the radius with respect to the Earth's center or by the height above the
+    surface of reference (sphere or ellipsoid depending on the `ellipsoidal_earth` parameter).
+    The partial derivative are estimated with respect to radius, longitude and geographic latitude.
+
+    Parameters
+    ----------
+    radius: xr.DataArray | float | None, optional
+        Radius from the Earth's center depending on latitude and other dimensions. If not provided, `height` parameter
+        is used to compute the radius.
+    height: xr.DataArray | float | None, optional
+        Height above of the surface of reference (sphere or ellipsoid) depending on latitude and possibly other
+        dimensions. If not provided, radius parameter is used for the computation.
+    ellipsoidal_earth : bool, optional
+        If True, consider the Earth as an ellipsoid for the computation of the centrifugal potential.
+        Default is False.
+    a_earth : float, optional
+        Earth radius for spherical case or Earth semi-major axis [m]. If not provided, uses `attrs['radius']` and
+        if it does not exist, uses LNPY_A_EARTH_GRS80.
+    omega_earth : float, optional
+        Earth's rotation rate [rad.s⁻¹]. Default is LNPY_OMEGA_EARTH.
+    f_earth : float, optional
+        Earth flattening. Default is LNPY_F_EARTH_GRS80 if ellipsoidal_earth is True else it is set to 0.
+    attrs : dict | None, optional
+        ds.attrs information that might help to estimate a_earth if no parameters are given.
+
+    Returns
+    -------
+    ds_centrifugal : xr.Dataset
+        Dataset with the partial derivatives of the centrifugal potential at the given radius,
+        named 'dV_radius', 'dV_longitude' and 'dV_latitude', with respect to radius, longitude and latitude.
+        The radius of the reference surface is given in the dataset as 'determination_radius' variable.
+        The dataset has a latitude dimension and possiblt a longitude dimension depending on the input.
+
+    Raises
+    ------
+    ValueError
+        If neither radius nor height parameter is provided.
+    """
+    # get parameters for the computation
+    a_earth, _ = _get_earth_parameters(attrs, a_earth, None)
+
+    if radius is None and height is not None:
+        assert_latitude(height)
+        latitude = height.latitude
+    elif radius is not None:
+        assert_latitude(radius)
+        latitude = radius.latitude
+    else:
+        raise ValueError("Either radius or height parameter must be provided.")
+
+    geoc_colat = latitude_to_geocentric_colatitude(
+        latitude, ellipsoidal_earth=ellipsoidal_earth, f_earth=f_earth
+    )
+
+    if radius is None and height is not None:
+        if ellipsoidal_earth:
+            r_theta = (
+                a_earth
+                * (1 - f_earth)
+                / np.sqrt(1 - (2 * f_earth - f_earth**2) * np.sin(geoc_colat) ** 2)
+            )
+        else:
+            r_theta = a_earth
+            f_earth = 0
+
+        radius = height + r_theta
+
+    centrifugal_r, centrifugal_lon, centrifugal_lat = (
+        _compute_centrifugal_potential_partial_derivative(
+            radius, geoc_colat, omega_earth, f_earth
+        )
+    )
+
+    # Return the partial derivatives as a dataset
+    return xr.Dataset(
+        {
+            "dV_dradius": centrifugal_r,
+            "dV_dlongitude": centrifugal_lon,
+            "dV_dlatitude": centrifugal_lat,
+            "determination_radius": radius,
+        },
         attrs={
             "name": "centrifugal_potential_partial_derivative",
             "radius": a_earth,
@@ -808,10 +991,12 @@ def sh_to_potential_partial_derivative_longitude(
     longitude: np.ndarray | None = None,
     latitude: np.ndarray | None = None,
     radians_in: bool = False,
+    radius: xr.DataArray = None,
     ellipsoidal_earth: bool = False,
     plm: xr.DataArray = None,
     normalization_plm: Literal["4pi", "ortho", "schmidt"] = "4pi",
     use_dask: bool = False,
+    chunks_lfactor: dict | None = None,
     chunks_plm: dict | None = None,
     **kwargs,
 ) -> xr.DataArray:
@@ -823,7 +1008,8 @@ def sh_to_potential_partial_derivative_longitude(
     Parameters
     ----------
     data : xr.Dataset
-        xr.Dataset that corresponds to SH data to convert into spatial representation.
+        xr.Dataset that corresponds to SH data to convert into potential partial derivative of longitude
+        spatial representation.
 
     lonmin : float, optional
         Minimal longitude of the future grid.
@@ -847,6 +1033,8 @@ def sh_to_potential_partial_derivative_longitude(
     latitude : np.ndarray, optional
         List of latitude to use for the grid computation (if given, others latitude information are not considered).
 
+    radius : xr.DataArray, optional
+        DataArray with the radius of the grid to compute. If not given, the radius is the surface of reference.
     ellipsoidal_earth : bool, optional
         If True, consider the Earth as an ellipsoid following [Ditmar2018]. Default is False for a spherical Earth.
 
@@ -861,6 +1049,8 @@ def sh_to_potential_partial_derivative_longitude(
 
     use_dask : bool, optional
         If True, use dask to chunk plm for memory optimization. Default is False.
+    chunks_lfactor : dict, optional
+        Define the chunking of lfactor when use_dask is True. Default is None, which set the chunking to {'l': 20}.
     chunks_plm : dict, optional
         Define the chunking of plm when use_dask is True. Default is None, which set the chunking to {'latitude': 1}.
 
@@ -875,12 +1065,17 @@ def sh_to_potential_partial_derivative_longitude(
         Spatial representation of the SH Dataset in potential partial derivative in regards to longitude.
     """
     # Get parameters for computation of the grid and for the unit conversion
-    bounds, dlon, dlat = _init_bounds_and_grid(
-        bounds, lonmin, lonmax, latmin, latmax, dlon, dlat, radians_in
-    )
-
     longitude, latitude = _generate_grid(
-        bounds, dlon, dlat, longitude, latitude, radians_in
+        bounds,
+        lonmin,
+        lonmax,
+        latmin,
+        latmax,
+        dlon,
+        dlat,
+        radians_in,
+        longitude,
+        latitude,
     )
 
     geocentric_colat = latitude_to_geocentric_colatitude(
@@ -909,7 +1104,10 @@ def sh_to_potential_partial_derivative_longitude(
         unit="potential",
         ellipsoidal_earth=ellipsoidal_earth,
         geocentric_colat=geocentric_colat,
+        radius=radius,
         attrs=data.attrs,
+        use_dask=use_dask,
+        chunks=chunks_lfactor,
         **kwargs,
     )
 
@@ -933,7 +1131,7 @@ def sh_to_potential_partial_derivative_longitude(
     d_slm = (plm_lfactor * data.slm * data.m).sum(dim="l")
 
     # Final calcul on the grid
-    xgrid = c_cos.dot(d_slm) - s_sin.dot(d_clm)
+    xgrid = c_cos.dot(d_slm, dim=["m"]) - s_sin.dot(d_clm, dim=["m"])
 
     xgrid = xgrid.transpose("latitude", "longitude", ...)
 

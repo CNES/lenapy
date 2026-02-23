@@ -26,55 +26,14 @@ import scipy as sc
 import xarray as xr
 
 from lenapy.constants import *
-from lenapy.utils.geo import latitude_to_geocentric_colatitude
+from lenapy.utils.geo import (
+    assert_grid,
+    assert_latitude,
+    latitude_to_geocentric_colatitude,
+)
 
 
 def _generate_grid(
-    bounds: list[float],
-    dlon: float,
-    dlat: float,
-    longitude: np.ndarray | None,
-    latitude: np.ndarray | None,
-    radians_in: bool,
-) -> tuple[np.ndarray, np.ndarray]:
-    """
-    Generate longitude and latitude arrays for the grid.
-
-    load longitude and latitude if given
-    if not : compute longitude and latitude in degrees between given or defaults bounds
-
-    Parameters
-    ----------
-    bounds : list of float
-        [lonmin, lonmax, latmin, latmax]
-    dlon, dlat : float
-        Grid spacing in degrees.
-    longitude, latitude : np.ndarray or None
-        Optionally provided coordinate arrays.
-    radians_in : bool
-        Whether the input arrays are in radians.
-
-    Returns
-    -------
-    longitude : np.ndarray
-        Array of longitudes in degrees.
-    latitude : np.ndarray
-        Array of latitudes in degrees.
-    """
-    if longitude is None:
-        longitude = np.arange(bounds[0] + dlon / 2.0, bounds[1] + dlon / 2.0, dlon)
-    elif radians_in:
-        longitude = np.rad2deg(longitude)
-
-    if latitude is None:
-        latitude = np.arange(bounds[2] + dlat / 2.0, bounds[3] + dlat / 2.0, dlat)
-    elif radians_in:
-        latitude = np.rad2deg(latitude)
-
-    return longitude, latitude
-
-
-def _init_bounds_and_grid(
     bounds: list[float] | None,
     lonmin: float,
     lonmax: float,
@@ -83,9 +42,16 @@ def _init_bounds_and_grid(
     dlon: float,
     dlat: float,
     radians_in: bool,
-) -> tuple[list[float], float, float]:
+    longitude: np.ndarray | None = None,
+    latitude: np.ndarray | None = None,
+    grid: xr.DataArray | xr.Dataset | None = None,
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Initialize bounds and grid resolution.
+    Generate longitude and latitude arrays for the grid.
+
+    Load longitude and latitude from the given grid, if not from the given latitude, longitude and
+    if not : compute longitude and latitude in degrees between given or defaults bounds
 
     Parameters
     ----------
@@ -97,15 +63,19 @@ def _init_bounds_and_grid(
         Grid resolution in degrees or radians.
     radians_in: bool
         Whether the inputs are in radians.
+    longitude, latitude: np.ndarray or None
+        Optionally provided coordinate arrays.
+    radians_in: bool
+        Whether the input arrays are in radians.
+    grid: xr.DataArray | xr.Dataset | float
+        Optionally provided grid from which to extract longitude and latitude coordinates.
 
     Returns
     -------
-    bounds: list of float
-        Bounds in degrees.
-    dlon: float
-        Longitude resolution in degrees.
-    dlat: float
-        Latitude resolution in degrees.
+    longitude : np.ndarray
+        Array of longitudes in degrees.
+    latitude : np.ndarray
+        Array of latitudes in degrees.
     """
     if bounds is None:
         bounds = [lonmin, lonmax, latmin, latmax]
@@ -118,7 +88,32 @@ def _init_bounds_and_grid(
             dlon = np.rad2deg(dlon)
         if dlat != 1:
             dlat = np.rad2deg(dlat)
-    return bounds, dlon, dlat
+
+    if grid is None or type(grid) is not xr.Dataset:
+        if longitude is None:
+            longitude = np.arange(bounds[0] + dlon / 2, bounds[1] + dlon / 2, dlon)
+        elif radians_in:
+            longitude = np.rad2deg(longitude)
+
+        if latitude is None:
+            latitude = np.arange(bounds[2] + dlat / 2, bounds[3] + dlat / 2, dlat)
+        elif radians_in:
+            latitude = np.rad2deg(latitude)
+
+    else:
+        if "longitude" in grid.coords:
+            assert_grid(grid)
+            longitude = grid.longitude.values
+            latitude = grid.latitude.values
+        else:
+            assert_latitude(grid)
+            latitude = grid.latitude.values
+            if longitude is None:
+                longitude = np.arange(bounds[0] + dlon / 2, bounds[1] + dlon / 2, dlon)
+            elif radians_in:
+                longitude = np.rad2deg(longitude)
+
+    return longitude, latitude
 
 
 def _handle_mass_conservation(
@@ -226,12 +221,14 @@ def sh_to_grid(
     longitude: np.ndarray | None = None,
     latitude: np.ndarray | None = None,
     radians_in: bool = False,
+    radius: xr.DataArray | float | None = None,
     force_mass_conservation: bool = False,
     ellipsoidal_earth: bool = False,
     include_elastic: bool = True,
     plm: xr.DataArray = None,
     normalization_plm: Literal["4pi", "ortho", "schmidt"] = "4pi",
     use_dask: bool = False,
+    chunks_lfactor: dict | None = None,
     chunks_plm: dict | None = None,
     **kwargs,
 ) -> xr.DataArray:
@@ -287,6 +284,9 @@ def sh_to_grid(
     latitude : np.ndarray, optional
         List of latitude to use for the grid computation (if given, others latitude information are not considered).
 
+    radius : xr.DataArray | float, optional
+        DataArray or float with the radius of the grid to compute. If not given, the radius is the surface of reference.
+
     force_mass_conservation : bool, optional
         If True, force that the grid resulting from all coefficients except C0 has a null global mass. Default is False.
     ellipsoidal_earth : bool, optional
@@ -305,6 +305,8 @@ def sh_to_grid(
 
     use_dask : bool, optional
         If True, use dask to chunk plm for memory optimization. Default is False.
+    chunks_lfactor : dict, optional
+        Define the chunking of lfactor when use_dask is True. Default is None, which set the chunking to {'l': 20}.
     chunks_plm : dict, optional
         Define the chunking of plm when use_dask is True. Default is None, which set the chunking to {'latitude': 1}.
 
@@ -325,11 +327,18 @@ def sh_to_grid(
     used_l, use_czero_coef, force_mass_conservation = _handle_mass_conservation(
         used_l, force_mass_conservation
     )
-    bounds, dlon, dlat = _init_bounds_and_grid(
-        bounds, lonmin, lonmax, latmin, latmax, dlon, dlat, radians_in
-    )
     longitude, latitude = _generate_grid(
-        bounds, dlon, dlat, longitude, latitude, radians_in
+        bounds,
+        lonmin,
+        lonmax,
+        latmin,
+        latmax,
+        dlon,
+        dlat,
+        radians_in,
+        longitude,
+        latitude,
+        radius,
     )
 
     geocentric_colat = latitude_to_geocentric_colatitude(
@@ -359,7 +368,10 @@ def sh_to_grid(
         include_elastic=include_elastic,
         ellipsoidal_earth=ellipsoidal_earth,
         geocentric_colat=geocentric_colat,
+        radius=radius,
         attrs=sub_data.attrs,
+        use_dask=use_dask,
+        chunks=chunks_lfactor,
         **kwargs,
     )
 
@@ -384,13 +396,16 @@ def sh_to_grid(
         d_slm = (plm_lfactor * sub_data.slm).sum(dim="l")
 
         # Final calcul on the grid
-        xgrid = c_cos.dot(d_clm) + s_sin.dot(d_slm)
+        xgrid = c_cos.dot(d_clm, dim=["m"]) + s_sin.dot(d_slm, dim=["m"])
+
     else:
         d_clm = (plm_lfactor**2 * sub_data.clm**2).sum(dim="l")
         d_slm = (plm_lfactor**2 * sub_data.slm**2).sum(dim="l")
 
         # Final calcul of sigma on the grid
-        xgrid = np.sqrt((c_cos**2).dot(d_clm) + (s_sin**2).dot(d_slm))
+        xgrid = np.sqrt(
+            (c_cos**2).dot(d_clm, dim=["m"]) + (s_sin**2).dot(d_slm, dim=["m"])
+        )
 
         unit = "Errors in " + unit
 
@@ -885,13 +900,17 @@ def compute_plm(
     # if default latitude, set it from z
     latitude = z if latitude is None else latitude
 
-    p = np.zeros(((lmax + 1) * (lmax + 2) // 2, len(z)))
-    dp = np.zeros(((lmax + 1) * (lmax + 2) // 2, len(z))) if derivative else None
+    p = np.zeros(((lmax + 1) * (lmax + 2) // 2, len(z)), dtype=dtype)
+    dp = (
+        np.zeros(((lmax + 1) * (lmax + 2) // 2, len(z)), dtype=dtype)
+        if derivative
+        else None
+    )
 
-    d, dp = _compute_plm_vector(p, dp, z, lmax, normalization, derivative, dtype)
+    p, dp = _compute_plm_vector(p, dp, z, lmax, normalization, derivative, dtype)
 
     # reshape Legendre polynomials to output dimensions (lower triangle array)
-    plm = np.zeros((lmax + 1, mmax + 1, len(z)))
+    plm = np.zeros((lmax + 1, mmax + 1, len(z)), dtype=dtype)
     p_ind = np.tril_indices(lmax + 1)[1] < mmax + 1
     if not derivative:
         plm[np.tril_indices(lmax + 1, m=mmax + 1)] = p[p_ind]
@@ -1133,7 +1152,6 @@ def load_default_love_numbers() -> xr.Dataset:
 def _compute_l_factor(
     l: np.ndarray | xr.DataArray,
     unit: str,
-    ellipsoidal_earth: bool,
     geocentric_colat: xr.DataArray | None,
     ds_love: xr.Dataset | None,
     a_earth: float,
@@ -1143,7 +1161,7 @@ def _compute_l_factor(
     rho_earth: float,
     rho_water: float,
     fraction: xr.DataArray,
-    a_div_r_lat: np.ndarray | xr.DataArray | None,
+    a_div_r: np.ndarray | xr.DataArray | None,
 ) -> xr.DataArray:
     """
     Compute the degree-dependent scale factor.
@@ -1154,8 +1172,6 @@ def _compute_l_factor(
         Degrees
     unit: str
         Unit type for conversion
-    ellipsoidal_earth: bool
-        Whether to apply ellipsoidal correction
     geocentric_colat : xr.DataArray
         Geocentric colatitude
     ds_love: xr.Dataset, optional
@@ -1174,8 +1190,8 @@ def _compute_l_factor(
         Water density
     fraction: xr.DataArray
         Redistribution factor
-    a_div_r_lat: np.ndarray | xr.DataArray | None
-        Ellipsoidal correction factor
+    a_div_r: np.ndarray | xr.DataArray | None
+        Correction factor (used for ellipsoidal correction) corresponding to a_earth divided by radius of the grid.
 
     Returns
     -------
@@ -1183,23 +1199,25 @@ def _compute_l_factor(
         Degree-dependent conversion factor.
     """
     # l_factor is degree dependant
-    if unit == "norm":
+    if unit.endswith(("norm")):
         # norm, fully normalized spherical harmonics
         l_factor = xr.ones_like(l)
-        if ellipsoidal_earth:
-            l_factor = l_factor * a_div_r_lat**l
+        if a_div_r is not None:
+            l_factor = l_factor * a_div_r**l
 
-    elif unit == "mewh":
-        # mewh, meters equivalent water height [kg.m-2]
+    elif unit.endswith(
+        ("ewh", "equivalent_water_height", "lwe", "lwe_thickness", "water_column")
+    ):
+        # equivalent water height [kg.m-2]
         # the exact formula is l_factor*(1 - f) (see [Ditmar2018]_ after eq. 17)
         # it is an approximation of the order of 0.3% to be coherent with the common formula from Wahr 1998
         l_factor = rho_earth * a_earth * (2 * l + 1) / (3 * fraction * rho_water)
-        if ellipsoidal_earth:
-            l_factor = l_factor * a_div_r_lat ** (l + 2)
+        if a_div_r is not None:
+            l_factor = l_factor * a_div_r ** (l + 2)
 
-    elif unit == "mmgeoid":
+    elif unit.endswith(("geoid", "geoid_height")):
         # mmgeoid, millimeters geoid height
-        if ellipsoidal_earth:
+        if a_div_r is not None:
             from lenapy.utils.gravity import estimate_normal_gravity
 
             gamma_0 = estimate_normal_gravity(
@@ -1209,58 +1227,58 @@ def _compute_l_factor(
                 f_earth,
                 omega_earth,
             )
-            l_factor = gm_earth / a_earth / gamma_0 * 1e3 * a_div_r_lat ** (l + 1)
+            l_factor = gm_earth / a_earth / gamma_0 * 1e3 * a_div_r ** (l + 1)
 
         else:
             # Simplification of the formula for the spherical case
             l_factor = xr.ones_like(l) * a_earth * 1e3
 
-    elif unit == "microGal":
+    elif unit.endswith(("Gal", "gravity", "potential_gradient")):
         # microGal, microGal gravity perturbations
         l_factor = gm_earth * (l + 1) / (a_earth**2) * 1e8
-        if ellipsoidal_earth:
-            l_factor = l_factor * a_div_r_lat ** (l + 2)
+        if a_div_r is not None:
+            l_factor = l_factor * a_div_r ** (l + 2)
 
-    elif unit == "potential":
+    elif unit.endswith(("potential")):
         # potential, meters².seconds⁻²
         l_factor = gm_earth / a_earth
-        if ellipsoidal_earth:
-            l_factor = l_factor * a_div_r_lat ** (l + 1)
+        if a_div_r is not None:
+            l_factor = l_factor * a_div_r ** (l + 1)
 
-    elif unit == "pascal":
+    elif unit.endswith(("pascal")):  # TODO bar, hPa, mbar
         # pascal, equivalent surface pressure
         l_factor = LNPY_G_WMO * rho_earth * a_earth * (2 * l + 1) / (3 * fraction)
-        if ellipsoidal_earth:
-            l_factor = l_factor * a_div_r_lat ** (l + 1)
+        if a_div_r is not None:
+            l_factor = l_factor * a_div_r ** (l + 1)
 
-    elif unit == "mvcu":
+    elif unit.endswith(("mvcu")):
         # mvcu, meters viscoelastic crustal uplift
         l_factor = a_earth * (2 * l + 1) / 2
-        if ellipsoidal_earth:
-            l_factor = l_factor * a_div_r_lat ** (l + 1)
+        if a_div_r is not None:
+            l_factor = l_factor * a_div_r ** (l + 1)
 
-    elif unit == "mecu":
+    elif unit.endswith(("mecu")):
         # mecu, meters elastic crustal deformation (uplift)
         l_factor = a_earth * ds_love.hl / fraction
-        if ellipsoidal_earth:
-            l_factor = l_factor * a_div_r_lat ** (l - 1)
+        if a_div_r is not None:
+            l_factor = l_factor * a_div_r ** (l - 1)
 
-    elif unit == "int_radial_mag":
+    elif unit.endswith(("int_radial_mag")):
         # internal radial magnetic field in nT
         l_factor = l + 1
-        if ellipsoidal_earth:
+        if a_div_r is not None:
             pass
 
-    elif unit == "ext_radial_mag":
+    elif unit.endswith(("ext_radial_mag")):
         # external radial magnetic field in nT
         l_factor = -l
-        if ellipsoidal_earth:
+        if a_div_r is not None:
             pass
 
     else:
         raise ValueError(
-            "Invalid 'unit' parameter value in l_factor_conv function, valid values are: "
-            "(norm, mewh, mmgeoid, microGal, potential, pascal, mvcu, mecu)"
+            "Invalid 'unit' parameter value in l_factor_conv function, it should end with "
+            "either 'norm', 'ewh', 'geoid', 'Gal', 'gravity', 'potential', 'pascal', 'mvcu', 'mecu'."  # TODO
         )
     return l_factor
 
@@ -1273,6 +1291,7 @@ def l_factor_conv(
     include_elastic: bool = True,
     ellipsoidal_earth: bool = False,
     geocentric_colat: xr.DataArray | None = None,
+    radius: xr.DataArray | None = None,
     ds_love: xr.Dataset | None = None,
     a_earth: float | None = None,
     gm_earth: float | None = None,
@@ -1281,6 +1300,8 @@ def l_factor_conv(
     rho_earth: float = LNPY_RHO_EARTH,
     rho_water: float = 1000,
     attrs: dict | None = None,
+    use_dask: bool = False,
+    chunks: dict | None = None,
 ) -> tuple[xr.DataArray, dict]:
     """
     Compute a scale factor for a transformation between spherical harmonics and grid data.
@@ -1304,6 +1325,9 @@ def l_factor_conv(
         If True, consider the Earth as an ellipsoid following [Ditmar2018]_ and if False as a sphere.
     geocentric_colat : xr.DataArray | None, optional
         Geocentric colatitude for ellipsoidal Earth radius computation in radians, the dimension is geographic latitude.
+    radius : xr.DataArray | None, optional
+        DataArray with the radius of the grid to compute. If not given, the radius is the surface of reference.
+
     ds_love : xr.Dataset | None, optional
         Dataset with the l dimension corresponding to degree and with l (and possibly h and k) variables that
         are Love numbers.
@@ -1324,6 +1348,11 @@ def l_factor_conv(
         Water density [kg.m⁻³] for Equivalent Water Height formula. Default is 1000 Kg.m⁻³.
     attrs : dict | None, optional
         ds.attrs information that might help to estimate l_factor if no parameters are given.
+
+    use_dask : bool, optional
+        If True, use dask to chunk lfactor for memory optimization. Default is False.
+    chunks : dict, optional
+        Define the chunking of lfactor when use_dask is True. Default is None, which set the chunking to {'l': 20}.
 
     Returns
     -------
@@ -1351,8 +1380,8 @@ def l_factor_conv(
             ds_love = load_default_love_numbers()
         fraction = fraction + ds_love.kl
 
-    a_div_r_lat = None
-    if ellipsoidal_earth:
+    a_div_r = None
+    if ellipsoidal_earth and radius is None:
         # test if geocentric_colat is set
         if geocentric_colat is None:
             raise ValueError(
@@ -1363,14 +1392,16 @@ def l_factor_conv(
         # e = sqrt(2f - f**2)
         e_earth_square = 2 * f_earth - f_earth**2
         # a_div_r_lat = a / r(theta)  with r(theta) = a(1-f)/sqrt(1 - e**2*sin(theta)**2)
-        a_div_r_lat = np.sqrt(1 - e_earth_square * np.sin(geocentric_colat) ** 2) / (
+        a_div_r = np.sqrt(1 - e_earth_square * np.sin(geocentric_colat) ** 2) / (
             1 - f_earth
         )
+
+    elif radius is not None:
+        a_div_r = a_earth / radius
 
     l_factor = _compute_l_factor(
         l,
         unit,
-        ellipsoidal_earth,
         geocentric_colat,
         ds_love,
         a_earth,
@@ -1380,8 +1411,14 @@ def l_factor_conv(
         rho_earth,
         rho_water,
         fraction,
-        a_div_r_lat,
+        a_div_r,
     )
+
+    # Chunking plm for dask usage and memory optimization
+    if use_dask and type(l_factor) is not float:
+        if chunks is None:
+            chunks = {"l": 20}
+        l_factor = l_factor.chunk(chunks)
 
     cst = {"gm_earth": gm_earth, "a_earth": a_earth}
     return l_factor, cst
