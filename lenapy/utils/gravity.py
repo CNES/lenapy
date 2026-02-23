@@ -548,7 +548,7 @@ def sh_to_gravity_disturbance(
     chunks_lfactor : dict, optional
         Define the chunking of lfactor when use_dask is True. Default is None, which set the chunking to {'l': 20}.
     chunks_plm : dict, optional
-        Define the chunking of plm when use_dask is True. Default is None, which set the chunking to {'latitude': 1}.
+        Define the chunking of plm when use_dask is True. Default is None, which set the chunking to {'latitude': 10}.
 
     **kwargs :
         Supplementary parameters used by the function l_factor_conv to modify defaults constants used in the computation
@@ -1052,7 +1052,7 @@ def sh_to_potential_partial_derivative_longitude(
     chunks_lfactor : dict, optional
         Define the chunking of lfactor when use_dask is True. Default is None, which set the chunking to {'l': 20}.
     chunks_plm : dict, optional
-        Define the chunking of plm when use_dask is True. Default is None, which set the chunking to {'latitude': 1}.
+        Define the chunking of plm when use_dask is True. Default is None, which set the chunking to {'latitude': 10}.
 
     **kwargs :
         Supplementary parameters used by the function l_factor_conv to modify defaults constants used in the computation

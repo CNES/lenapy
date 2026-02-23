@@ -308,7 +308,7 @@ def sh_to_grid(
     chunks_lfactor : dict, optional
         Define the chunking of lfactor when use_dask is True. Default is None, which set the chunking to {'l': 20}.
     chunks_plm : dict, optional
-        Define the chunking of plm when use_dask is True. Default is None, which set the chunking to {'latitude': 1}.
+        Define the chunking of plm when use_dask is True. Default is None, which set the chunking to {'latitude': 10}.
 
     **kwargs :
         Supplementary parameters used by the function l_factor_conv to modify defaults constants used in the computation
@@ -509,7 +509,7 @@ def grid_to_sh(
     use_dask : bool, optional
         If True, use dask to chunk plm for memory optimization. Default is False.
     chunks_plm : dict, optional
-        Define the chunking of plm when use_dask is True. Default is None, which set the chunking to {'latitude': 1}.
+        Define the chunking of plm when use_dask is True. Default is None, which set the chunking to {'latitude': 10}.
 
     **kwargs :
         Supplementary parameters used by the function l_factor_conv to modify defaults constants used in the computation
@@ -714,23 +714,22 @@ def _scale_plm_factors(
 
 
 def _compute_plm_vector(
-    p: np.ndarray,
-    dp: np.ndarray,
     z: np.ndarray,
     lmax: int,
     normalization: Literal["4pi", "ortho", "schmidt"],
     derivative: bool,
     dtype: complex | float | type[complex] | type[float],
+    f1,
+    f2,
+    norm_p10,
+    norm_4pi,
+    df,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Compute associated Legendre functions P(l,m) and optionally their derivatives as a array.
 
     Parameters
     ----------
-    p : np.ndarray
-        Preallocated array for P(l,m) values.
-    dp : np.ndarray
-        Preallocated array for derivatives of P(l,m) values.
     lmax : int
         Maximum degree of legrendre functions.
     z : np.ndarray
@@ -742,8 +741,23 @@ def _compute_plm_vector(
         If True, compute the first derivative of the associated Legendre functions.
     dtype : dtype
         Data type of the output array.
+    f1 : np.ndarray
+        Recurrence factor f1.
+    f2 : np.ndarray
+        Recurrence factor f2.
+    norm_p10 : float
+        Normalization for P(1,0).
+    norm_4pi : float
+        Overall normalization factor.
+    df : np.ndarray | None
+        Recurrence factor for the derivative of plm, only returned if derivative is True.
     """
-    f1, f2, norm_p10, norm_4pi, df = _scale_plm_factors(lmax, normalization, derivative)
+    p = np.zeros(((lmax + 1) * (lmax + 2) // 2, len(z)), dtype=dtype)
+    dp = (
+        np.zeros(((lmax + 1) * (lmax + 2) // 2, len(z)), dtype=dtype)
+        if derivative
+        else None
+    )
 
     # scale factor based on Holmes2002
     scalef = 1e-280
@@ -827,6 +841,34 @@ def _compute_plm_vector(
     return p, dp
 
 
+def _compute_plm_ufunc(
+    z, lmax, mmax, normalization, derivative, dtype, f1, f2, norm_p10, norm_4pi, df
+):
+    """
+    Wrapper to use xr.apply_ufunc() to estimate plm with chunked latitudes.
+    Compute associated Legendre functions P(l,m) and optionally their derivatives as a array.
+
+    Parameters
+    ----------
+    see _compute_plm_vector Parameters list.
+    """
+    z = np.atleast_1d(np.asarray(z, dtype=dtype))
+
+    p, dp = _compute_plm_vector(
+        z, lmax, normalization, derivative, dtype, f1, f2, norm_p10, norm_4pi, df
+    )
+
+    # reshape Legendre polynomials to output dimensions (lower triangle array)
+    plm = np.zeros((lmax + 1, mmax + 1, len(z)), dtype=dtype)
+    p_ind = np.tril_indices(lmax + 1)[1] < mmax + 1
+    if not derivative:
+        plm[np.tril_indices(lmax + 1, m=mmax + 1)] = p[p_ind]
+    else:
+        plm[np.tril_indices(lmax + 1, m=mmax + 1)] = dp[p_ind]
+
+    return np.moveaxis(plm, -1, 0)
+
+
 def compute_plm(
     lmax: int,
     z: np.ndarray,
@@ -864,7 +906,7 @@ def compute_plm(
     use_dask : bool, optional
         If True, use dask to chunk plm for memory optimization. Default is False.
     chunks : dict, optional
-        Define the chunking of plm when use_dask is True. Default is None, which set the chunking to {'latitude': 1}.
+        Define the chunking of plm when use_dask is True. Default is None, which set the chunking to {'latitude': 10}.
 
     Returns
     -------
@@ -890,7 +932,6 @@ def compute_plm(
             "Legendre functions may be unstable near the poles because of IEEE754-2008 norm."
         )
 
-    # removing singleton dimensions of x
     # update type to provide more memory for computation (np.float32 create some problems)
     z = np.atleast_1d(z).flatten().astype(dtype)
 
@@ -900,44 +941,81 @@ def compute_plm(
     # if default latitude, set it from z
     latitude = z if latitude is None else latitude
 
-    p = np.zeros(((lmax + 1) * (lmax + 2) // 2, len(z)), dtype=dtype)
-    dp = (
-        np.zeros(((lmax + 1) * (lmax + 2) // 2, len(z)), dtype=dtype)
-        if derivative
-        else None
-    )
+    f1, f2, norm_p10, norm_4pi, df = _scale_plm_factors(lmax, normalization, derivative)
 
-    p, dp = _compute_plm_vector(p, dp, z, lmax, normalization, derivative, dtype)
+    if not use_dask:
+        p, dp = _compute_plm_vector(
+            z, lmax, normalization, derivative, dtype, f1, f2, norm_p10, norm_4pi, df
+        )
 
-    # reshape Legendre polynomials to output dimensions (lower triangle array)
-    plm = np.zeros((lmax + 1, mmax + 1, len(z)), dtype=dtype)
-    p_ind = np.tril_indices(lmax + 1)[1] < mmax + 1
-    if not derivative:
-        plm[np.tril_indices(lmax + 1, m=mmax + 1)] = p[p_ind]
+        # reshape Legendre polynomials to output dimensions (lower triangle array)
+        plm = np.zeros((lmax + 1, mmax + 1, len(z)), dtype=dtype)
+        p_ind = np.tril_indices(lmax + 1)[1] < mmax + 1
+        if not derivative:
+            plm[np.tril_indices(lmax + 1, m=mmax + 1)] = p[p_ind]
+        else:
+            plm[np.tril_indices(lmax + 1, m=mmax + 1)] = dp[p_ind]
+
+        # reduce peak memory usage with large lmax
+        del p
+        if derivative:
+            del dp
+
+        plm_da = xr.DataArray(
+            plm,
+            dims=["l", "m", "latitude"],
+            coords={
+                "l": np.arange(lmax + 1),
+                "m": np.arange(mmax + 1),
+                "latitude": latitude,
+            },
+            name="plm",
+        )
+
     else:
-        plm[np.tril_indices(lmax + 1, m=mmax + 1)] = dp[p_ind]
+        z = xr.DataArray(
+            z,
+            dims=["latitude"],
+            coords={"latitude": latitude if latitude is not None else z},
+        )
 
-    # reduce peak memory usage with large lmax
-    del p
-    if derivative:
-        del dp
+        # Chunking plm for dask usage and memory optimization
+        chunks = {"latitude": 10} if chunks is None else chunks
+        z = z.chunk(chunks)
 
-    plm_da = xr.DataArray(
-        plm,
-        dims=["l", "m", "latitude"],
-        coords={
-            "l": np.arange(lmax + 1),
-            "m": np.arange(mmax + 1),
-            "latitude": latitude,
-        },
-        name="plm",
-    )
+        plm_da = xr.apply_ufunc(
+            _compute_plm_ufunc,
+            z,
+            input_core_dims=[[]],
+            output_core_dims=[["l", "m"]],
+            vectorize=False,
+            dask="parallelized",
+            output_dtypes=[np.dtype(dtype)],
+            dask_gufunc_kwargs={
+                "output_sizes": {
+                    "l": lmax + 1,
+                    "m": mmax + 1,
+                }
+            },
+            kwargs={
+                "lmax": lmax,
+                "mmax": mmax,
+                "normalization": normalization,
+                "derivative": derivative,
+                "dtype": dtype,
+                "f1": f1,
+                "f2": f2,
+                "norm_p10": norm_p10,
+                "norm_4pi": norm_4pi,
+                "df": df,
+            },
+        )
 
-    # Chunking plm for dask usage and memory optimization
-    if use_dask:
-        if chunks is None:
-            chunks = {"latitude": 1}
-        plm_da = plm_da.chunk(chunks)
+        plm_da = (
+            plm_da.assign_coords(l=np.arange(lmax + 1), m=np.arange(mmax + 1))
+            .rename("plm")
+            .transpose("l", "m", "latitude")
+        )
 
     # return the legendre polynomials and truncating orders to mmax
     return plm_da
