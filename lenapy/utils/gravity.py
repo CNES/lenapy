@@ -489,6 +489,7 @@ def sh_to_gravity_disturbance(
     radians_in: bool = False,
     ellipsoidal_earth: bool = False,
     normalization_plm: Literal["4pi", "ortho", "schmidt"] = "4pi",
+    dtype_plm: type[complex] | type[float] = np.float128,
     use_dask: bool = False,
     chunks_lfactor: dict | None = None,
     chunks_plm: dict | None = None,
@@ -542,6 +543,8 @@ def sh_to_gravity_disturbance(
         If plm need to be computed, choice of the norm corresponding to the SH dataset.
         Either '4pi', 'ortho', or 'schmidt' for 4pi normalized, orthonormalized, or Schmidt semi-normalized SH
         functions, respectively. Default is '4pi'.
+    dtype_plm : dtype, optional
+        Specify the dtype to compute the plm DataArray. Default is np.float128.
 
     use_dask : bool, optional
         If True, use dask to chunk plm for memory optimization. Default is False.
@@ -588,6 +591,7 @@ def sh_to_gravity_disturbance(
         latitude=latitude,
         mmax=data.m.max().values,
         normalization=normalization_plm,
+        dtype=dtype_plm,
         use_dask=use_dask,
         chunks=chunks_plm,
     )
@@ -597,6 +601,7 @@ def sh_to_gravity_disturbance(
         latitude=latitude,
         mmax=data.m.max().values,
         normalization=normalization_plm,
+        dtype=dtype_plm,
         use_dask=use_dask,
         chunks=chunks_plm,
         derivative=True,
@@ -995,6 +1000,7 @@ def sh_to_potential_partial_derivative_longitude(
     ellipsoidal_earth: bool = False,
     plm: xr.DataArray = None,
     normalization_plm: Literal["4pi", "ortho", "schmidt"] = "4pi",
+    dtype_plm: type[complex] | type[float] = np.float128,
     use_dask: bool = False,
     chunks_lfactor: dict | None = None,
     chunks_plm: dict | None = None,
@@ -1046,6 +1052,8 @@ def sh_to_potential_partial_derivative_longitude(
         If plm need to be computed, choice of the norm corresponding to the SH dataset.
         Either '4pi', 'ortho', or 'schmidt' for 4pi normalized, orthonormalized, or Schmidt semi-normalized SH
         functions, respectively. Default is '4pi'.
+    dtype_plm : dtype, optional
+        Specify the dtype to compute the plm DataArray. Default is np.float128.
 
     use_dask : bool, optional
         If True, use dask to chunk plm for memory optimization. Default is False.
@@ -1091,6 +1099,7 @@ def sh_to_potential_partial_derivative_longitude(
             latitude=latitude,
             mmax=data.m.max().values,
             normalization=normalization_plm,
+            dtype=dtype_plm,
             use_dask=use_dask,
             chunks=chunks_plm,
         )

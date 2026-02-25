@@ -225,6 +225,7 @@ def sh_to_grid(
     include_elastic: bool = True,
     plm: xr.DataArray = None,
     normalization_plm: Literal["4pi", "ortho", "schmidt"] = "4pi",
+    dtype_plm: type[complex] | type[float] = np.float128,
     use_dask: bool = False,
     chunks_lfactor: dict | None = None,
     chunks_plm: dict | None = None,
@@ -299,6 +300,8 @@ def sh_to_grid(
         If plm need to be computed, choice of the norm corresponding to the SH dataset.
         Either '4pi', 'ortho', or 'schmidt' for 4pi normalized, orthonormalized, or Schmidt semi-normalized SH
         functions, respectively. Default is '4pi'.
+    dtype_plm : dtype, optional
+        Specify the dtype to compute the plm DataArray. Default is np.float128.
 
     use_dask : bool, optional
         If True, use dask to chunk plm for memory optimization. Default is False.
@@ -351,6 +354,7 @@ def sh_to_grid(
             latitude=latitude,
             mmax=mmax,
             normalization=normalization_plm,
+            dtype=dtype_plm,
             use_dask=use_dask,
             chunks=chunks_plm,
         )
@@ -454,6 +458,7 @@ def grid_to_sh(
     include_elastic: bool = True,
     plm: xr.DataArray | None = None,
     normalization_plm: Literal["4pi", "ortho", "schmidt"] = "4pi",
+    dtype_plm: type[complex] | type[float] = np.float128,
     use_dask: bool = False,
     chunks_plm: dict | None = None,
     **kwargs,
@@ -500,6 +505,8 @@ def grid_to_sh(
         If plm need to be computed, choice of the norm.  Either '4pi', 'ortho', or 'schmidt' for
         4pi normalized, orthonormalized, or Schmidt semi-normalized SH functions, respectively. Default is '4pi'.
         Output SH coefficient will be normalized according to this parameter.
+    dtype_plm : dtype, optional
+        Specify the dtype to compute the plm DataArray. Default is np.float128.
 
     use_dask : bool, optional
         If True, use dask to chunk plm for memory optimization. Default is False.
@@ -563,6 +570,7 @@ def grid_to_sh(
             latitude=grid.cf["latitude"],
             mmax=mmax,
             normalization=normalization_plm,
+            dtype=dtype_plm,
             use_dask=use_dask,
             chunks=chunks_plm,
         )
@@ -613,10 +621,14 @@ def _scale_plm_factors(
     lmax: int,
     normalization: Literal["4pi", "ortho", "schmidt"],
     derivative: bool,
+    dtype: complex | float | type[complex] | type[float],
 ) -> tuple[np.ndarray, np.ndarray, float, float, Optional[np.ndarray]]:
     """
     Compute recurrence coefficients f1 and f2 for the Legendre recursion.
     Compute df recurrence coefficients for the derivative if requested.
+
+    Operation used here are the developed and vectorize form of the SHTOOLS implementation
+    to minimize the use of sqrt and division operations.
 
     Parameters
     ----------
@@ -626,6 +638,8 @@ def _scale_plm_factors(
         Normalization scheme.
     derivative : bool
         Whether to compute factors for the derivative of plm. Default is False.
+    dtype : dtype
+        Data type of the output arrays.
 
     Returns
     -------
@@ -641,61 +655,71 @@ def _scale_plm_factors(
         Recurrence factor for the derivative of plm, only returned if derivative is True.
     """
     size = (lmax + 1) * (lmax + 2) // 2
-    f1 = np.zeros(size)
-    f2 = np.zeros(size)
-    df = np.zeros(size) if derivative else None
+    f1 = np.zeros(size, dtype=dtype)
+    f2 = np.zeros(size, dtype=dtype)
+    df = np.zeros(size, dtype=dtype) if derivative else None
 
+    # Loop index (first three entries are for l=0 and l=1 and stay at 0)
     k = 2
     if normalization in ("4pi", "ortho"):
+        # Normalization factors for P(1,0) and overall normalization factor
         norm_p10 = np.sqrt(3)
         norm_4pi = 1 if normalization == "4pi" else 4 * np.pi
+
+        # Loop over degree l, per-degree work is vectorized over m
         for l in range(2, lmax + 1):
             k += 1
-            f1[k] = np.sqrt(2 * l - 1) * np.sqrt(2 * l + 1) / l
-            f2[k] = (l - 1) * np.sqrt(2 * l + 1) / (np.sqrt(2 * l - 3) * l)
+
+            # block of coefficients for (l, m=0..l-2)
+            m = np.arange(
+                0, l - 1, dtype=dtype
+            )  # specify m float to avoid np implicit type convertion
+            idx = slice(k, k + (l - 1))
+
+            f1[idx] = np.sqrt(4 * l**2 - 1) / np.sqrt(l**2 - m**2)
+
+            f2[idx] = np.sqrt(
+                2 * l**3 - 3 * l**2 - 2 * l * m**2 - m**2 + 1
+            ) / np.sqrt(2 * l**3 + 3 * m**2 - 2 * l * m**2 - 3 * l**2)
+
             if derivative:
+                # m = 0 entry
                 df[k] = np.sqrt(2 * l + 1) / np.sqrt(2 * l - 1)
-            for m in range(1, l - 1):
-                k += 1
-                f1[k] = (
-                    np.sqrt(2 * l + 1)
-                    * np.sqrt(2 * l - 1)
-                    / (np.sqrt(l + m) * np.sqrt(l - m))
-                )
-                f2[k] = (
-                    np.sqrt(2 * l + 1)
-                    * np.sqrt(l - m - 1)
-                    * np.sqrt(l + m - 1)
-                    / (np.sqrt(2 * l - 3) * np.sqrt(l + m) * np.sqrt(l - m))
-                )
-                if derivative:
-                    df[k] = (
-                        np.sqrt(2 * l + 1)
-                        * np.sqrt(l + m)
-                        * np.sqrt(l - m)
-                        / np.sqrt(2 * l - 1)
-                    )
-            k += 2
+                # m = 1..l-2 vectorized derivative coefficients
+                df[slice(k + 1, k + (l - 1))] = np.sqrt(
+                    2 * l**3 + l**2 - 2 * l * m[1:] ** 2 - m[1:] ** 2
+                ) / np.sqrt(2 * l - 1)
+
+            # Move k forward to the next block of coefficients, skipping the last two entries m = l-1 and m = l
+            k += l
+
     elif normalization == "schmidt":
+        # Normalization factors for P(1,0) and overall normalization factor
         norm_p10 = 1
         norm_4pi = 1
+
+        # Loop over degree l, per-degree work is vectorized over m
         for l in range(2, lmax + 1):
             k += 1
-            f1[k] = (2 * l - 1) / l
-            f2[k] = (l - 1) / l
+
+            # block of coefficients for (l, m=0..l-2)
+            m = np.arange(
+                0, l - 1, dtype=dtype
+            )  # specify m float to avoid np implicit type convertion
+            idx = slice(k, k + (l - 1))
+
+            f1[idx] = (2 * l - 1) / np.sqrt(l**2 - m**2)
+
+            f2[idx] = np.sqrt(l**2 - 2 * l - m**2 + 1) / np.sqrt(l**2 - m**2)
+
             if derivative:
+                # m = 0 entry
                 df[k] = 1
-            for m in range(1, l - 1):
-                k += 1
-                f1[k] = (2 * l - 1) / (np.sqrt(l + m) * np.sqrt(l - m))
-                f2[k] = (
-                    np.sqrt(l - m - 1)
-                    * np.sqrt(l + m - 1)
-                    / (np.sqrt(l + m) * np.sqrt(l - m))
-                )
-                if derivative:
-                    df[k] = np.sqrt(l + m) * np.sqrt(l - m)
-            k += 2
+                # m = 1..l-2 vectorized derivative coefficients
+                df[slice(k + 1, k + (l - 1))] = np.sqrt(l + m[1:]) * np.sqrt(l - m[1:])
+
+            # Move k forward to the next block of coefficients, skipping the last two entries m = l-1 and m = l
+            k += l
     else:
         raise ValueError(
             (
@@ -754,7 +778,7 @@ def _compute_plm_vector(
         else None
     )
 
-    # scale factor based on Holmes2002
+    # scale factor based on Holmes2002, marginal effect
     scalef = 1e-280
 
     # u is sine of colatitude (cosine of latitude), for z=cos(th): u=sin(th)
@@ -936,7 +960,9 @@ def compute_plm(
     # if default latitude, set it from z
     latitude = z if latitude is None else latitude
 
-    f1, f2, norm_p10, norm_4pi, df = _scale_plm_factors(lmax, normalization, derivative)
+    f1, f2, norm_p10, norm_4pi, df = _scale_plm_factors(
+        lmax, normalization, derivative, dtype
+    )
 
     if not use_dask:
         p, dp = _compute_plm_vector(
