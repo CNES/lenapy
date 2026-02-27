@@ -1261,7 +1261,7 @@ def _prefix_parser(unit: str) -> float:
         ("c", "centi"): 1e2,
         ("milli", "mm"): 1e3,  # cannot accept 'm' because it is used for meter unit
         ("µ", "u", "micro"): 1e6,
-        ("n", "nano"): 1e9,
+        ("nano",): 1e9,  # cannot accept 'n' because it is used for norm unit
         ("pico",): 1e12,  # cannot accept 'p' because it is used for pressure unit
     }
 
