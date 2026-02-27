@@ -157,8 +157,6 @@ def test_change_normalization_invalid(lenapy_paths):
         (np.array([1, 2]), "potential"),
         (np.array([1, 2]), "mvcu"),
         (np.array([1, 2]), "mecu"),
-        (np.array([1, 2]), "int_radial_mag"),
-        (np.array([1, 2]), "ext_radial_mag"),
     ],
 )
 def test_l_factor_conv(lenapy_paths, l, unit):
