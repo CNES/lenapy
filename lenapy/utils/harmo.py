@@ -306,9 +306,9 @@ def sh_to_grid(
     use_dask : bool, optional
         If True, use dask to chunk plm for memory optimization. Default is False.
     chunks_lfactor : dict, optional
-        Define the chunking of lfactor when use_dask is True. Default is None, which set the chunking to {'l': 20}.
+        Define the chunking of lfactor when use_dask is True. Default is None, which set the chunking to {'l': 200}.
     chunks_plm : dict, optional
-        Define the chunking of plm when use_dask is True. Default is None, which set the chunking to {'latitude': 10}.
+        Define the chunking of plm when use_dask is True. Default is None, which set the chunking to {'latitude': 4}.
 
     **kwargs :
         Supplementary parameters used by the function l_factor_conv to modify defaults constants used in the computation
@@ -460,6 +460,7 @@ def grid_to_sh(
     normalization_plm: Literal["4pi", "ortho", "schmidt"] = "4pi",
     dtype_plm: type[complex] | type[float] = np.float128,
     use_dask: bool = False,
+    chunks_lfactor: dict | None = None,
     chunks_plm: dict | None = None,
     **kwargs,
 ) -> xr.Dataset:
@@ -510,8 +511,10 @@ def grid_to_sh(
 
     use_dask : bool, optional
         If True, use dask to chunk plm for memory optimization. Default is False.
+    chunks_lfactor : dict, optional
+        Define the chunking of lfactor when use_dask is True. Default is None, which set the chunking to {'l': 400}.
     chunks_plm : dict, optional
-        Define the chunking of plm when use_dask is True. Default is None, which set the chunking to {'latitude': 10}.
+        Define the chunking of plm when use_dask is True. Default is None, which set the chunking to {'latitude': 4}.
 
     **kwargs :
         Supplementary parameters used by the function l_factor_conv to modify defaults constants used in the computation
@@ -558,6 +561,8 @@ def grid_to_sh(
         ellipsoidal_earth=ellipsoidal_earth,
         geocentric_colat=geocentric_colat,
         attrs=grid.attrs,
+        use_dask=use_dask,
+        chunks=chunks_lfactor,
         **kwargs,
     )
 
@@ -643,83 +648,67 @@ def _scale_plm_factors(
 
     Returns
     -------
-    f1 : np.ndarray
+    f1 : np.ndarray (lmax+1, lmax+1)
         Recurrence factor f1.
-    f2 : np.ndarray
+    f2 : np.ndarray (lmax+1, lmax+1)
         Recurrence factor f2.
     norm_p10 : float
         Normalization for P(1,0).
     norm_4pi : float
         Overall normalization factor.
-    df : np.ndarray | None
+    df : np.ndarray (lmax+1, lmax+1) | None
         Recurrence factor for the derivative of plm, only returned if derivative is True.
     """
-    size = (lmax + 1) * (lmax + 2) // 2
-    f1 = np.zeros(size, dtype=dtype)
-    f2 = np.zeros(size, dtype=dtype)
-    df = np.zeros(size, dtype=dtype) if derivative else None
+    l = np.tile(np.arange(lmax + 1)[:, None], (1, lmax + 1))
+    m = np.tile(np.arange(lmax + 1)[None, :], (lmax + 1, 1))
+    mask = m < l - 1
+    l_mask = l[mask]
+    m_mask = m[mask]
+    f1 = np.zeros((lmax + 1, lmax + 1), dtype=dtype)
+    f2 = np.zeros((lmax + 1, lmax + 1), dtype=dtype)
+    df = np.zeros((lmax + 1, lmax + 1), dtype=dtype) if derivative else None
 
-    # Loop index (first three entries are for l=0 and l=1 and stay at 0)
-    k = 2
     if normalization in ("4pi", "ortho"):
         # Normalization factors for P(1,0) and overall normalization factor
         norm_p10 = np.sqrt(3)
         norm_4pi = 1 if normalization == "4pi" else 4 * np.pi
 
-        # Loop over degree l, per-degree work is vectorized over m
-        for l in range(2, lmax + 1):
-            k += 1
+        f1[mask] = np.sqrt(4 * l_mask**2 - 1) / np.sqrt(l_mask**2 - m_mask**2)
+        f2[mask] = np.sqrt(
+            2 * l_mask**3 - 3 * l_mask**2 - 2 * l_mask * m_mask**2 - m_mask**2 + 1
+        ) / np.sqrt(
+            2 * l_mask**3 + 3 * m_mask**2 - 2 * l_mask * m_mask**2 - 3 * l_mask**2
+        )
 
-            # block of coefficients for (l, m=0..l-2)
-            m = np.arange(
-                0, l - 1, dtype=dtype
-            )  # specify m float to avoid np implicit type convertion
-            idx = slice(k, k + (l - 1))
+        if derivative:
+            pmask = mask & (m > 0)
 
-            f1[idx] = np.sqrt(4 * l**2 - 1) / np.sqrt(l**2 - m**2)
-
-            f2[idx] = np.sqrt(
-                2 * l**3 - 3 * l**2 - 2 * l * m**2 - m**2 + 1
-            ) / np.sqrt(2 * l**3 + 3 * m**2 - 2 * l * m**2 - 3 * l**2)
-
-            if derivative:
-                # m = 0 entry
-                df[k] = np.sqrt(2 * l + 1) / np.sqrt(2 * l - 1)
-                # m = 1..l-2 vectorized derivative coefficients
-                df[slice(k + 1, k + (l - 1))] = np.sqrt(
-                    2 * l**3 + l**2 - 2 * l * m[1:] ** 2 - m[1:] ** 2
-                ) / np.sqrt(2 * l - 1)
-
-            # Move k forward to the next block of coefficients, skipping the last two entries m = l-1 and m = l
-            k += l
+            df[2:, 0] = np.sqrt(2 * np.arange(2, lmax + 1) + 1) / np.sqrt(
+                2 * np.arange(2, lmax + 1) - 1
+            )
+            df[pmask] = np.sqrt(
+                2 * l[pmask] ** 3
+                + l[pmask] ** 2
+                - 2 * l[pmask] * m[pmask] ** 2
+                - m[pmask] ** 2
+            ) / np.sqrt(2 * l[pmask] - 1)
 
     elif normalization == "schmidt":
         # Normalization factors for P(1,0) and overall normalization factor
         norm_p10 = 1
         norm_4pi = 1
 
-        # Loop over degree l, per-degree work is vectorized over m
-        for l in range(2, lmax + 1):
-            k += 1
+        f1[mask] = (2 * l_mask - 1) / np.sqrt(l_mask**2 - m_mask**2)
+        f2[mask] = np.sqrt(l_mask**2 - 2 * l_mask - m_mask**2 + 1) / np.sqrt(
+            l_mask**2 - m_mask**2
+        )
 
-            # block of coefficients for (l, m=0..l-2)
-            m = np.arange(
-                0, l - 1, dtype=dtype
-            )  # specify m float to avoid np implicit type convertion
-            idx = slice(k, k + (l - 1))
+        if derivative:
+            pmask = mask & (m > 0)
 
-            f1[idx] = (2 * l - 1) / np.sqrt(l**2 - m**2)
+            df[2:, 0] = 1
+            df[pmask] = np.sqrt(l[pmask] + m[pmask]) * np.sqrt(l[pmask] - m[pmask])
 
-            f2[idx] = np.sqrt(l**2 - 2 * l - m**2 + 1) / np.sqrt(l**2 - m**2)
-
-            if derivative:
-                # m = 0 entry
-                df[k] = 1
-                # m = 1..l-2 vectorized derivative coefficients
-                df[slice(k + 1, k + (l - 1))] = np.sqrt(l + m[1:]) * np.sqrt(l - m[1:])
-
-            # Move k forward to the next block of coefficients, skipping the last two entries m = l-1 and m = l
-            k += l
     else:
         raise ValueError(
             (
@@ -743,7 +732,7 @@ def _compute_plm_vector(
     norm_p10,
     norm_4pi,
     df,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> np.ndarray:
     """
     Compute associated Legendre functions P(l,m) and optionally their derivatives as a array.
 
@@ -771,12 +760,8 @@ def _compute_plm_vector(
     df : np.ndarray | None
         Recurrence factor for the derivative of plm, only returned if derivative is True.
     """
-    p = np.zeros(((lmax + 1) * (lmax + 2) // 2, len(z)), dtype=dtype)
-    dp = (
-        np.zeros(((lmax + 1) * (lmax + 2) // 2, len(z)), dtype=dtype)
-        if derivative
-        else None
-    )
+    plm = np.zeros((lmax + 1, lmax + 1, len(z)), dtype=dtype)
+    dplm = np.zeros((lmax + 1, lmax + 1, len(z)), dtype=dtype) if derivative else None
 
     # scale factor based on Holmes2002, marginal effect
     scalef = 1e-280
@@ -787,77 +772,88 @@ def _compute_plm_vector(
     u[u == 0] = np.finfo(dtype).eps
 
     # Calculate P(l,0) (not scaled)
-    p[0, :] = 1 / np.sqrt(norm_4pi)
+    plm[0, 0] = 1 / np.sqrt(norm_4pi)
     if lmax:  # test for the case where lmax=0
-        p[1, :] = norm_p10 * z / np.sqrt(norm_4pi)
+        plm[1, 0] = norm_p10 * z / np.sqrt(norm_4pi)
 
     if derivative:
-        dp[0, :] = 0
+        dplm[0, 0] = 0
         if lmax:
-            dp[1, :] = norm_p10 / np.sqrt(norm_4pi)
+            dplm[1, 0] = norm_p10 / np.sqrt(norm_4pi)
 
-    k = 1
+    # Iterative determination of the rest of P(l,0)
     for l in range(2, lmax + 1):
-        k += l
-        p[k, :] = f1[k] * z * p[k - l, :] - f2[k] * p[k - 2 * l + 1, :]
+        plm[l, 0] = f1[l, 0] * z * plm[l - 1, 0] - f2[l, 0] * plm[l - 2, 0]
+
         if derivative:
-            dp[k, :] = l * (df[k] * p[k - l, :] - z * p[k, :]) / u**2
+            dplm[l, 0] = l * (df[l, 0] * plm[l - 1, 0] - z * plm[l, 0]) / u**2
 
     # Calculate P(m,m), P(m+1,m), and P(l,m)
     pmm = np.sqrt(2) * scalef / np.sqrt(norm_4pi)
-    rescalem = 1 / scalef
-    kstart = 0
+    rescalem = (1 / scalef) * u[None, :] ** np.arange(lmax + 1)[:, None]
 
     for m in range(1, lmax + 1):
-        rescalem = rescalem * u
-        # Calculate P(m,m)
-        kstart += m + 1
+        # Compute P(m,m)
         pmm = pmm * np.sqrt(2 * m + 1) / np.sqrt(2 * m)
         if normalization in ("4pi", "ortho"):
-            p[kstart, :] = pmm
+            plm[m, m] = pmm
+
         elif normalization == "schmidt":
-            p[kstart, :] = pmm / np.sqrt(2 * m + 1)
+            plm[m, m] = pmm / np.sqrt(2 * m + 1)
 
         if derivative:
-            dp[kstart, :] = (-m * z * p[kstart, :] / u**2) * rescalem
+            dplm[m, m] = (-m * z * plm[m, m] / u**2) * rescalem[m]
 
-        if m != lmax:  # test if P(m+1,m) exist
-            # Calculate P(m+1,m)
-            k = kstart + m + 1
+        # Test if m = lmax to avoid computing P(m+1,m)) that do not exist
+        if m < lmax:
+            # Compute P(m+1,m)
             if normalization in ("4pi", "ortho"):
-                p[k, :] = z * np.sqrt(2 * m + 3) * pmm
+                plm[m + 1, m] = z * np.sqrt(2 * m + 3) * pmm
+
                 if derivative:
-                    dp[k, :] = (
-                        (np.sqrt(2 * m + 3) * p[kstart, :] - (m + 1) * z * p[k, :])
+                    dplm[m + 1, m] = (
+                        (np.sqrt(2 * m + 3) * plm[m, m] - (m + 1) * z * plm[m + 1, m])
                         / u**2
-                    ) * rescalem
+                        * rescalem[m]
+                    )
+
             elif normalization == "schmidt":
-                p[k, :] = z * pmm
+                plm[m + 1, m] = z * pmm
+
                 if derivative:
-                    dp[k, :] = (
-                        (np.sqrt(2 * m + 1) * p[kstart, :] - (m + 1) * z * p[k, :])
+                    dplm[m + 1, m] = (
+                        (np.sqrt(2 * m + 1) * plm[m, m] - (m + 1) * z * plm[m + 1, m])
                         / u**2
-                    ) * rescalem
+                        * rescalem[m]
+                    )
 
-        else:
-            # set up k for rescale P(lmax,lmax)
-            k = kstart
-
-        # Calculate P(l,m)
-        for l in range(m + 2, lmax + 1):
-            k += l
-            p[k, :] = z * f1[k] * p[k - l, :] - f2[k] * p[k - 2 * l + 1, :]
-            p[k - 2 * l + 1, :] = p[k - 2 * l + 1, :] * rescalem
+        # Test if m = lmax-1 or lmax to avoid computing P(m+2,m) that do not exist
+        if m < lmax - 1:
+            # Compute P(m+2, m) for all possible m
+            plm[m + 2, 1 : m + 1] = (
+                z[None, None, :] * f1[m + 2, 1 : m + 1, None] * plm[m + 1, 1 : m + 1]
+                - f2[m + 2, 1 : m + 1, None] * plm[m, 1 : m + 1]
+            )
 
             if derivative:
-                dp[k, :] = ((df[k] * p[k - l, :] - z * l * p[k, :]) / u**2) * rescalem
+                dplm[m + 2, 1 : m + 1] = (
+                    (
+                        df[m + 2, 1 : m + 1, None] * plm[m + 1, 1 : m + 1]
+                        - z[None, None, :] * (m + 2) * plm[m + 2, 1 : m + 1]
+                    )
+                    / u**2
+                ) * rescalem[1 : m + 1]
 
-        # rescale
-        p[k, :] = p[k, :] * rescalem
-        if m != lmax:
-            p[k - lmax, :] = p[k - lmax, :] * rescalem
+            plm[m, 1 : m + 1] *= rescalem[1 : m + 1]
 
-    return p, dp
+    # rescale for m=lmax-1 and m=lmax
+    plm[-2, 1:] *= rescalem[1:]
+    plm[-1, 1:] *= rescalem[1:]
+
+    if derivative:
+        return dplm
+    else:
+        return plm
 
 
 def _compute_plm_ufunc(
@@ -873,19 +869,12 @@ def _compute_plm_ufunc(
     """
     z = np.atleast_1d(np.asarray(z, dtype=dtype))
 
-    p, dp = _compute_plm_vector(
+    plm = _compute_plm_vector(
         z, lmax, normalization, derivative, dtype, f1, f2, norm_p10, norm_4pi, df
     )
 
-    # reshape Legendre polynomials to output dimensions (lower triangle array)
-    plm = np.zeros((lmax + 1, mmax + 1, len(z)), dtype=dtype)
-    p_ind = np.tril_indices(lmax + 1)[1] < mmax + 1
-    if not derivative:
-        plm[np.tril_indices(lmax + 1, m=mmax + 1)] = p[p_ind]
-    else:
-        plm[np.tril_indices(lmax + 1, m=mmax + 1)] = dp[p_ind]
-
-    return np.moveaxis(plm, -1, 0)
+    # move axis to be consistent with xr.apply_ufunc dimension behavior
+    return np.moveaxis(plm[:, : mmax + 1], -1, 0)
 
 
 def compute_plm(
@@ -901,7 +890,7 @@ def compute_plm(
 ) -> xr.DataArray:
     """
     Compute all the associated Legendre functions up to a maximum degree and
-    order using the recursion relation from [Holmes2002]_
+    order using the recursion relation from [Holmes2002]_, schematic recursion is in Fig. 2 of the article.
     (Adapted from SHTOOLS/pyshtools tools [Wieczorek2018]_)
 
     Parameters
@@ -925,7 +914,7 @@ def compute_plm(
     use_dask : bool, optional
         If True, use dask to chunk plm for memory optimization. Default is False.
     chunks : dict, optional
-        Define the chunking of plm when use_dask is True. Default is None, which set the chunking to {'latitude': 10}.
+        Define the chunking of plm when use_dask is True. Default is None, which set the chunking to {'latitude': 4}.
 
     Returns
     -------
@@ -960,30 +949,19 @@ def compute_plm(
     # if default latitude, set it from z
     latitude = z if latitude is None else latitude
 
+    # Pregenerate scale factors for computation
     f1, f2, norm_p10, norm_4pi, df = _scale_plm_factors(
         lmax, normalization, derivative, dtype
     )
 
+    # Call with vectorized function or call with xr.apply_ufunc for dask compatibility and memory optimization
     if not use_dask:
-        p, dp = _compute_plm_vector(
+        plm = _compute_plm_vector(
             z, lmax, normalization, derivative, dtype, f1, f2, norm_p10, norm_4pi, df
         )
 
-        # reshape Legendre polynomials to output dimensions (lower triangle array)
-        plm = np.zeros((lmax + 1, mmax + 1, len(z)), dtype=dtype)
-        p_ind = np.tril_indices(lmax + 1)[1] < mmax + 1
-        if not derivative:
-            plm[np.tril_indices(lmax + 1, m=mmax + 1)] = p[p_ind]
-        else:
-            plm[np.tril_indices(lmax + 1, m=mmax + 1)] = dp[p_ind]
-
-        # reduce peak memory usage with large lmax
-        del p
-        if derivative:
-            del dp
-
         plm_da = xr.DataArray(
-            plm,
+            plm[:, : mmax + 1],
             dims=["l", "m", "latitude"],
             coords={
                 "l": np.arange(lmax + 1),
@@ -1001,8 +979,8 @@ def compute_plm(
         )
 
         # Chunking plm for dask usage and memory optimization
-        chunks = {"latitude": 10} if chunks is None else chunks
-        z = z.chunk(chunks)
+        chunks = {"latitude": 4} if chunks is None else chunks
+        z = z.chunk({"latitude": chunks["latitude"]})
 
         plm_da = xr.apply_ufunc(
             _compute_plm_ufunc,
@@ -1037,6 +1015,9 @@ def compute_plm(
             .rename("plm")
             .transpose("l", "m", "latitude")
         )
+
+        if "l" in chunks:
+            plm_da = plm_da.chunk(chunks)
 
     # return the legendre polynomials and truncating orders to mmax
     return plm_da
@@ -1503,7 +1484,7 @@ def l_factor_conv(
     use_dask : bool, optional
         If True, use dask to chunk lfactor for memory optimization. Default is False.
     chunks : dict, optional
-        Define the chunking of lfactor when use_dask is True. Default is None, which set the chunking to {'l': 20}.
+        Define the chunking of lfactor when use_dask is True. Default is None, which set the chunking to {'l': 200}.
 
     Returns
     -------
@@ -1572,7 +1553,7 @@ def l_factor_conv(
     # Chunking plm for dask usage and memory optimization
     if use_dask and type(l_factor_scale) is not float:
         if chunks is None:
-            chunks = {"l": 20}
+            chunks = {"l": 200}
         l_factor_scale = l_factor_scale.chunk(chunks)
 
     cst = {"gm_earth": gm_earth, "a_earth": a_earth}
