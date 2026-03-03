@@ -1296,7 +1296,7 @@ def _compute_l_factor(
     unit: str
         Unit type for conversion ending with the unit name
     geocentric_colat : xr.DataArray
-        Geocentric colatitude
+        Geocentric colatitude with a latitude dimension in degree
     ds_love: xr.Dataset, optional
         Love numbers
     a_earth: float
@@ -1344,11 +1344,11 @@ def _compute_l_factor(
             from lenapy.utils.gravity import estimate_normal_gravity
 
             gamma_0 = estimate_normal_gravity(
-                np.deg2rad(geocentric_colat.latitude),
-                a_earth,
-                gm_earth,
-                f_earth,
-                omega_earth,
+                latitude=geocentric_colat.latitude,
+                a_earth=a_earth,
+                earth_gravity_constant=gm_earth,
+                f_earth=f_earth,
+                omega_earth=omega_earth,
             )
             l_factor = gm_earth / a_earth / gamma_0 * a_div_r ** (l + 1)
 
@@ -1456,7 +1456,8 @@ def l_factor_conv(
     ellipsoidal_earth : bool, optional
         If True, consider the Earth as an ellipsoid following [Ditmar2018]_ and if False as a sphere.
     geocentric_colat : xr.DataArray | None, optional
-        Geocentric colatitude for ellipsoidal Earth radius computation in radians, the dimension is geographic latitude.
+        Geocentric colatitude for ellipsoidal Earth radius computation in radians,
+        the dimension is geographic latitude in degree.
     radius : xr.DataArray | None, optional
         DataArray with the radius of the grid to compute. If not given, the radius is the surface of reference.
 

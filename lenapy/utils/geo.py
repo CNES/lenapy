@@ -461,6 +461,51 @@ def latitude_to_geocentric_colatitude(
     )
 
 
+def earth_radius(
+    latitude,
+    ellipsoidal_earth=True,
+    a_earth=LNPY_A_EARTH_GRS80,
+    f_earth=LNPY_F_EARTH_GRS80,
+):
+    """
+    Estimate the earth radius for a spherical Earth (trivial) and for an ellipsoidal Earth
+    depending on the latitude and the parameters of the ellipsoid.
+
+    Parameters
+    ----------
+    latitude: xr.DataArray | np.nadarray
+
+    ellipsoidal_earth : bool, optional
+        If True, consider the Earth as an ellipsoid for computation of its radius.
+        Default is True.
+    a_earth : float, optional
+        Earth radius for spherical case or Earth semi-major axis [m]. If not provided uses LNPY_A_EARTH_GRS80.
+    f_earth : float, optional
+        Earth flattening. Default is LNPY_F_EARTH_GRS80 if ellipsoidal_earth is True else it is set to 0.
+
+    Returns
+    -------
+    radius : xr.DataArray
+        Earth radius in meters, with type corresponding to the type of the given latitude.
+    """
+    f_earth = 0 if ellipsoidal_earth else f_earth
+
+    if ellipsoidal_earth:
+        geoc_colat = latitude_to_geocentric_colatitude(
+            latitude, ellipsoidal_earth=ellipsoidal_earth, f_earth=f_earth
+        )
+
+        r_theta = (
+            a_earth
+            * (1 - f_earth)
+            / np.sqrt(1 - (2 * f_earth - f_earth**2) * np.sin(geoc_colat) ** 2)
+        )
+    else:
+        r_theta = a_earth
+
+    return r_theta
+
+
 def assert_latitude(ds: xr.DataArray) -> bool:
     """
     Verify if the given xr.Dataset have a coordinate named 'latitude'. Raise Assertion error if not.

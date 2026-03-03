@@ -34,7 +34,11 @@ import numpy as np
 import xarray as xr
 
 from lenapy.constants import *
-from lenapy.utils.geo import assert_latitude, latitude_to_geocentric_colatitude
+from lenapy.utils.geo import (
+    assert_latitude,
+    earth_radius,
+    latitude_to_geocentric_colatitude,
+)
 from lenapy.utils.harmo import (
     _assert_plm,
     _generate_grid,
@@ -330,7 +334,9 @@ def change_love_reference_frame(
 
 
 def estimate_normal_gravity(
-    geographic_latitude: xr.DataArray | np.ndarray | None = None,
+    height: xr.DataArray | None = None,
+    radius: xr.DataArray | None = None,
+    latitude: xr.DataArray | np.ndarray | None = None,
     a_earth: float | None = LNPY_A_EARTH_GRS80,
     earth_gravity_constant: float | None = LNPY_GM_EARTH,
     f_earth: float = LNPY_F_EARTH_GRS80,
@@ -342,8 +348,17 @@ def estimate_normal_gravity(
 
     Parameters
     ----------
-    geographic_latitude: xr.DataArray | np.ndarray, optional
-        Geographic / geodetic latitude for ellipsoidal Earth radius computation in radians.
+    height: xr.DataArray | float | None, optional
+        Height above of the surface of reference (sphere or ellipsoid) depending on latitude and possibly other
+        dimensions. If not provided, radius parameter is used for the computation.
+        Used in priority over radius parameter if both are provided.
+    radius: xr.DataArray | None, optional
+        Radius from the Earth's center depending on latitude and other dimensions. If not provided, `height` parameter
+        is used to compute the radius.
+    latitude: xr.DataArray | np.ndarray, optional
+        To provide if no height or radius is given to compute the normal gravity at the
+        surface of reference (sphere or ellipsoid).
+        Geographic latitude in degree.
     a_earth : float, optional
         Earth semi-major axis [m]. Default is LNPY_A_EARTH_GRS80.
     earth_gravity_constant : float, optional
@@ -358,6 +373,25 @@ def estimate_normal_gravity(
     gamma_0: xr.DataArray | np.ndarray
         Normal gravity at given geographic colatitude.
     """
+    if height is None and radius is not None:
+        assert_latitude(radius)
+        latitude = radius.latitude
+    elif height is not None:
+        assert_latitude(height)
+        latitude = height.latitude
+    elif latitude is None:
+        raise ValueError(
+            "If you do not provide radius or height parameters, you need to provide latitude to "
+            "compute the normal gravity at these latitude on the ellipsoid of reference."
+        )
+
+    if radius is not None and height is None:
+        height = radius - earth_radius(latitude, True, a_earth, f_earth)
+
+    geoc_colat = latitude_to_geocentric_colatitude(
+        latitude, ellipsoidal_earth=True, f_earth=f_earth
+    )
+
     e_prime = np.sqrt(2 * f_earth - f_earth**2) / (1 - f_earth)
     q0 = (0.5 + 1.5 / e_prime**2) * np.arctan(e_prime) - 1.5 / e_prime
     q0_prime = 3 * (1 + 1 / e_prime**2) * (1 - 1 / e_prime * np.arctan(e_prime)) - 1
@@ -373,13 +407,21 @@ def estimate_normal_gravity(
         earth_gravity_constant / a_earth**2 * (1 + m * e_prime * q0_prime / 3 / q0)
     )
 
-    return (
-        gamma_e * np.cos(geographic_latitude) ** 2
-        + (1 - f_earth) * gamma_p * np.sin(geographic_latitude) ** 2
-    ) / np.sqrt(
-        np.cos(geographic_latitude) ** 2
-        + (1 - f_earth) ** 2 * np.sin(geographic_latitude) ** 2
+    gamma_0 = (
+        gamma_e * np.cos(geoc_colat) ** 2
+        + (1 - f_earth) * gamma_p * np.sin(geoc_colat) ** 2
+    ) / np.sqrt(np.cos(geoc_colat) ** 2 + (1 - f_earth) ** 2 * np.sin(geoc_colat) ** 2)
+
+    gamma = gamma_0 * (
+        1
+        - 2
+        * (1 + f_earth + m - 2 * f_earth * np.sin(geoc_colat) ** 2)
+        * height
+        / a_earth
+        + 3 * height**2 / a_earth**2
     )
+
+    return gamma
 
 
 def normal_zonal_correction(
@@ -453,6 +495,7 @@ def normal_zonal_correction(
         e_prime = np.sqrt(2 * f_earth - f_earth**2) / (1 - f_earth)
         q0 = (0.5 + 1.5 / e_prime**2) * np.arctan(e_prime) - 1.5 / e_prime
 
+        # k * (2 * f_earth - f_earth**2) is equal to J2
         k = 1 / 3 - (
             2 * omega_earth**2 * a_earth**3 * np.sqrt(2 * f_earth - f_earth**2)
         ) / (45 * earth_gravity_constant * q0)
@@ -460,7 +503,7 @@ def normal_zonal_correction(
         correction = (
             (-1) ** (l // 2 + 1)
             * 3
-            * np.sqrt(2 * f_earth - f_earth**2) ** l
+            * (2 * f_earth - f_earth**2) ** (l // 2)
             * (1 + l / 2 * (5 * k - 1))
             / ((l**2 + 4 * l + 3) * np.sqrt(2 * l + 1))
         )
@@ -613,14 +656,10 @@ def sh_to_gravity_disturbance(
     omega_earth = (
         kwargs["omega_earth"] if "omega_earth" in kwargs else LNPY_OMEGA_EARTH_GRS80
     )
-    if ellipsoidal_earth:
-        r_theta = (
-            a_earth
-            * (1 - f_earth)
-            / np.sqrt(1 - (2 * f_earth - f_earth**2) * np.sin(geoc_colat) ** 2)
-        )
-    else:
-        r_theta = a_earth
+
+    r_theta = earth_radius(
+        latitude, ellipsoidal_earth=ellipsoidal_earth, a_earth=a_earth, f_earth=f_earth
+    )
 
     if surface == "geoid":
         if test == 1:
@@ -900,21 +939,25 @@ def centrifugal_potential_partial_derivate_radius(
 
     Parameters
     ----------
-    radius: xr.DataArray | float | None, optional
+    radius: xr.DataArray | None, optional
         Radius from the Earth's center depending on latitude and other dimensions. If not provided, `height` parameter
         is used to compute the radius.
-    height: xr.DataArray | float | None, optional
+        Used in priority over height parameter if both are provided.
+    height: xr.DataArray | None, optional
         Height above of the surface of reference (sphere or ellipsoid) depending on latitude and possibly other
         dimensions. If not provided, radius parameter is used for the computation.
     ellipsoidal_earth : bool, optional
+        Used if height parameter is given to compute the radius.
         If True, consider the Earth as an ellipsoid for the computation of the centrifugal potential.
         Default is False.
     a_earth : float, optional
+        Used if height parameter is given to compute the radius.
         Earth radius for spherical case or Earth semi-major axis [m]. If not provided, uses `attrs['radius']` and
         if it does not exist, uses LNPY_A_EARTH_GRS80.
     omega_earth : float, optional
         Earth's rotation rate [rad.s⁻¹]. Default is LNPY_OMEGA_EARTH.
     f_earth : float, optional
+        Used if height parameter is given to compute the radius.
         Earth flattening. Default is LNPY_F_EARTH_GRS80 if ellipsoidal_earth is True else it is set to 0.
     attrs : dict | None, optional
         ds.attrs information that might help to estimate a_earth if no parameters are given.
@@ -934,6 +977,7 @@ def centrifugal_potential_partial_derivate_radius(
     """
     # get parameters for the computation
     a_earth, _ = _get_earth_parameters(attrs, a_earth, None)
+    f_earth = f_earth if ellipsoidal_earth else 0
 
     if radius is None and height is not None:
         assert_latitude(height)
@@ -949,17 +993,7 @@ def centrifugal_potential_partial_derivate_radius(
     )
 
     if radius is None and height is not None:
-        if ellipsoidal_earth:
-            r_theta = (
-                a_earth
-                * (1 - f_earth)
-                / np.sqrt(1 - (2 * f_earth - f_earth**2) * np.sin(geoc_colat) ** 2)
-            )
-        else:
-            r_theta = a_earth
-            f_earth = 0
-
-        radius = height + r_theta
+        radius = height + earth_radius(latitude, ellipsoidal_earth, a_earth, f_earth)
 
     centrifugal_r, centrifugal_lon, centrifugal_lat = (
         _compute_centrifugal_potential_partial_derivative(

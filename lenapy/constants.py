@@ -71,6 +71,7 @@ LNPY_EARTH_SURFACE = 510065621718491.4  # m²
 LNPY_G = 6.67430e-11  # m³.kg⁻¹.s⁻² [CODATA2018]_
 # GM value is consistent with Terrestrial Time (TT) as the time argument, TT(TAI) = TAI + 32.184 seconds
 LNPY_GM_EARTH = 3.986004415e14  # m³.s⁻², IERS-2010 Standards [IERS2010]_
+LNPY_GM_EARTH_GRS80 = 3.986005e14  # m³.s⁻², including atmosphere [GRS80]_
 LNPY_GM_ATMO = (
     3.436e8  # m³.s⁻², mass of the atmosphere from [Trenberth2005]_ multiplied by LNPY_G
 )
