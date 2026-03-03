@@ -387,6 +387,8 @@ def estimate_normal_gravity(
 
     if radius is not None and height is None:
         height = radius - earth_radius(latitude, True, a_earth, f_earth)
+    elif height is None:
+        height = 0
 
     geoc_colat = latitude_to_geocentric_colatitude(
         latitude, ellipsoidal_earth=True, f_earth=f_earth
