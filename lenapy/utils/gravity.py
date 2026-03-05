@@ -341,6 +341,10 @@ def estimate_normal_gravity(
     earth_gravity_constant: float | None = LNPY_GM_EARTH,
     f_earth: float = LNPY_F_EARTH_GRS80,
     omega_earth: float = LNPY_OMEGA_EARTH_GRS80,
+    mode: Literal[
+        "somigliana", "gravi_disturbance", "gravi_disturbance_centri"
+    ] = "somigliana",
+    lmax=None,
 ) -> xr.DataArray:
     """
     Estimate normal acceleration with the Somigliana equation at given geographic latitude
@@ -390,38 +394,155 @@ def estimate_normal_gravity(
     elif height is None:
         height = 0
 
-    geoc_colat = latitude_to_geocentric_colatitude(
+    geographic_colat = latitude_to_geocentric_colatitude(
+        latitude, ellipsoidal_earth=False, f_earth=f_earth
+    )
+
+    geocentric_colat = latitude_to_geocentric_colatitude(
         latitude, ellipsoidal_earth=True, f_earth=f_earth
     )
 
-    e_prime = np.sqrt(2 * f_earth - f_earth**2) / (1 - f_earth)
-    q0 = (0.5 + 1.5 / e_prime**2) * np.arctan(e_prime) - 1.5 / e_prime
-    q0_prime = 3 * (1 + 1 / e_prime**2) * (1 - 1 / e_prime * np.arctan(e_prime)) - 1
-    m = omega_earth**2 * a_earth**3 * (1 - f_earth) / earth_gravity_constant
+    if "somigliana" in mode:
+        e_prime = np.sqrt(2 * f_earth - f_earth**2) / (1 - f_earth)
+        q0 = (0.5 + 1.5 / e_prime**2) * np.arctan(e_prime) - 1.5 / e_prime
+        q0_prime = 3 * (1 + 1 / e_prime**2) * (1 - 1 / e_prime * np.arctan(e_prime)) - 1
+        m = omega_earth**2 * a_earth**3 * (1 - f_earth) / earth_gravity_constant
 
-    gamma_e = (
-        earth_gravity_constant
-        / a_earth**2
-        / (1 - f_earth)
-        * (1 - m - m * e_prime * q0_prime / 6 / q0)
-    )
-    gamma_p = (
-        earth_gravity_constant / a_earth**2 * (1 + m * e_prime * q0_prime / 3 / q0)
-    )
+        gamma_e = (
+            earth_gravity_constant
+            / (a_earth**2 * (1 - f_earth))
+            * (1 - m - m * e_prime * q0_prime / (6 * q0))
+        )
+        gamma_p = (
+            earth_gravity_constant
+            / a_earth**2
+            * (1 + m * e_prime * q0_prime / (3 * q0))
+        )
 
-    gamma_0 = (
-        gamma_e * np.cos(geoc_colat) ** 2
-        + (1 - f_earth) * gamma_p * np.sin(geoc_colat) ** 2
-    ) / np.sqrt(np.cos(geoc_colat) ** 2 + (1 - f_earth) ** 2 * np.sin(geoc_colat) ** 2)
+        if "reduced" in mode:
+            gamma_0 = (
+                gamma_e
+                * (
+                    1
+                    + ((1 - f_earth) * gamma_p / gamma_e - 1)
+                    * np.cos(geographic_colat) ** 2
+                )
+                / np.sqrt(
+                    1 - (2 * f_earth - f_earth**2) * np.cos(geographic_colat) ** 2
+                )
+            )
 
-    gamma = gamma_0 * (
-        1
-        - 2
-        * (1 + f_earth + m - 2 * f_earth * np.sin(geoc_colat) ** 2)
-        * height
-        / a_earth
-        + 3 * height**2 / a_earth**2
-    )
+        elif "_serie" in mode:
+            beta = 5.3024e-3
+            beta1 = -5.8e-6
+            gamma_0 = gamma_e * (
+                1
+                + beta * np.cos(geographic_colat) ** 2
+                + beta1 * np.cos(2 * geographic_colat) ** 2
+            )
+
+        elif "_GRS80serie" in mode:
+            c1 = 5.2790414e-3
+            c2 = 2.32718e-5
+            c3 = 1.262e-7
+            c4 = 7e-10
+            gamma_0 = gamma_e * (
+                1
+                + c1 * np.cos(geographic_colat) ** 2
+                + c2 * np.cos(geographic_colat) ** 4
+                + c3 * np.cos(geographic_colat) ** 6
+                + c4 * np.cos(geographic_colat) ** 8
+            )
+        else:
+            gamma_0 = (
+                gamma_e * np.sin(geographic_colat) ** 2
+                + (1 - f_earth) * gamma_p * np.cos(geographic_colat) ** 2
+            ) / np.sqrt(
+                np.sin(geographic_colat) ** 2
+                + (1 - f_earth) ** 2 * np.cos(geographic_colat) ** 2
+            )
+
+        gamma = gamma_0 * (
+            1
+            - 2
+            * (1 + f_earth + m - 2 * f_earth * np.cos(geographic_colat) ** 2)
+            * height
+            / a_earth
+            + 3 * height**2 / a_earth**2
+            - 4 * height**3 / a_earth**3
+        )
+
+    elif "gravi_disturbance" in mode:
+        if radius is None:
+            radius = height + earth_radius(latitude, True, a_earth, f_earth)
+
+        if lmax is None:
+            lmax = 20
+        data_null = xr.Dataset(
+            {
+                "clm": (("l", "m"), np.zeros((lmax + 1, 1))),
+                "slm": (("l", "m"), np.zeros((lmax + 1, 1))),
+            },
+            coords={"l": np.arange(lmax + 1), "m": np.array([0])},
+        )
+        normal_field = normal_zonal_correction(
+            data_null,
+            reverse=True,
+            a_earth=a_earth,
+            earth_gravity_constant=earth_gravity_constant,
+            f_earth=f_earth,
+            omega_earth=omega_earth,
+        )
+
+        dplm = compute_plm(
+            lmax + 1,
+            np.cos(geocentric_colat),
+            mmax=0,
+            latitude=latitude,
+            derivative=True,
+        )
+
+        normal_dradius = -(
+            normal_field.lnharmo.to_grid(
+                unit="gravity",
+                latitude=latitude,
+                radius=radius,
+                ellipsoidal_earth=True,
+                a_earth=a_earth,
+                gm_earth=earth_gravity_constant,
+                f_earth=f_earth,
+            )
+        )
+
+        ds_centrifugal = centrifugal_potential_partial_derivate_radius(
+            radius=radius,
+            ellipsoidal_earth=True,
+            a_earth=a_earth,
+            f_earth=f_earth,
+            omega_earth=omega_earth,
+        )
+
+        if "rad" in mode:
+            return np.abs(normal_dradius + ds_centrifugal.dV_dradius).isel(longitude=0)
+
+        normal_dlatitude = normal_field.lnharmo.to_grid(
+            unit="potential",
+            latitude=latitude,
+            radius=radius,
+            ellipsoidal_earth=True,
+            plm=dplm,
+            a_earth=a_earth,
+            gm_earth=earth_gravity_constant,
+            f_earth=f_earth,
+        )
+
+        gamma = np.sqrt(
+            (normal_dradius + ds_centrifugal.dV_dradius) ** 2
+            + (normal_dlatitude + ds_centrifugal.dV_dlatitude) ** 2 / radius**2
+        ).isel(longitude=0)
+
+    else:
+        raise ValueError("mode should be either 'somigliana', 'gravi_disturbance'")
 
     return gamma
 
@@ -670,7 +791,7 @@ def sh_to_gravity_disturbance(
                     f_earth=f_earth, omega_earth=omega_earth, apply=False
                 )
             ).lnharmo.to_grid(
-                unit="mmgeoid",
+                unit="geoid",
                 longitude=longitude,
                 latitude=latitude,
                 ellipsoidal_earth=ellipsoidal_earth,
@@ -679,23 +800,20 @@ def sh_to_gravity_disturbance(
                 use_dask=use_dask,
                 chunks_lfactor=chunks_lfactor,
                 **kwargs,
-            ) * 1e-3
+            )
             radius = r_theta + h_geoid
 
         else:
-            radius = (
-                data.lnharmo.to_grid(
-                    unit="mmgeoid",
-                    longitude=longitude,
-                    latitude=latitude,
-                    ellipsoidal_earth=ellipsoidal_earth,
-                    plm=plm,
-                    normalization_plm=normalization_plm,
-                    use_dask=use_dask,
-                    chunks_lfactor=chunks_lfactor,
-                    **kwargs,
-                )
-                * 1e-3
+            radius = data.lnharmo.to_grid(
+                unit="geoid",
+                longitude=longitude,
+                latitude=latitude,
+                ellipsoidal_earth=ellipsoidal_earth,
+                plm=plm,
+                normalization_plm=normalization_plm,
+                use_dask=use_dask,
+                chunks_lfactor=chunks_lfactor,
+                **kwargs,
             )
 
     elif surface is not None and surface != "reference":
@@ -710,32 +828,26 @@ def sh_to_gravity_disturbance(
         **kwargs,
     )
 
-    potential_dradius = (
-        data.lnharmo.to_grid(
-            unit="microGal",
-            radius=radius,
-            ellipsoidal_earth=ellipsoidal_earth,
-            plm=plm,
-            normalization_plm=normalization_plm,
-            use_dask=use_dask,
-            chunks_lfactor=chunks_lfactor,
-            **kwargs,
-        )
-        * 1e-8
+    potential_dradius = -data.lnharmo.to_grid(
+        unit="gravity",
+        radius=radius,
+        ellipsoidal_earth=ellipsoidal_earth,
+        plm=plm,
+        normalization_plm=normalization_plm,
+        use_dask=use_dask,
+        chunks_lfactor=chunks_lfactor,
+        **kwargs,
     )
 
-    normal_dradius = (
-        normal_field.lnharmo.to_grid(
-            unit="microGal",
-            radius=radius,
-            ellipsoidal_earth=ellipsoidal_earth,
-            plm=plm,
-            normalization_plm=normalization_plm,
-            use_dask=use_dask,
-            chunks_lfactor=chunks_lfactor,
-            **kwargs,
-        )
-        * 1e-8
+    normal_dradius = -normal_field.lnharmo.to_grid(
+        unit="gravity",
+        radius=radius,
+        ellipsoidal_earth=ellipsoidal_earth,
+        plm=plm,
+        normalization_plm=normalization_plm,
+        use_dask=use_dask,
+        chunks_lfactor=chunks_lfactor,
+        **kwargs,
     )
 
     potential_dlongitude = sh_to_potential_partial_derivative_longitude(
@@ -802,7 +914,6 @@ def _compute_centrifugal_potential_partial_derivative(
     radius: xr.DataArray,
     geocentric_colatitude: xr.DataArray,
     omega_earth: float,
-    f_earth: float,
 ) -> tuple[xr.DataArray, xr.DataArray, xr.DataArray]:
     """
     Compute the partial derivative of the centrifugal potential on the surface of reference with respect to
@@ -819,19 +930,14 @@ def _compute_centrifugal_potential_partial_derivative(
     f_earth : float, optional
         Earth flattening. Default is LNPY_F_EARTH_GRS80 if ellipsoidal_earth is True else it is set to 0.
     """
-    e_earth_square = 2 * f_earth - f_earth**2
-
     # Partial derivatives of the centrifugal potential
     centrifugal_r = omega_earth**2 * radius * np.sin(geocentric_colatitude) ** 2
     centrifugal_longitude = radius * 0
-    centrifugal_latitude = -(omega_earth**2) * radius**2 * np.cos(
-        geocentric_colatitude
-    ) * np.sin(geocentric_colatitude) - omega_earth**2 * radius**2 * np.sin(
-        geocentric_colatitude
-    ) ** 2 * (
-        e_earth_square * np.cos(geocentric_colatitude) * np.sin(geocentric_colatitude)
-    ) / (
-        1 - e_earth_square * np.sin(geocentric_colatitude) ** 2
+    centrifugal_latitude = (
+        -(omega_earth**2)
+        * radius**2
+        * np.cos(geocentric_colatitude)
+        * np.sin(geocentric_colatitude)
     )
 
     return centrifugal_r, centrifugal_longitude, centrifugal_latitude
@@ -904,7 +1010,7 @@ def centrifugal_potential_partial_derivative(
 
     centrifugal_r, centrifugal_lon, centrifugal_lat = (
         _compute_centrifugal_potential_partial_derivative(
-            r_theta, geoc_colat, omega_earth, f_earth
+            r_theta, geoc_colat, omega_earth
         )
     )
 
@@ -999,7 +1105,7 @@ def centrifugal_potential_partial_derivate_radius(
 
     centrifugal_r, centrifugal_lon, centrifugal_lat = (
         _compute_centrifugal_potential_partial_derivative(
-            radius, geoc_colat, omega_earth, f_earth
+            radius, geoc_colat, omega_earth
         )
     )
 

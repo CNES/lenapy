@@ -488,7 +488,7 @@ def earth_radius(
     radius : xr.DataArray
         Earth radius in meters, with type corresponding to the type of the given latitude.
     """
-    f_earth = 0 if ellipsoidal_earth else f_earth
+    f_earth = 0 if not ellipsoidal_earth else f_earth
 
     if ellipsoidal_earth:
         geoc_colat = latitude_to_geocentric_colatitude(
