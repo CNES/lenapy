@@ -193,7 +193,9 @@ def test_l_factor_conv(lenapy_paths, l, unit):
     )
 
     assert np.allclose(ref_l_factor, l_factor), f"Failed for scale factor {unit}"
-    assert "gm_earth" in cst, "Missing 'gm_earth' in constants"
+    assert (
+        "earth_gravity_constant" in cst
+    ), "Missing 'earth_gravity_constant' in constants"
     assert "a_earth" in cst, "Missing 'a_earth' in constants"
 
 

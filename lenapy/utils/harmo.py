@@ -313,7 +313,7 @@ def sh_to_grid(
     **kwargs :
         Supplementary parameters used by the function l_factor_conv to modify defaults constants used in the computation
         for the unit conversion. These parameters include (see :func:`l_factor_conv` documentation for more details) :
-        a_earth, gm_earth, f_earth, omega_earth, rho_earth, ds_love
+        a_earth, earth_gravity_constant, f_earth, omega_earth, rho_earth, ds_love
 
     Returns
     -------
@@ -519,7 +519,7 @@ def grid_to_sh(
     **kwargs :
         Supplementary parameters used by the function l_factor_conv to modify defaults constants used in the computation
         for the unit conversion. These parameters include (see :func:`l_factor_conv` documentation for more details) :
-        a_earth, gm_earth, f_earth, omega_earth, rho_earth, ds_love
+        a_earth, earth_gravity_constant, f_earth, omega_earth, rho_earth, ds_love
 
     Returns
     -------
@@ -1181,7 +1181,7 @@ def change_normalization(
 
 
 def _get_earth_parameters(
-    attrs: dict | None, a_earth: float | None, gm_earth: float | None
+    attrs: dict | None, a_earth: float | None, earth_gravity_constant: float | None
 ) -> tuple[float, float]:
     """
     Retrieve Earth parameters from inputs or fallback constants.
@@ -1192,14 +1192,14 @@ def _get_earth_parameters(
         Attributes potentially containing Earth parameters.
     a_earth : float or None
         Semi-major axis.
-    gm_earth : float or None
+    earth_gravity_constant : float or None
         Gravitational constant.
 
     Returns
     -------
     a_earth : float
         Resolved semi-major axis.
-    gm_earth : float
+    earth_gravity_constant : float
         Resolved gravitational constant.
     """
     if attrs is None:
@@ -1207,7 +1207,9 @@ def _get_earth_parameters(
 
     # return first element if not None, otherwise return value for the attrs.key if it exists otherwise return last term
     resolved_a = a_earth or float(attrs.get("radius", LNPY_A_EARTH_GRS80))
-    resolved_gm = gm_earth or float(attrs.get("earth_gravity_constant", LNPY_GM_EARTH))
+    resolved_gm = earth_gravity_constant or float(
+        attrs.get("earth_gravity_constant", LNPY_GM_EARTH)
+    )
     return resolved_a, resolved_gm
 
 
@@ -1278,7 +1280,7 @@ def _compute_l_factor(
     geocentric_colat: xr.DataArray | None,
     ds_love: xr.Dataset | None,
     a_earth: float,
-    gm_earth: float,
+    earth_gravity_constant: float,
     f_earth: float,
     omega_earth: float,
     rho_earth: float,
@@ -1301,7 +1303,7 @@ def _compute_l_factor(
         Love numbers
     a_earth: float
         Earth radius
-    gm_earth: float
+    earth_gravity_constant: float
         Earth gravitational constant
     f_earth : float
         Earth flattening
@@ -1346,11 +1348,11 @@ def _compute_l_factor(
             gamma_0 = estimate_normal_gravity(
                 latitude=geocentric_colat.latitude,
                 a_earth=a_earth,
-                earth_gravity_constant=gm_earth,
+                earth_gravity_constant=earth_gravity_constant,
                 f_earth=f_earth,
                 omega_earth=omega_earth,
             )
-            l_factor = gm_earth / a_earth / gamma_0 * a_div_r ** (l + 1)
+            l_factor = earth_gravity_constant / a_earth / gamma_0 * a_div_r ** (l + 1)
 
         else:
             # Simplification of the formula for the spherical case
@@ -1358,19 +1360,19 @@ def _compute_l_factor(
 
     elif unit.endswith(("gravity", "potential_gradient")):
         # gravity perturbations [m.s⁻²]
-        l_factor = gm_earth * (l + 1) / (a_earth**2)
+        l_factor = earth_gravity_constant * (l + 1) / (a_earth**2)
         if a_div_r is not None:
             l_factor = l_factor * a_div_r ** (l + 2)
 
     elif unit.endswith(("Gal", "gal", "galileo")):
         # Gal, Gal gravity perturbations [m.s⁻²]
-        l_factor = gm_earth * (l + 1) / (a_earth**2) * 1e2
+        l_factor = earth_gravity_constant * (l + 1) / (a_earth**2) * 1e2
         if a_div_r is not None:
             l_factor = l_factor * a_div_r ** (l + 2)
 
     elif unit.endswith(("potential",)):
         # potential, [m².s⁻²]
-        l_factor = gm_earth / a_earth
+        l_factor = earth_gravity_constant / a_earth
         if a_div_r is not None:
             l_factor = l_factor * a_div_r ** (l + 1)
 
@@ -1417,7 +1419,7 @@ def l_factor_conv(
     radius: xr.DataArray | None = None,
     ds_love: xr.Dataset | None = None,
     a_earth: float | None = None,
-    gm_earth: float | None = None,
+    earth_gravity_constant: float | None = None,
     f_earth: float = LNPY_F_EARTH_GRS80,
     omega_earth: float = LNPY_OMEGA_EARTH_GRS80,
     rho_earth: float = LNPY_RHO_EARTH,
@@ -1468,7 +1470,7 @@ def l_factor_conv(
     a_earth : float, optional
         Earth semi-major axis [m]. If not provided, uses `data.attrs['radius']` and
         if it does not exist, uses LNPY_A_EARTH_GRS80.
-    gm_earth : float, optional
+    earth_gravity_constant : float, optional
         Standard gravitational parameter for Earth [m³.s⁻²]. If not provided, uses
         `data.attrs['earth_gravity_constant']` and if it does not exist, uses LNPY_GM_EARTH.
     f_earth : float, optional
@@ -1502,7 +1504,9 @@ def l_factor_conv(
         *Journal of Geodesy*, 92, 1401--1412, (2018).
         `doi: 10.1007/s00190-018-1128-0 <https://doi.org/10.1007/s00190-018-1128-0>`_
     """
-    a_earth, gm_earth = _get_earth_parameters(attrs, a_earth, gm_earth)
+    a_earth, earth_gravity_constant = _get_earth_parameters(
+        attrs, a_earth, earth_gravity_constant
+    )
 
     l = xr.DataArray(l, dims=["l"], coords={"l": l})
     fraction = xr.ones_like(l)
@@ -1538,7 +1542,7 @@ def l_factor_conv(
         geocentric_colat,
         ds_love,
         a_earth,
-        gm_earth,
+        earth_gravity_constant,
         f_earth,
         omega_earth,
         rho_earth,
@@ -1557,7 +1561,7 @@ def l_factor_conv(
             chunks = {"l": 200}
         l_factor_scale = l_factor_scale.chunk(chunks)
 
-    cst = {"gm_earth": gm_earth, "a_earth": a_earth}
+    cst = {"earth_gravity_constant": earth_gravity_constant, "a_earth": a_earth}
     return l_factor_scale, cst
 
 
