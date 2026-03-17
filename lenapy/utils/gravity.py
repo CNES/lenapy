@@ -341,10 +341,6 @@ def estimate_normal_gravity(
     earth_gravity_constant: float | None = LNPY_GM_EARTH,
     f_earth: float = LNPY_F_EARTH_GRS80,
     omega_earth: float = LNPY_OMEGA_EARTH_GRS80,
-    mode: Literal[
-        "somigliana", "gravi_disturbance", "gravi_disturbance_centri"
-    ] = "somigliana",
-    lmax=None,
 ) -> xr.DataArray:
     """
     Estimate normal acceleration with the Somigliana equation at given geographic latitude
@@ -374,7 +370,7 @@ def estimate_normal_gravity(
 
     Returns
     -------
-    gamma_0: xr.DataArray | np.ndarray
+    gamma_0: xr.DataArray
         Normal gravity at given geographic colatitude.
     """
     if height is None and radius is not None:
@@ -394,6 +390,7 @@ def estimate_normal_gravity(
     elif height is None:
         height = 0
 
+    # if ellipsoidal_earth=False, the function return the geographic colatitude
     geographic_colat = latitude_to_geocentric_colatitude(
         latitude, ellipsoidal_earth=False, f_earth=f_earth
     )
@@ -429,6 +426,8 @@ def estimate_normal_gravity(
         + 3 * height**2 / a_earth**2
         - 4 * height**3 / a_earth**3
     )
+
+    gamma.rename("normal_gravity")
 
     return gamma
 
@@ -541,7 +540,7 @@ def sh_to_gravity_disturbance(
     radians_in: bool = False,
     ellipsoidal_earth: bool = False,
     normalization_plm: Literal["4pi", "ortho", "schmidt"] = "4pi",
-    dtype_plm: type[complex] | type[float] = np.float128,
+    dtype_plm: type[complex] | type[float] = np.longdouble,
     use_dask: bool = False,
     chunks_lfactor: dict | None = None,
     chunks_plm: dict | None = None,
@@ -596,7 +595,7 @@ def sh_to_gravity_disturbance(
         Either '4pi', 'ortho', or 'schmidt' for 4pi normalized, orthonormalized, or Schmidt semi-normalized SH
         functions, respectively. Default is '4pi'.
     dtype_plm : dtype, optional
-        Specify the dtype to compute the plm DataArray. Default is np.float128.
+        Specify the dtype to compute the plm DataArray. Default is np.longdouble.
 
     use_dask : bool, optional
         If True, use dask to chunk plm for memory optimization. Default is False.
@@ -608,7 +607,7 @@ def sh_to_gravity_disturbance(
     **kwargs :
         Supplementary parameters used by the function l_factor_conv to modify defaults constants used in the computation
         for the unit conversion. These parameters include (see :func:`l_factor_conv` documentation for more details) :
-        a_earth, gm_earth, f_earth, omega_earth
+        a_earth, earth_gravity_constant, f_earth, omega_earth
 
     Returns
     -------
@@ -711,21 +710,12 @@ def sh_to_gravity_disturbance(
     ds_centrifugal = centrifugal_potential_partial_derivate_radius(
         radius=radius * xr.ones_like(geoc_colat),
         ellipsoidal_earth=ellipsoidal_earth,
-        **kwargs,
+        a_earth=a_earth,
+        f_earth=f_earth,
+        omega_earth=omega_earth,
     )
 
     potential_dradius = -data.lnharmo.to_grid(
-        unit="gravity",
-        radius=radius,
-        ellipsoidal_earth=ellipsoidal_earth,
-        plm=plm,
-        normalization_plm=normalization_plm,
-        use_dask=use_dask,
-        chunks_lfactor=chunks_lfactor,
-        **kwargs,
-    )
-
-    normal_dradius = -normal_field.lnharmo.to_grid(
         unit="gravity",
         radius=radius,
         ellipsoidal_earth=ellipsoidal_earth,
@@ -758,28 +748,16 @@ def sh_to_gravity_disturbance(
         **kwargs,
     )
 
-    normal_dlatitude = normal_field.lnharmo.to_grid(
-        unit="potential",
-        radius=radius,
-        ellipsoidal_earth=ellipsoidal_earth,
-        plm=dplm,
-        normalization_plm=normalization_plm,
-        use_dask=use_dask,
-        chunks_lfactor=chunks_lfactor,
-        **kwargs,
-    )
-
     nabla_w = np.sqrt(
         (potential_dradius + ds_centrifugal.dV_dradius) ** 2
         + potential_dlongitude**2 / (radius**2 * np.sin(geoc_colat) ** 2)
         + (potential_dlatitude + ds_centrifugal.dV_dlatitude) ** 2 / radius**2
     )
 
-    # dlongitude is equal to 0 for the normal field
-    nabla_u = np.sqrt(
-        (normal_dradius + ds_centrifugal.dV_dradius) ** 2
-        + (normal_dlatitude + ds_centrifugal.dV_dlatitude) ** 2 / radius**2
-    )
+    if ellipsoidal_earth:
+        nabla_u = estimate_normal_gravity(radius=radius, **kwargs)
+    else:
+        nabla_u = kwargs["earth_gravity_constant"] / a_earth**2
 
     gravity_disturbance = nabla_w - nabla_u
 
@@ -1028,7 +1006,7 @@ def sh_to_potential_partial_derivative_longitude(
     ellipsoidal_earth: bool = False,
     plm: xr.DataArray = None,
     normalization_plm: Literal["4pi", "ortho", "schmidt"] = "4pi",
-    dtype_plm: type[complex] | type[float] = np.float128,
+    dtype_plm: type[complex] | type[float] = np.longdouble,
     use_dask: bool = False,
     chunks_lfactor: dict | None = None,
     chunks_plm: dict | None = None,
@@ -1081,7 +1059,7 @@ def sh_to_potential_partial_derivative_longitude(
         Either '4pi', 'ortho', or 'schmidt' for 4pi normalized, orthonormalized, or Schmidt semi-normalized SH
         functions, respectively. Default is '4pi'.
     dtype_plm : dtype, optional
-        Specify the dtype to compute the plm DataArray. Default is np.float128.
+        Specify the dtype to compute the plm DataArray. Default is np.longdouble.
 
     use_dask : bool, optional
         If True, use dask to chunk plm for memory optimization. Default is False.
@@ -1093,7 +1071,7 @@ def sh_to_potential_partial_derivative_longitude(
     **kwargs :
         Supplementary parameters used by the function l_factor_conv to modify defaults constants used in the computation
         for the unit conversion. These parameters include (see :func:`l_factor_conv` documentation for more details) :
-        a_earth, gm_earth, f_earth, omega_earth
+        a_earth, earth_gravity_constant, f_earth, omega_earth
 
     Returns
     -------
@@ -1112,6 +1090,7 @@ def sh_to_potential_partial_derivative_longitude(
         radians_in,
         longitude,
         latitude,
+        radius,
     )
 
     geocentric_colat = latitude_to_geocentric_colatitude(
@@ -1242,7 +1221,12 @@ def gauss_weights(
             gaussian_weights[l : lmax + 1] = cutoff
             break
 
-    return xr.DataArray(gaussian_weights, dims=["l"], coords={"l": np.arange(lmax + 1)})
+    return xr.DataArray(
+        gaussian_weights,
+        dims=["l"],
+        coords={"l": np.arange(lmax + 1)},
+        name="gaussian_weights",
+    )
 
 
 def gfct_field_estimation(

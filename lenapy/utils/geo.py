@@ -242,7 +242,7 @@ def surface_cell(
             (1 - f_earth) ** 2 * np.tan(np.radians(tmp_latitude_float64 + dlat / 2))
         )
 
-        return np.abs(
+        surface = np.abs(
             a_earth**2
             * (1 - f_earth)
             * np.radians(dlon)
@@ -259,7 +259,7 @@ def surface_cell(
 
     # case of the sphere that approximates the ellipsoid
     elif ellipsoidal_earth == "approx":
-        return np.abs(
+        surface = np.abs(
             a_earth**2
             * np.radians(dlon)
             * np.cos(np.radians(data.cf["latitude"]))
@@ -269,7 +269,7 @@ def surface_cell(
 
     # case of the spherical cell with a sphere of radius a_earth
     elif ellipsoidal_earth == "spherical" or ellipsoidal_earth is False:
-        return np.abs(
+        surface = np.abs(
             2
             * a_earth**2
             * np.radians(dlon)
@@ -282,6 +282,8 @@ def surface_cell(
             'Given argument "ellipsoidal_earth" has to be a boolean '
             'or either "ellispoidal", "spherical" or "approx".'
         )
+
+    return surface.rename("surface")
 
 
 def ecarts(data, dim):
@@ -411,9 +413,10 @@ def distance(
                 "longitude": data["longitude"],
             },
             dims=["id", "latitude", "longitude"],
+            name="distance",
         )
     else:
-        return a_earth * np.real(
+        sphere_distance = np.real(
             np.arccos(
                 np.cos(np.deg2rad(pt.cf["latitude"]))
                 * np.cos(np.deg2rad(data.cf["latitude"]))
@@ -422,6 +425,8 @@ def distance(
                 * np.sin(np.deg2rad(data.cf["latitude"]))
             )
         )
+        sphere_distance = sphere_distance.rename("distance")
+        return a_earth * sphere_distance
 
 
 def latitude_to_geocentric_colatitude(
@@ -458,6 +463,7 @@ def latitude_to_geocentric_colatitude(
         geocentric_colatitude,
         dims=["latitude"],
         coords={"latitude": latitude},
+        name="geocentric_colatitude",
     )
 
 
@@ -503,7 +509,12 @@ def earth_radius(
     else:
         r_theta = a_earth
 
-    return r_theta
+    return xr.DataArray(
+        r_theta,
+        dims=["latitude"],
+        coords={"latitude": latitude},
+        name="radius",
+    )
 
 
 def assert_latitude(ds: xr.DataArray) -> bool:

@@ -89,7 +89,7 @@ def _generate_grid(
         if dlat != 1:
             dlat = np.rad2deg(dlat)
 
-    if grid is None or type(grid) is not xr.Dataset:
+    if grid is None or type(grid) not in (xr.Dataset, xr.DataArray):
         if longitude is None:
             longitude = np.arange(bounds[0] + dlon / 2, bounds[1] + dlon / 2, dlon)
         elif radians_in:
@@ -225,7 +225,7 @@ def sh_to_grid(
     include_elastic: bool = True,
     plm: xr.DataArray = None,
     normalization_plm: Literal["4pi", "ortho", "schmidt"] = "4pi",
-    dtype_plm: type[complex] | type[float] = np.float128,
+    dtype_plm: type[complex] | type[float] = np.longdouble,
     use_dask: bool = False,
     chunks_lfactor: dict | None = None,
     chunks_plm: dict | None = None,
@@ -301,7 +301,7 @@ def sh_to_grid(
         Either '4pi', 'ortho', or 'schmidt' for 4pi normalized, orthonormalized, or Schmidt semi-normalized SH
         functions, respectively. Default is '4pi'.
     dtype_plm : dtype, optional
-        Specify the dtype to compute the plm DataArray. Default is np.float128.
+        Specify the dtype to compute the plm DataArray. Default is np.longdouble.
 
     use_dask : bool, optional
         If True, use dask to chunk plm for memory optimization. Default is False.
@@ -458,7 +458,7 @@ def grid_to_sh(
     include_elastic: bool = True,
     plm: xr.DataArray | None = None,
     normalization_plm: Literal["4pi", "ortho", "schmidt"] = "4pi",
-    dtype_plm: type[complex] | type[float] = np.float128,
+    dtype_plm: type[complex] | type[float] = np.longdouble,
     use_dask: bool = False,
     chunks_lfactor: dict | None = None,
     chunks_plm: dict | None = None,
@@ -507,7 +507,7 @@ def grid_to_sh(
         4pi normalized, orthonormalized, or Schmidt semi-normalized SH functions, respectively. Default is '4pi'.
         Output SH coefficient will be normalized according to this parameter.
     dtype_plm : dtype, optional
-        Specify the dtype to compute the plm DataArray. Default is np.float128.
+        Specify the dtype to compute the plm DataArray. Default is np.longdouble.
 
     use_dask : bool, optional
         If True, use dask to chunk plm for memory optimization. Default is False.
@@ -884,7 +884,7 @@ def compute_plm(
     mmax: int = None,
     normalization: Literal["4pi", "ortho", "schmidt"] = "4pi",
     derivative: bool = False,
-    dtype: complex | float | type[complex] | type[float] = np.float128,
+    dtype: complex | float | type[complex] | type[float] = np.longdouble,
     use_dask: bool = False,
     chunks: dict | None = None,
 ) -> xr.DataArray:
@@ -909,7 +909,7 @@ def compute_plm(
     derivative : bool, optional
         If True, compute the first derivative of the associated Legendre functions. Default is False.
     dtype : dtype, optional
-        Data type of the output array. Default is np.float128.
+        Data type of the output array. Default is np.longdouble.
 
     use_dask : bool, optional
         If True, use dask to chunk plm for memory optimization. Default is False.
@@ -1608,7 +1608,7 @@ def _assert_plm(plm: xr.DataArray, lmax: int, latitude: np.ndarray) -> bool:
             "<",
             lmax,
         )
-    elif (plm.latitude.values != latitude).all():
+    elif len(plm.latitude) != len(latitude) or (plm.latitude.values != latitude).all():
         raise AssertionError(
             'Given argument "plm" latitude does not correspond to the wanted latitude ',
             latitude,
