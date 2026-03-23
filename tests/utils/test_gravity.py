@@ -256,7 +256,7 @@ def test_sh_to_deflection_of_vertical(lenapy_paths):
         If the subsampled grid does not match the reference grid exactly.
     """
     ref_grid_file = lenapy_paths.ref_data / "utils" / "costg_deflection_of_vertical.nc"
-    grid_ref = xr.open_dataarray(ref_grid_file)
+    grid_ref = xr.open_dataset(ref_grid_file)
 
     costg_ds = xr.open_dataset(lenapy_paths.data / "COSTG_n12_2002_2022.nc")
     grid = costg_ds.lnharmo.to_deflection_of_vertical()
