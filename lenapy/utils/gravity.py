@@ -494,7 +494,7 @@ def normal_zonal_correction(
 
     l = ds.sel(l=slice(0, None, 2)).l
     if f_earth == 0:
-        correction = -(l == 0).astype(int)
+        correction = -(l == 0).astype(float)
 
     else:
         e_prime = np.sqrt(2 * f_earth - f_earth**2) / (1 - f_earth)
@@ -1157,7 +1157,7 @@ def sh_to_potential_partial_derivative_longitude(
     plm_lfactor = plm.sel(l=data.l, m=data.m) * lfactor
 
     if type(longitude) is np.ndarray:
-        lon_dims = "latitude"
+        lon_dims = ("longitude",)
 
     elif type(longitude) is xr.DataArray:
         lon_dims = longitude.dims
@@ -1190,6 +1190,9 @@ def sh_to_potential_partial_derivative_longitude(
         xgrid.attrs["radius"] = data.attrs["radius"]
     if "earth_gravity_constant" in data.attrs:
         xgrid.attrs["earth_gravity_constant"] = data.attrs["earth_gravity_constant"]
+
+    if "latitude" in xgrid.dims and "longitude" in xgrid.dims:
+        xgrid = xgrid.transpose("latitude", "longitude", ...)
 
     return xgrid
 

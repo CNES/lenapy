@@ -199,6 +199,60 @@ def _init_degrees(
     return sub_data, used_l, used_m, lmin, lmax, mmin, mmax
 
 
+def _if_needed_change_reference(
+    data: xr.Dataset,
+    **kwargs,
+) -> xr.Dataset:
+    """
+    If the output spatial surface has information (radius or earth_gravity_constant) that do not correspond to the
+    radius or earth_gravity_constant given in data.attrs, change the reference surface of the SH coordinates before
+    estimation of the gravity field.
+
+    Parameters
+    ----------
+    data : xr.Dataset
+        xr.Dataset that corresponds to SH data.
+    **kwargs
+        Supplementary parameters 'a_earth' or 'earth_gravity_constant' that might require reference change to data.
+
+    Returns
+    -------
+    new_data : xr.Dataset
+        Input Dataset with change of the reference for coefficients if needed.
+    """
+    a_earth = kwargs["a_earth"] if "a_earth" in kwargs else None
+    earth_gravity_constant = (
+        kwargs["earth_gravity_constant"] if "earth_gravity_constant" in kwargs else None
+    )
+
+    if "radius" in data.attrs and a_earth is not None:
+        new_radius = a_earth
+        old_radius = data.attrs["radius"]
+    else:
+        new_radius = 1
+        old_radius = 1
+
+    if "earth_gravity_constant" in data.attrs and earth_gravity_constant is not None:
+        new_earth_gravity_constant = earth_gravity_constant
+        old_earth_gravity_constant = data.attrs["earth_gravity_constant"]
+    else:
+        new_earth_gravity_constant = 1
+        old_earth_gravity_constant = 1
+
+    if (
+        new_radius != old_radius
+        or new_earth_gravity_constant != old_earth_gravity_constant
+    ):
+        return data.lnharmo.change_reference(
+            new_radius,
+            new_earth_gravity_constant,
+            old_radius,
+            old_earth_gravity_constant,
+        )
+    else:
+        return data
+
+
 def sh_to_grid(
     data: xr.Dataset,
     unit: str = "mewh",
@@ -314,6 +368,8 @@ def sh_to_grid(
         Supplementary parameters used by the function l_factor_conv to modify defaults constants used in the computation
         for the unit conversion. These parameters include (see :func:`l_factor_conv` documentation for more details) :
         a_earth, earth_gravity_constant, f_earth, omega_earth, rho_earth, ds_love
+        If given a_earth, earth_gravity_constant do not correspond to data.attrs information, change the surface
+        reference of the Stokes coefficients before spatial estimation
 
     Returns
     -------
@@ -362,6 +418,9 @@ def sh_to_grid(
     else:
         _assert_plm(plm, lmax, latitude)
 
+    # change reference surface of input Stokes coefficients if output constants do not correspond
+    sub_data = _if_needed_change_reference(sub_data, **kwargs)
+
     # scale factor for each degree
     lfactor, cst = l_factor_conv(
         used_l,
@@ -380,7 +439,7 @@ def sh_to_grid(
     plm_lfactor = plm.sel(l=used_l, m=used_m) * lfactor
 
     if type(longitude) is np.ndarray:
-        lon_dims = "latitude"
+        lon_dims = ("longitude",)
 
     elif type(longitude) is xr.DataArray:
         lon_dims = longitude.dims
@@ -445,6 +504,9 @@ def sh_to_grid(
     for att in ("radius", "earth_gravity_constant", "modelname", "tide_system"):
         if att in sub_data.attrs:
             xgrid.attrs[att] = sub_data.attrs[att]
+
+    if "latitude" in xgrid.dims and "longitude" in xgrid.dims:
+        xgrid = xgrid.transpose("latitude", "longitude", ...)
 
     return xgrid
 
@@ -952,11 +1014,11 @@ def compute_plm(
 
     # if default latitude, set it from z
     if latitude is None:
-        lat_dims = "latitude"
+        lat_dims = ("latitude",)
         latitude = z
 
     elif type(latitude) is np.ndarray:
-        lat_dims = "latitude"
+        lat_dims = ("latitude",)
 
     elif type(latitude) is xr.DataArray:
         lat_dims = latitude.dims
