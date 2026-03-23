@@ -103,8 +103,8 @@ def _generate_grid(
     else:
         if "longitude" in grid.coords:
             assert_grid(grid)
-            longitude = grid.longitude.values
-            latitude = grid.latitude.values
+            longitude = grid.longitude
+            latitude = grid.latitude
         else:
             assert_latitude(grid)
             latitude = grid.latitude.values
@@ -379,16 +379,23 @@ def sh_to_grid(
     # convolve unit over degree
     plm_lfactor = plm.sel(l=used_l, m=used_m) * lfactor
 
+    if type(longitude) is np.ndarray:
+        lon_dims = "latitude"
+
+    elif type(longitude) is xr.DataArray:
+        lon_dims = longitude.dims
+        longitude = longitude.values
+
     # Calculating cos(m*phi) and sin(m*phi)
     c_cos = xr.DataArray(
         np.cos(used_m[:, np.newaxis] @ np.deg2rad(longitude)[np.newaxis, :]),
-        dims=["m", "longitude"],
-        coords={"m": used_m, "longitude": longitude},
+        dims=("m",) + lon_dims,
+        coords={"m": used_m, "longitude": (lon_dims, longitude)},
     )
     s_sin = xr.DataArray(
         np.sin(used_m[:, np.newaxis] @ np.deg2rad(longitude)[np.newaxis, :]),
-        dims=["m", "longitude"],
-        coords={"m": used_m, "longitude": longitude},
+        dims=("m",) + lon_dims,
+        coords={"m": used_m, "longitude": (lon_dims, longitude)},
     )
 
     # summation over all spherical harmonic degrees
@@ -434,13 +441,10 @@ def sh_to_grid(
             )[0]
             xgrid = xgrid + (lfactor_zero * sub_data.clm.sel(l=0, m=0)).values
 
-    xgrid = xgrid.transpose("latitude", "longitude", ...)
-
     xgrid.attrs = {"units": unit, "max_degree": int(lmax)}
-    if "radius" in sub_data.attrs:
-        xgrid.attrs["radius"] = sub_data.attrs["radius"]
-    if "earth_gravity_constant" in sub_data.attrs:
-        xgrid.attrs["earth_gravity_constant"] = sub_data.attrs["earth_gravity_constant"]
+    for att in ("radius", "earth_gravity_constant", "modelname", "tide_system"):
+        if att in sub_data.attrs:
+            xgrid.attrs[att] = sub_data.attrs[att]
 
     return xgrid
 
@@ -899,7 +903,7 @@ def compute_plm(
         Maximum degree of legrendre functions.
     z : np.ndarray
         Argument of the associated Legendre functions, either cos of the colatitude or sin of the latitude.
-    latitude : np.ndarray, optional
+    latitude : np.ndarray | xr.DataArray, optional
         Latitude values in degrees. Default is None and latitude is made from z.
     mmax : int or NoneType, optional
         Maximum order of associated legrendre functions.
@@ -947,7 +951,21 @@ def compute_plm(
     mmax = lmax if mmax is None else mmax
 
     # if default latitude, set it from z
-    latitude = z if latitude is None else latitude
+    if latitude is None:
+        lat_dims = "latitude"
+        latitude = z
+
+    elif type(latitude) is np.ndarray:
+        lat_dims = "latitude"
+
+    elif type(latitude) is xr.DataArray:
+        lat_dims = latitude.dims
+        latitude = latitude.values
+
+    else:
+        raise TypeError(
+            "Given latitude type must be a np.ndarray or xr.DataArray or None."
+        )
 
     # Pregenerate scale factors for computation
     f1, f2, norm_p10, norm_4pi, df = _scale_plm_factors(
@@ -962,11 +980,15 @@ def compute_plm(
 
         plm_da = xr.DataArray(
             plm[:, : mmax + 1],
-            dims=["l", "m", "latitude"],
+            dims=(
+                "l",
+                "m",
+            )
+            + lat_dims,
             coords={
                 "l": np.arange(lmax + 1),
                 "m": np.arange(mmax + 1),
-                "latitude": latitude,
+                "latitude": (lat_dims, latitude),
             },
             name="plm",
         )
@@ -974,13 +996,13 @@ def compute_plm(
     else:
         z = xr.DataArray(
             z,
-            dims=["latitude"],
-            coords={"latitude": latitude if latitude is not None else z},
+            dims=lat_dims,
+            coords={"latitude": (lat_dims, latitude)},
         )
 
         # Chunking plm for dask usage and memory optimization
-        chunks = {"latitude": 4} if chunks is None else chunks
-        z = z.chunk({"latitude": chunks["latitude"]})
+        chunks = {lat_dims: 4} if chunks is None else chunks
+        z = z.chunk({lat_dims[0]: chunks[lat_dims[0]]})
 
         plm_da = xr.apply_ufunc(
             _compute_plm_ufunc,
@@ -1013,7 +1035,7 @@ def compute_plm(
         plm_da = (
             plm_da.assign_coords(l=np.arange(lmax + 1), m=np.arange(mmax + 1))
             .rename("plm")
-            .transpose("l", "m", "latitude")
+            .transpose("l", "m", ...)
         )
 
         if "l" in chunks:

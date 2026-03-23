@@ -459,12 +459,18 @@ def latitude_to_geocentric_colatitude(
     else:
         geocentric_colatitude = np.pi / 2 - np.deg2rad(latitude)
 
-    return xr.DataArray(
-        geocentric_colatitude,
-        dims=["latitude"],
-        coords={"latitude": latitude},
-        name="geocentric_colatitude",
-    )
+    if type(geocentric_colatitude) is np.ndarray:
+        geocentric_colatitude = xr.DataArray(
+            geocentric_colatitude,
+            dims=["latitude"],
+            coords={"latitude": latitude},
+            name="geocentric_colatitude",
+        )
+
+    else:
+        geocentric_colatitude = geocentric_colatitude.rename("geocentric_colatitude")
+
+    return geocentric_colatitude
 
 
 def earth_radius(
@@ -509,12 +515,18 @@ def earth_radius(
     else:
         r_theta = a_earth
 
-    return xr.DataArray(
-        r_theta,
-        dims=["latitude"],
-        coords={"latitude": latitude},
-        name="radius",
-    )
+    if type(r_theta) is np.ndarray:
+        r_theta = xr.DataArray(
+            r_theta,
+            dims=["latitude"],
+            coords={"latitude": latitude},
+            name="radius",
+        )
+
+    else:
+        r_theta = r_theta.rename("radius")
+
+    return r_theta
 
 
 def assert_latitude(ds: xr.DataArray) -> bool:
