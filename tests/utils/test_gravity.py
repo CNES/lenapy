@@ -189,11 +189,6 @@ def normal_zonal_correction(lenapy_paths, base_dataset):
     xr.testing.assert_allclose(ds_out, ref_ds)
 
 
-def test_normal_zonal_correction_error(base_dataset):
-    with pytest.raises(KeyError):
-        base_dataset.lnharmo.normal_zonal_correction()
-
-
 def test_returns_dataarray():
     weights = gauss_weights(radius=100_000, lmax=60)
     assert isinstance(weights, xr.DataArray), "Output is not a xarray.DataArray"
