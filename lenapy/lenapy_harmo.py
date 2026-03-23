@@ -33,6 +33,9 @@ from lenapy.utils.gravity import (
     change_reference,
     change_tide_system,
     normal_zonal_correction,
+    sh_to_deflection_of_vertical,
+    sh_to_gravity_disturbance,
+    sh_to_potential_partial_derivative_longitude,
 )
 from lenapy.utils.harmo import *
 from lenapy.writers.gravi_writer import dataset_to_gfc
@@ -135,12 +138,12 @@ class HarmoSet:
             self.ds = self._obj.sel(l=common_l, m=common_m)
 
             # case where other does not have a time dimension
-            if "time" not in other.coords:
+            if "time" not in other.dims:
                 self.ds["clm"] = op(self.ds.clm, other.clm.sel(l=common_l, m=common_m))
                 self.ds["slm"] = op(self.ds.slm, other.slm.sel(l=common_l, m=common_m))
 
             elif (
-                "time" not in self._obj.coords
+                "time" not in self._obj.dims
             ):  # if the previous test, other has time dimension
                 raise AssertionError(
                     "Cannot operate on a HarmoSet with time dimension to a Harmoset without it. "
@@ -233,6 +236,59 @@ class HarmoSet:
             The spatial grid representation of the spherical harmonics dataset.
         """
         return sh_to_grid(self._obj, **kwargs)
+
+    def to_gravity_disturbance(self, **kwargs) -> xr.DataArray:
+        """
+        Transform Spherical Harmonics (SH) dataset into gravity disturbance spatial DataArray.
+        For details on the function, see :func:`lenapy.utils.gravity.sh_to_gravity_disturbance` documentation.
+
+        Parameters
+        ----------
+        **kwargs :
+            Supplementary parameters used by the function sh_to_gravity_disturbance() for conversion
+
+        Returns
+        -------
+        xr.DataArray
+            The spatial grid gravity disturbance representation of the spherical harmonics dataset.
+        """
+        return sh_to_gravity_disturbance(self._obj, **kwargs)
+
+    def to_potential_partial_derivative_longitude(self, **kwargs) -> xr.DataArray:
+        """
+        Transform Spherical Harmonics (SH) dataset into the partial derivative of the potential regarding the longitude
+        spatial DataArray.
+        For details on the function, see :func:`lenapy.utils.gravity.sh_to_potential_partial_derivative_longitude`
+        documentation.
+
+        Parameters
+        ----------
+        **kwargs :
+            Supplementary parameters used by the function sh_to_potential_partial_derivative_longitude() for conversion
+
+        Returns
+        -------
+        xr.DataArray
+            The spatial grid partial derivative representation of the spherical harmonics dataset.
+        """
+        return sh_to_potential_partial_derivative_longitude(self._obj, **kwargs)
+
+    def to_deflection_of_vertical(self, **kwargs) -> xr.Dataset:
+        """
+        Transform Spherical Harmonics (SH) dataset into deflection of the vertical spatial DataArray.
+        For details on the function, see :func:`lenapy.utils.gravity.sh_to_deflection_of_vertical` documentation.
+
+        Parameters
+        ----------
+        **kwargs :
+            Supplementary parameters used by the function sh_to_deflection_of_vertical() for conversion
+
+        Returns
+        -------
+        xr.Dataset
+            The spatial grids deflection of vertical representation of the spherical harmonics dataset.
+        """
+        return sh_to_deflection_of_vertical(self._obj, **kwargs)
 
     def change_reference(
         self,

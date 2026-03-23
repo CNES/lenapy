@@ -434,29 +434,41 @@ def estimate_normal_gravity(
 
 def normal_zonal_correction(
     ds: xr.Dataset,
-    a_earth: float | None = None,
-    earth_gravity_constant: float | None = None,
+    a_earth: float | None = LNPY_A_EARTH_GRS80,
+    earth_gravity_constant: float | None = LNPY_GM_EARTH_GRS80,
     f_earth: float = LNPY_F_EARTH_GRS80,
     omega_earth: float = LNPY_OMEGA_EARTH_GRS80,
+    final_a_earth: float | None = None,
+    final_earth_gravity_constant: float | None = None,
     reverse: bool = False,
     apply: bool = True,
 ) -> xr.Dataset:
     """
-    Normal gravity field correction on zonal coefficients on a SH dataset for a specified ellipsoid.
+    Normal gravity field correction on zonal coefficients on a SH dataset for a specified ellipsoid define by a_earth,
+    earth_gravity_constant, f_earth and omega_earth.
+    Default used ellipsoid is GRS80.
+
+    The zonal field coefficients can be converted to a new ellipsoid by giving parameters final_a_earth
+    and final_earth_gravity_constant.
 
     Parameters
     ----------
     ds : xr.Dataset
         xr.Dataset that corresponds to SH data to be correct for the normal gravity field.
     a_earth : float | None, optional
-        Earth radius constant of the dataset ds in meters. If not provided, uses `ds.attrs['radius']`.
+        Earth radius constant of the dataset ds in meters. Default is LNPY_A_EARTH_GRS80.
     earth_gravity_constant : float | None, optional
-        Current gravitational constant of the Earth of the dataset ds in m³/s².
-        If not provided, uses `ds.attrs['earth_gravity_constant']`.
+        Current gravitational constant of the Earth of the dataset ds in m³/s². Default is LNPY_GM_EARTH_GRS80.
     f_earth : float, optional
         Earth flattening. Default is LNPY_F_EARTH_GRS80.
     omega_earth : float, optional
         Earth rotation rate. Default is LNPY_OMEGA_EARTH_GRS80.
+    final_a_earth : float | None, optional
+        Final reference surface radius for normal Stokes coefficients.
+        If not provided, uses `ds.attrs['radius']` and if it does not exist, use a_earth.
+    final_earth_gravity_constant : float | None, optional
+        Final reference gravity constant for normal Stokes coefficients.
+        If not provided, uses `ds.attrs['earth_gravity_constant']` and if it does not exist, use earth_gravity_constant.
     reverse : bool, optional
         False to apply the correction, True to remove the correction.
     apply : bool, optional
@@ -473,21 +485,6 @@ def normal_zonal_correction(
         If the current reference frame constants are not provided and not found in the dataset attributes.
 
     """
-    try:
-        a_earth = ds.attrs["radius"] if a_earth is None else a_earth
-        earth_gravity_constant = (
-            ds.attrs["earth_gravity_constant"]
-            if earth_gravity_constant is None
-            else earth_gravity_constant
-        )
-
-    except KeyError:
-        raise KeyError(
-            "If you provide no information about the current reference constants of your ds dataset using "
-            "'radius' and 'earth_gravity_constant' parameters, those information need to be "
-            "contained in ds.attrs dict as ds.attrs['radius'] and ds.attrs['earth_gravity_constant']."
-        )
-
     if apply:
         ds_out = ds
     else:
@@ -518,6 +515,34 @@ def normal_zonal_correction(
 
     sign = -1 if reverse else 1
 
+    if "radius" in ds.attrs:
+        final_a_earth = ds.attrs["radius"] if final_a_earth is None else final_a_earth
+    else:
+        final_a_earth = a_earth if final_a_earth is None else final_a_earth
+
+    if "earth_gravity_constant" in ds.attrs:
+        final_earth_gravity_constant = (
+            ds.attrs["earth_gravity_constant"]
+            if final_earth_gravity_constant is None
+            else final_earth_gravity_constant
+        )
+    else:
+        final_earth_gravity_constant = (
+            earth_gravity_constant
+            if final_earth_gravity_constant is None
+            else final_earth_gravity_constant
+        )
+
+    if (
+        a_earth != final_a_earth
+        or earth_gravity_constant != final_earth_gravity_constant
+    ):
+        gravity_constant_ratio = earth_gravity_constant / final_earth_gravity_constant
+        update_factor = (
+            gravity_constant_ratio * (a_earth / final_a_earth) ** correction.l
+        )
+        correction *= update_factor
+
     ds_out.clm.loc[dict(l=slice(0, None, 2), m=0)] = (
         ds_out.clm.sel(m=0) + sign * correction
     )
@@ -527,7 +552,7 @@ def normal_zonal_correction(
 
 def sh_to_gravity_disturbance(
     data: xr.Dataset,
-    surface: Literal[None, "reference", "geoid"] | float | xr.DataArray = None,
+    surface: Literal[None, "reference", "geoid"] | float | xr.DataArray | None = None,
     lonmin: float = -180,
     lonmax: float = 180,
     latmin: float = -90,
@@ -560,6 +585,8 @@ def sh_to_gravity_disturbance(
         Surface to consider for the computation of the grid. If None or "reference", consider the reference sphere or
         ellipsoid. If "geoid", consider the geoid as surface computed from the given field.
         If a float or xr.DataArray is given, consider it as the surface height in meter to add to the reference surface.
+        If a xr.DataArray is given, it must contain latitude coordinate in degrees
+        and might have longitude coordinate in degrees.
 
     lonmin : float, optional
         Minimal longitude of the future grid.
@@ -626,10 +653,8 @@ def sh_to_gravity_disturbance(
         radians_in,
         longitude,
         latitude,
+        surface if type(surface) is xr.DataArray else None,
     )
-
-    data_null = xr.zeros_like(data)
-    normal_field = normal_zonal_correction(data_null, reverse=True, **kwargs)
 
     geoc_colat = latitude_to_geocentric_colatitude(
         latitude, ellipsoidal_earth=ellipsoidal_earth, **kwargs
@@ -658,6 +683,9 @@ def sh_to_gravity_disturbance(
         derivative=True,
     )
 
+    # d_geoc_colat / dphi = -1 and d cos() / d_colat = - sin() are multiplied here
+    dplm_dtheta = dplm * np.sin(geoc_colat)
+
     # -- beginning of computation
     a_earth = kwargs["a_earth"] if "a_earth" in kwargs else LNPY_A_EARTH_GRS80
     f_earth = kwargs["f_earth"] if "f_earth" in kwargs else LNPY_F_EARTH_GRS80
@@ -669,7 +697,7 @@ def sh_to_gravity_disturbance(
         latitude, ellipsoidal_earth=ellipsoidal_earth, a_earth=a_earth, f_earth=f_earth
     )
 
-    if surface == "geoid":
+    if type(surface) is str and surface == "geoid":
         if test == 1:
             h_geoid = (
                 data.lnharmo.normal_zonal_correction(
@@ -701,7 +729,7 @@ def sh_to_gravity_disturbance(
                 **kwargs,
             )
 
-    elif surface is not None and surface != "reference":
+    elif surface is not None and type(surface) is not str:
         radius = r_theta + surface
 
     else:
@@ -741,7 +769,7 @@ def sh_to_gravity_disturbance(
         unit="potential",
         radius=radius,
         ellipsoidal_earth=ellipsoidal_earth,
-        plm=dplm,
+        plm=dplm_dtheta,
         normalization_plm=normalization_plm,
         use_dask=use_dask,
         chunks_lfactor=chunks_lfactor,
@@ -765,12 +793,10 @@ def sh_to_gravity_disturbance(
         "units": "gravity_disturbance",
         "max_degree": int(data.l.max().values),
     }
-    if "radius" in data.attrs:
-        gravity_disturbance.attrs["radius"] = data.attrs["radius"]
-    if "earth_gravity_constant" in data.attrs:
-        gravity_disturbance.attrs["earth_gravity_constant"] = data.attrs[
-            "earth_gravity_constant"
-        ]
+    for att in ("radius", "earth_gravity_constant", "modelname", "tide_system"):
+        if att in data.attrs:
+            gravity_disturbance.attrs[att] = data.attrs[att]
+
     return gravity_disturbance
 
 
@@ -1130,16 +1156,23 @@ def sh_to_potential_partial_derivative_longitude(
     # convolve unit over degree
     plm_lfactor = plm.sel(l=data.l, m=data.m) * lfactor
 
+    if type(longitude) is np.ndarray:
+        lon_dims = "latitude"
+
+    elif type(longitude) is xr.DataArray:
+        lon_dims = longitude.dims
+        longitude = longitude.values
+
     # Calculating cos(m*phi) and sin(m*phi)
     c_cos = xr.DataArray(
         np.cos(data.m.values[:, np.newaxis] @ np.deg2rad(longitude)[np.newaxis, :]),
-        dims=["m", "longitude"],
-        coords={"m": data.m, "longitude": longitude},
+        dims=("m",) + lon_dims,
+        coords={"m": data.m, "longitude": (lon_dims, longitude)},
     )
     s_sin = xr.DataArray(
         np.sin(data.m.values[:, np.newaxis] @ np.deg2rad(longitude)[np.newaxis, :]),
-        dims=["m", "longitude"],
-        coords={"m": data.m, "longitude": longitude},
+        dims=("m",) + lon_dims,
+        coords={"m": data.m, "longitude": (lon_dims, longitude)},
     )
 
     # summation over all spherical harmonic degrees
@@ -1148,8 +1181,6 @@ def sh_to_potential_partial_derivative_longitude(
 
     # Final calcul on the grid
     xgrid = c_cos.dot(d_slm, dim=["m"]) - s_sin.dot(d_clm, dim=["m"])
-
-    xgrid = xgrid.transpose("latitude", "longitude", ...)
 
     xgrid.attrs = {
         "units": "potential_dlongitude",
@@ -1161,6 +1192,192 @@ def sh_to_potential_partial_derivative_longitude(
         xgrid.attrs["earth_gravity_constant"] = data.attrs["earth_gravity_constant"]
 
     return xgrid
+
+
+def sh_to_deflection_of_vertical(
+    data: xr.Dataset,
+    surface: float | xr.DataArray | None = None,
+    normal_field: xr.Dataset | None = None,
+    lonmin: float = -180,
+    lonmax: float = 180,
+    latmin: float = -90,
+    latmax: float = 90,
+    bounds: list = None,
+    dlon: float = 1,
+    dlat: float = 1,
+    longitude: np.ndarray | None = None,
+    latitude: np.ndarray | None = None,
+    radians_in: bool = False,
+    ellipsoidal_earth: bool = False,
+    normalization_plm: Literal["4pi", "ortho", "schmidt"] = "4pi",
+    dtype_plm: type[complex] | type[float] = np.longdouble,
+    use_dask: bool = False,
+    chunks_lfactor: dict | None = None,
+    chunks_plm: dict | None = None,
+    **kwargs,
+) -> xr.Dataset:
+    """
+    Transform Spherical Harmonics (SH) dataset into two grid corresponding to the deflection of the vertical in arcsec.
+    With choice for constants, unit, love numbers, degree/order, spatial grid latitude and longitude, Earth hypothesis.
+
+    Parameters
+    ----------
+    data : xr.Dataset
+        xr.Dataset that corresponds to SH data to convert into deflection of the vertical.
+    surface : float | xr.DataArray | None, optional
+        Surface to consider for the computation of the grid. If None, consider the reference sphere or
+        ellipsoid.
+        If a float or xr.DataArray is given, consider it as the surface height in meter to add to the reference surface.
+        If a xr.DataArray is given, it must contain latitude coordinate in degrees
+        and might have longitude coordinate in degrees.
+
+    lonmin : float, optional
+        Minimal longitude of the future grid.
+    lonmax : float, optional
+        Maximal longitude of the future grid.
+    latmin : float, optional
+        Minimal latitude of the future grid.
+    latmax : float, optional
+        Maximal latitude of the future grid.
+    bounds : list, optional
+        List of 4 elements with [lonmin, lonmax, latmin, latmax] (if given min/max information are not considered).
+    radians_in : bool, optional
+        True if the unit of the given latitude and longitude information is radians. Default is False for degree unit.
+        If radians_in is True and dlat or dlon are given, they are considered as radians.
+    dlon : float, optional
+        Spacing of the longitude values.
+    dlat : float, optional
+        Spacing of the latitude values.
+    longitude : np.ndarray, optional
+        List of longitude to use for the grid computation (if given, others longitude information are not considered).
+    latitude : np.ndarray, optional
+        List of latitude to use for the grid computation (if given, others latitude information are not considered).
+
+    ellipsoidal_earth : bool, optional
+        If True, consider the Earth as an ellipsoid following [Ditmar2018]. Default is False for a spherical Earth.
+
+    normalization_plm : str, optional
+        If plm need to be computed, choice of the norm corresponding to the SH dataset.
+        Either '4pi', 'ortho', or 'schmidt' for 4pi normalized, orthonormalized, or Schmidt semi-normalized SH
+        functions, respectively. Default is '4pi'.
+    dtype_plm : dtype, optional
+        Specify the dtype to compute the plm DataArray. Default is np.longdouble.
+
+    use_dask : bool, optional
+        If True, use dask to chunk plm for memory optimization. Default is False.
+    chunks_lfactor : dict, optional
+        Define the chunking of lfactor when use_dask is True. Default is None, which set the chunking to {'l': 200}.
+    chunks_plm : dict, optional
+        Define the chunking of plm when use_dask is True. Default is None, which set the chunking to {'latitude': 4}.
+
+    **kwargs :
+        Supplementary parameters used by the function l_factor_conv to modify defaults constants used in the computation
+        for the unit conversion. These parameters include (see :func:`l_factor_conv` documentation for more details) :
+        a_earth, earth_gravity_constant, f_earth, omega_earth
+
+    Returns
+    -------
+    xgrid : xr.Dataset
+        Spatial representation of the deflection of vertical Dataset.
+    """
+
+    # Get parameters for computation of the grid and for the unit conversion
+    longitude, latitude = _generate_grid(
+        bounds,
+        lonmin,
+        lonmax,
+        latmin,
+        latmax,
+        dlon,
+        dlat,
+        radians_in,
+        longitude,
+        latitude,
+        surface if type(surface) is xr.DataArray else None,
+    )
+
+    geoc_colat = latitude_to_geocentric_colatitude(
+        latitude, ellipsoidal_earth=ellipsoidal_earth, **kwargs
+    )
+
+    dplm = compute_plm(
+        data.l.max().values,
+        np.cos(geoc_colat),
+        latitude=latitude,
+        mmax=data.m.max().values,
+        normalization=normalization_plm,
+        dtype=dtype_plm,
+        use_dask=use_dask,
+        chunks=chunks_plm,
+        derivative=True,
+    )
+
+    # d_geoc_colat / dphi = -1 and d cos() / d_colat = - sin() are multiplied here
+    dplm_dtheta = dplm * np.sin(geoc_colat)
+
+    # -- beginning of computation
+    a_earth = kwargs["a_earth"] if "a_earth" in kwargs else LNPY_A_EARTH_GRS80
+    f_earth = kwargs["f_earth"] if "f_earth" in kwargs else LNPY_F_EARTH_GRS80
+
+    r_theta = earth_radius(
+        latitude, ellipsoidal_earth=ellipsoidal_earth, a_earth=a_earth, f_earth=f_earth
+    )
+
+    if surface is not None:
+        radius = surface + r_theta
+
+    else:
+        radius = r_theta
+
+    # deal with normal field
+    if normal_field is None:
+        data_residual = normal_zonal_correction(data, **kwargs)
+    else:
+        data_residual = data.lnharmo - normal_field
+
+    potential_dlongitude = sh_to_potential_partial_derivative_longitude(
+        data_residual,
+        radius=radius,
+        ellipsoidal_earth=ellipsoidal_earth,
+        normalization_plm=normalization_plm,
+        use_dask=use_dask,
+        chunks_lfactor=chunks_lfactor,
+        **kwargs,
+    )
+
+    potential_dlatitude = data_residual.lnharmo.to_grid(
+        unit="potential",
+        radius=radius,
+        ellipsoidal_earth=ellipsoidal_earth,
+        plm=dplm_dtheta,
+        normalization_plm=normalization_plm,
+        use_dask=use_dask,
+        chunks_lfactor=chunks_lfactor,
+        **kwargs,
+    )
+
+    normal_gravity = estimate_normal_gravity(radius=radius, **kwargs)
+
+    # conversion m/rad -> arcsec
+    conv = (3600.0 / np.radians(1)) / normal_gravity
+    vdef_ns = -potential_dlatitude / radius * conv
+    vdef_ew = -potential_dlongitude / (radius * np.sin(geoc_colat)) * conv
+
+    vdef_ns.attrs = {"unit": "arcsec", "name": "vertical_deflection_north_south"}
+    vdef_ew.attrs = {"unit": "arcsec", "name": "vertical_deflection_east_west"}
+
+    new_attrs = {"name": "vertical_deflection", "max_degree": int(data.l.max())}
+    for att in ("radius", "earth_gravity_constant", "modelname", "tide_system"):
+        if att in data.attrs:
+            new_attrs[att] = data.attrs[att]
+
+    return xr.Dataset(
+        {
+            "vertical_deflection_ns": vdef_ns,
+            "vertical_deflection_ew": vdef_ew,
+        },
+        attrs=new_attrs,
+    )
 
 
 def gauss_weights(
