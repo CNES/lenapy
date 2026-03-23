@@ -9,6 +9,7 @@ from lenapy.utils.gravity import (
     change_tide_system,
     gauss_weights,
 )
+from tests.utilities import subsample_xr
 
 OLD_RADIUS = 6371000.0
 OLD_GM = 3.986004418e14
@@ -183,10 +184,84 @@ def normal_zonal_correction(lenapy_paths, base_dataset):
     ref_ds = xr.open_dataset(ref_file)
 
     ds_out = base_dataset.lnharmo.normal_zonal_correction(
-        radius=LNPY_A_EARTH_GRS80, earth_gravity_constant=LNPY_GM_EARTH
+        earth_gravity_constant=LNPY_GM_EARTH
     )
 
     xr.testing.assert_allclose(ds_out, ref_ds)
+
+
+def test_sh_to_gravity_disturbance(lenapy_paths):
+    """
+    Test for converting and subsampling a dataset's gravity disturbance grid and comparing it to a reference grid.
+
+    Parameters
+    ----------
+    lenapy_paths : object
+        An object that provides paths to reference data and datasets.
+
+    Raises
+    ------
+    AssertionError
+        If the subsampled grid does not match the reference grid exactly.
+    """
+    ref_grid_file = lenapy_paths.ref_data / "utils" / "costg_gravi_dist.nc"
+    grid_ref = xr.open_dataarray(ref_grid_file)
+
+    costg_ds = xr.open_dataset(lenapy_paths.data / "COSTG_n12_2002_2022.nc")
+    grid = costg_ds.lnharmo.to_gravity_disturbance()
+    grid = subsample_xr(grid, 10)
+    xr.testing.assert_allclose(grid_ref, grid)
+
+
+def test_sh_to_potential_partial_derivative_longitude(lenapy_paths):
+    """
+    Test for converting and subsampling a dataset's potential partial derivative longitude grid and comparing it to
+    a reference grid.
+
+    Parameters
+    ----------
+    lenapy_paths : object
+        An object that provides paths to reference data and datasets.
+
+    Raises
+    ------
+    AssertionError
+        If the subsampled grid does not match the reference grid exactly.
+    """
+    ref_grid_file = (
+        lenapy_paths.ref_data
+        / "utils"
+        / "costg_potential_partial_derivative_longitude.nc"
+    )
+    grid_ref = xr.open_dataarray(ref_grid_file)
+
+    costg_ds = xr.open_dataset(lenapy_paths.data / "COSTG_n12_2002_2022.nc")
+    grid = costg_ds.lnharmo.to_potential_partial_derivative_longitude()
+    grid = subsample_xr(grid, 10)
+    xr.testing.assert_allclose(grid_ref, grid)
+
+
+def test_sh_to_deflection_of_vertical(lenapy_paths):
+    """
+    Test for converting and subsampling a dataset's deflection of vertical grid and comparing it to a reference grid.
+
+    Parameters
+    ----------
+    lenapy_paths : object
+        An object that provides paths to reference data and datasets.
+
+    Raises
+    ------
+    AssertionError
+        If the subsampled grid does not match the reference grid exactly.
+    """
+    ref_grid_file = lenapy_paths.ref_data / "utils" / "costg_deflection_of_vertical.nc"
+    grid_ref = xr.open_dataarray(ref_grid_file)
+
+    costg_ds = xr.open_dataset(lenapy_paths.data / "COSTG_n12_2002_2022.nc")
+    grid = costg_ds.lnharmo.to_deflection_of_vertical()
+    grid = subsample_xr(grid, 10)
+    xr.testing.assert_allclose(grid_ref, grid)
 
 
 def test_returns_dataarray():

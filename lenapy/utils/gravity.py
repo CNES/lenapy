@@ -785,7 +785,12 @@ def sh_to_gravity_disturbance(
     if ellipsoidal_earth:
         nabla_u = estimate_normal_gravity(radius=radius, **kwargs)
     else:
-        nabla_u = kwargs["earth_gravity_constant"] / a_earth**2
+        gm = (
+            kwargs["earth_gravity_constant"]
+            if "earth_gravity_constant" in kwargs
+            else LNPY_GM_EARTH
+        )
+        nabla_u = gm / a_earth**2
 
     gravity_disturbance = nabla_w - nabla_u
 
@@ -1359,7 +1364,15 @@ def sh_to_deflection_of_vertical(
         **kwargs,
     )
 
-    normal_gravity = estimate_normal_gravity(radius=radius, **kwargs)
+    if ellipsoidal_earth:
+        normal_gravity = estimate_normal_gravity(radius=radius, **kwargs)
+    else:
+        gm = (
+            kwargs["earth_gravity_constant"]
+            if "earth_gravity_constant" in kwargs
+            else LNPY_GM_EARTH
+        )
+        normal_gravity = gm / a_earth**2
 
     # conversion m/rad -> arcsec
     conv = (3600.0 / np.radians(1)) / normal_gravity

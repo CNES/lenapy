@@ -523,7 +523,7 @@ def earth_radius(
             name="radius",
         )
 
-    else:
+    elif type(r_theta) is xr.DataArray:
         r_theta = r_theta.rename("radius")
 
     return r_theta
