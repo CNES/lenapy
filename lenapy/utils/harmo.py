@@ -1528,7 +1528,7 @@ def l_factor_conv(
         Unit of the spatial data used in the transformation. Default is 'mewh' for meters of Equivalent Water Height.
         str composed of a prefix (optional) and a unit type.
         The unit prefix parser function accepts common ASCII and Unicode forms for the micro prefix
-        (both 'u' and 'µ') and is case\-sensitive where relevant (e.g. 'M' for mega vs 'm' for milli).
+        (both 'u' and 'µ') and is case-sensitive where relevant (e.g. 'M' for mega vs 'm' for milli).
         Unit cannot be defined using 'm' for milli because it is used for meter unit,
         so 'milli' or 'mm' should be used instead. Same for 'p' for pico, 'pico' should be used instead.
         Goes from 'giga' / 'G' to 'pico', including 'mega', 'kilo', 'hecto', 'deca', 'deci', 'centi', 'milli',
