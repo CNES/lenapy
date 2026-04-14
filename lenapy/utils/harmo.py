@@ -338,6 +338,8 @@ def sh_to_grid(
 
     radius : xr.DataArray | float, optional
         DataArray or float with the radius of the grid to compute. If not given, the radius is the surface of reference.
+        If radius is a xr.DataArray that contains latitude and longitude coords, those coords overwrite latitude and
+        longitude from function parameters.
 
     force_mass_conservation : bool, optional
         If True, force that the grid resulting from all coefficients except C0 has a null global mass. Default is False.
@@ -368,8 +370,8 @@ def sh_to_grid(
         Supplementary parameters used by the function l_factor_conv to modify defaults constants used in the computation
         for the unit conversion. These parameters include (see :func:`l_factor_conv` documentation for more details) :
         a_earth, earth_gravity_constant, f_earth, omega_earth, rho_earth, ds_love
-        If given a_earth, earth_gravity_constant do not correspond to data.attrs information, change the surface
-        reference of the Stokes coefficients before spatial estimation
+        If given a_earth, earth_gravity_constant do not correspond to data.attrs information, the function change
+        the reference surface of the Stokes coefficients before spatial estimation.
 
     Returns
     -------
@@ -1063,7 +1065,7 @@ def compute_plm(
         )
 
         # Chunking plm for dask usage and memory optimization
-        chunks = {lat_dims: 4} if chunks is None else chunks
+        chunks = {lat_dims[0]: 4} if chunks is None else chunks
         z = z.chunk({lat_dims[0]: chunks[lat_dims[0]]})
 
         plm_da = xr.apply_ufunc(

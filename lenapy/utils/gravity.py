@@ -43,6 +43,7 @@ from lenapy.utils.harmo import (
     _assert_plm,
     _generate_grid,
     _get_earth_parameters,
+    _if_needed_change_reference,
     compute_plm,
     l_factor_conv,
 )
@@ -635,6 +636,8 @@ def sh_to_gravity_disturbance(
         Supplementary parameters used by the function l_factor_conv to modify defaults constants used in the computation
         for the unit conversion. These parameters include (see :func:`l_factor_conv` documentation for more details) :
         a_earth, earth_gravity_constant, f_earth, omega_earth
+        If given a_earth, earth_gravity_constant do not correspond to data.attrs information, the function change
+        the reference surface of the Stokes coefficients before spatial estimation.
 
     Returns
     -------
@@ -1145,6 +1148,9 @@ def sh_to_potential_partial_derivative_longitude(
     else:
         _assert_plm(plm, data.l.max().values, latitude)
 
+    # change reference surface of input Stokes coefficients if output constants do not correspond
+    data = _if_needed_change_reference(data, **kwargs)
+
     # scale factor for each degree
     lfactor, cst = l_factor_conv(
         data.l.values,
@@ -1348,8 +1354,10 @@ def sh_to_deflection_of_vertical(
         radius=radius,
         ellipsoidal_earth=ellipsoidal_earth,
         normalization_plm=normalization_plm,
+        dtype=dtype_plm,
         use_dask=use_dask,
         chunks_lfactor=chunks_lfactor,
+        chunks_plm=chunks_plm,
         **kwargs,
     )
 
