@@ -6,7 +6,15 @@ import os
 
 import numpy as np
 import xarray as xr
-import xesmf as xe
+
+try:
+    import xesmf as xe
+except ModuleNotFoundError:
+    raise Warning(
+        "No module named 'ESMF', often due to installation with pip instead of conda for the xesmf lib."
+        "You can try to manually set up the ESMFMKFILE global variable with os.environ() function to solve"
+        "this issue."
+    )
 from xarray.backends import BackendEntrypoint
 
 from lenapy.utils.geo import longitude_increase, rename_data, split_duplicate_coords
