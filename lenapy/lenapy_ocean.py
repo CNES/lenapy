@@ -470,7 +470,7 @@ class OceanSet:
     @property
     def mld_theta0(self):
 
-        theta0 = self.PT.interp(depth=10).drop("depth")
+        theta0 = self.PT.interp(depth=10).drop_vars("depth")
         mld1 = self.PT.lngeo.isosurface(
             theta0 - self.oml_theta0_threshold, "depth", upper=True
         )
@@ -491,7 +491,7 @@ class OceanSet:
     @property
     def mld_theta0minus_only(self):
 
-        theta0 = self.PT.interp(depth=10).drop("depth")
+        theta0 = self.PT.interp(depth=10).drop_vars("depth")
         self.mld_theta0_ = (
             self.PT.lngeo.isosurface(
                 theta0 - self.oml_theta0_threshold, "depth", upper=True
@@ -506,7 +506,7 @@ class OceanSet:
     @property
     def mld_sigma0(self):
 
-        sigma0 = self.sigma0.interp(depth=10).drop("depth")
+        sigma0 = self.sigma0.interp(depth=10).drop_vars("depth")
         self.mld_sigma0_ = (
             self.sigma0.lngeo.isosurface(
                 sigma0 + self.oml_sigma0_threshold, "depth", upper=True
@@ -524,7 +524,7 @@ class OceanSet:
         ref["PT"] = ref["PT"] - self.oml_theta0_threshold
         self.mld_sigma0var_ = (
             self.sigma0.lngeo.isosurface(
-                ref.lnocean.sigma0.drop("depth"), "depth", upper=True
+                ref.lnocean.sigma0.drop_vars("depth"), "depth", upper=True
             )
             .rename("OMLD_sigma0var")
             .fillna(self.ocean_depth)

@@ -1354,7 +1354,7 @@ def sh_to_deflection_of_vertical(
         radius=radius,
         ellipsoidal_earth=ellipsoidal_earth,
         normalization_plm=normalization_plm,
-        dtype=dtype_plm,
+        dtype_plm=dtype_plm,
         use_dask=use_dask,
         chunks_lfactor=chunks_lfactor,
         chunks_plm=chunks_plm,

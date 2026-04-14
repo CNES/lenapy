@@ -106,15 +106,15 @@ def isosurface(data, target, dim, coord=None, upper=False):
     slice0 = {dim: slice(None, -1)}
     slice1 = {dim: slice(1, None)}
 
-    field0 = data.isel(slice0).drop(coord)
-    field1 = data.isel(slice1).drop(coord)
+    field0 = data.isel(slice0).drop_vars(coord)
+    field1 = data.isel(slice1).drop_vars(coord)
 
     crossing_mask_decr = (field0 > target) & (field1 <= target)
     crossing_mask_incr = (field0 < target) & (field1 >= target)
     crossing_mask = xr.where(crossing_mask_decr | crossing_mask_incr, 1, np.nan)
 
-    coords0 = crossing_mask * data[coord].isel(slice0).drop(coord)
-    coords1 = crossing_mask * data[coord].isel(slice1).drop(coord)
+    coords0 = crossing_mask * data[coord].isel(slice0).drop_vars(coord)
+    coords1 = crossing_mask * data[coord].isel(slice1).drop_vars(coord)
     field0 = crossing_mask * field0
     field1 = crossing_mask * field1
 

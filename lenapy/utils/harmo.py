@@ -1325,7 +1325,7 @@ def _prefix_parser(unit: str) -> float:
     ----------
     unit : str
         Unit name that may include a prefix. The function accepts common ASCII and Unicode forms for the micro prefix
-        (both 'u' and 'µ') and is case\-sensitive where relevant (e.g. 'M' for mega vs 'm' for milli).
+        (both 'u' and 'µ') and is case-sensitive where relevant (e.g. 'M' for mega vs 'm' for milli).
 
         Unit cannot be defined using 'm' for milli because it is used for meter unit,
         so 'milli' or 'mm' should be used instead. Same for 'p' for pico, 'pico' should be used instead.

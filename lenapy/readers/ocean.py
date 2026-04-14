@@ -217,11 +217,11 @@ class lenapyOceanProducts(BackendEntrypoint):
                     "temp": (
                         temp.groupby("time.month")
                         + climtemp.groupby("time.month").mean("time")
-                    ).drop("month"),
+                    ).drop_vars("month"),
                     "psal": (
                         sal.groupby("time.month")
                         + climsal.groupby("time.month").mean("time")
-                    ).drop("month"),
+                    ).drop_vars("month"),
                 }
             )
 
@@ -477,7 +477,7 @@ class lenapyOceanProducts(BackendEntrypoint):
                 ds = (
                     ds.set_index(i="longitude", j="latitude", k="Z")
                     .rename(i="longitude", j="latitude", k="depth")
-                    .drop("timestep")
+                    .drop_vars("timestep")
                 )
                 return ds.assign_coords(depth=-ds.depth)
 
