@@ -3,14 +3,15 @@ The **lenapy_geo** module implements some usual functions to be applied on gridd
 """
 
 # -*- coding: utf-8 -*-
-import numpy as np
+import warnings
+
 import xarray as xr
 
 try:
     import xesmf as xe
 except ModuleNotFoundError:
-    raise Warning(
-        "No module named 'ESMF', often due to installation with pip instead of conda for the xesmf lib."
+    raise warnings.warn(
+        "Warning: No module named 'ESMF', often due to installation with pip instead of conda for the xesmf lib."
         "You can try to manually set up the ESMFMKFILE global variable with os.environ() function to solve"
         "this issue."
     )
