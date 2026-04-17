@@ -1635,7 +1635,10 @@ def l_factor_conv(
                 f_earth=f_earth,
             )
 
-    a_div_r = a_earth / radius if ellipsoidal_earth else None
+    if radius is not None:
+        a_div_r = a_earth / radius
+    else:
+        a_div_r = None
 
     l_factor = _compute_l_factor(
         l,
