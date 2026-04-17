@@ -425,7 +425,7 @@ def sh_to_grid(
     sub_data = _if_needed_change_reference(sub_data, **kwargs)
 
     # scale factor for each degree
-    lfactor, cst, radius = l_factor_conv(
+    lfactor, cst, radius_lfactor = l_factor_conv(
         used_l,
         unit=unit,
         include_elastic=include_elastic,
@@ -503,8 +503,8 @@ def sh_to_grid(
             )[0]
             xgrid = xgrid + (lfactor_zero * sub_data.clm.sel(l=0, m=0)).values
 
-    if radius is not None:
-        xgrid = xgrid.assign_coords(radius=radius)
+    if type(radius) is xr.DataArray or ellipsoidal_earth:
+        xgrid = xgrid.assign_coords(radius=radius_lfactor)
 
     xgrid.attrs = {"units": unit, "max_degree": int(lmax)}
     for att in ("radius", "earth_gravity_constant", "modelname", "tide_system"):

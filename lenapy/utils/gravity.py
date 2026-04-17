@@ -1160,7 +1160,7 @@ def sh_to_potential_partial_derivative_longitude(
     data = _if_needed_change_reference(data, **kwargs)
 
     # scale factor for each degree
-    lfactor, cst, radius = l_factor_conv(
+    lfactor, cst, radius_lfactor = l_factor_conv(
         data.l.values,
         unit="potential",
         ellipsoidal_earth=ellipsoidal_earth,
@@ -1201,8 +1201,8 @@ def sh_to_potential_partial_derivative_longitude(
     # Final calcul on the grid
     xgrid = c_cos.dot(d_slm, dim=["m"]) - s_sin.dot(d_clm, dim=["m"])
 
-    if radius is not None:
-        xgrid = xgrid.assign_coords(radius=radius)
+    if type(radius) is xr.DataArray or ellipsoidal_earth:
+        xgrid = xgrid.assign_coords(radius=radius_lfactor)
 
     xgrid.attrs = {
         "units": "potential_dlongitude",
