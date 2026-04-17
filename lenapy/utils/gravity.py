@@ -565,6 +565,7 @@ def sh_to_gravity_disturbance(
     latitude: np.ndarray | None = None,
     radians_in: bool = False,
     ellipsoidal_earth: bool = False,
+    remove_normal_field: bool = True,
     normalization_plm: Literal["4pi", "ortho", "schmidt"] = "4pi",
     dtype_plm: type[complex] | type[float] = np.longdouble,
     use_dask: bool = False,
@@ -613,6 +614,9 @@ def sh_to_gravity_disturbance(
 
     ellipsoidal_earth : bool, optional
         If True, consider the Earth as an ellipsoid following [Ditmar2018]. Default is False for a spherical Earth.
+    remove_normal_field : bool, optional
+        If True, remove the normal gravity. Default is True.
+        False option should be used for gravity field without low degrees values.
 
     plm : xr.DataArray, optional
         Precomputed plm values as a xr.DataArray variable. For example with the code :
@@ -785,15 +789,19 @@ def sh_to_gravity_disturbance(
         + (potential_dlatitude + ds_centrifugal.dV_dlatitude) ** 2 / radius**2
     )
 
-    if ellipsoidal_earth:
-        nabla_u = estimate_normal_gravity(radius=radius, **kwargs)
+    if remove_normal_field:
+        if ellipsoidal_earth:
+            nabla_u = estimate_normal_gravity(radius=radius, **kwargs)
+        else:
+            gm = (
+                kwargs["earth_gravity_constant"]
+                if "earth_gravity_constant" in kwargs
+                else LNPY_GM_EARTH
+            )
+            nabla_u = gm / a_earth**2
+
     else:
-        gm = (
-            kwargs["earth_gravity_constant"]
-            if "earth_gravity_constant" in kwargs
-            else LNPY_GM_EARTH
-        )
-        nabla_u = gm / a_earth**2
+        nabla_u = 0
 
     gravity_disturbance = nabla_w - nabla_u
 
@@ -1152,7 +1160,7 @@ def sh_to_potential_partial_derivative_longitude(
     data = _if_needed_change_reference(data, **kwargs)
 
     # scale factor for each degree
-    lfactor, cst = l_factor_conv(
+    lfactor, cst, radius = l_factor_conv(
         data.l.values,
         unit="potential",
         ellipsoidal_earth=ellipsoidal_earth,
@@ -1193,14 +1201,17 @@ def sh_to_potential_partial_derivative_longitude(
     # Final calcul on the grid
     xgrid = c_cos.dot(d_slm, dim=["m"]) - s_sin.dot(d_clm, dim=["m"])
 
+    if radius is not None:
+        xgrid = xgrid.assign_coords(radius=radius)
+
     xgrid.attrs = {
         "units": "potential_dlongitude",
         "max_degree": int(data.l.max().values),
     }
-    if "radius" in data.attrs:
-        xgrid.attrs["radius"] = data.attrs["radius"]
-    if "earth_gravity_constant" in data.attrs:
-        xgrid.attrs["earth_gravity_constant"] = data.attrs["earth_gravity_constant"]
+
+    for att in ("radius", "earth_gravity_constant", "modelname", "tide_system"):
+        if att in data.attrs:
+            xgrid.attrs[att] = data.attrs[att]
 
     if "latitude" in xgrid.dims and "longitude" in xgrid.dims:
         xgrid = xgrid.transpose("latitude", "longitude", ...)

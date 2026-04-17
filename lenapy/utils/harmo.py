@@ -29,6 +29,7 @@ from lenapy.constants import *
 from lenapy.utils.geo import (
     assert_grid,
     assert_latitude,
+    earth_radius,
     latitude_to_geocentric_colatitude,
 )
 
@@ -424,7 +425,7 @@ def sh_to_grid(
     sub_data = _if_needed_change_reference(sub_data, **kwargs)
 
     # scale factor for each degree
-    lfactor, cst = l_factor_conv(
+    lfactor, cst, radius = l_factor_conv(
         used_l,
         unit=unit,
         include_elastic=include_elastic,
@@ -502,6 +503,9 @@ def sh_to_grid(
             )[0]
             xgrid = xgrid + (lfactor_zero * sub_data.clm.sel(l=0, m=0)).values
 
+    if radius is not None:
+        xgrid = xgrid.assign_coords(radius=radius)
+
     xgrid.attrs = {"units": unit, "max_degree": int(lmax)}
     for att in ("radius", "earth_gravity_constant", "modelname", "tide_system"):
         if att in sub_data.attrs:
@@ -522,6 +526,7 @@ def grid_to_sh(
     mmin: int = 0,
     used_l: np.ndarray | None = None,
     used_m: np.ndarray | None = None,
+    radius: xr.DataArray | float | None = None,
     ellipsoidal_earth: bool = False,
     include_elastic: bool = True,
     plm: xr.DataArray | None = None,
@@ -560,6 +565,10 @@ def grid_to_sh(
         List of degree to compute for the SH Dataset (if given, lmax and lmin are not considered).
     used_m : np.ndarray, optional
         List of order to compute for the SH Dataset (if given, mmax and mmin are not considered).
+
+    radius : xr.DataArray | float, optional
+        DataArray or float with the radius of the given grid. If not given, look for radius in grid.coords
+        and if it does not exist, the radius is the surface of reference.
 
     ellipsoidal_earth : bool, optional
         If True, consider the Earth as an ellipsoid following [Ditmar2018]. Default is False for a spherical Earth.
@@ -621,13 +630,18 @@ def grid_to_sh(
     int_fact["latitude"].attrs = dict(standard_name="latitude")
     int_fact["longitude"].attrs = dict(standard_name="longitude")
 
+    # load radius parameter from the grid coordinates is radius is not given but include in grid.coords
+    if radius is None and "radius" in grid.coords:
+        radius = grid.coords["radius"]
+
     # scale factor for each degree
-    lfactor, cst = l_factor_conv(
+    lfactor, cst, _ = l_factor_conv(
         used_l,
         unit=unit,
         include_elastic=include_elastic,
         ellipsoidal_earth=ellipsoidal_earth,
         geocentric_colat=geocentric_colat,
+        radius=radius,
         attrs=grid.attrs,
         use_dask=use_dask,
         chunks=chunks_lfactor,
@@ -1513,7 +1527,7 @@ def l_factor_conv(
     attrs: dict | None = None,
     use_dask: bool = False,
     chunks: dict | None = None,
-) -> tuple[xr.DataArray, dict]:
+) -> tuple[xr.DataArray, dict, xr.DataArray]:
     """
     Compute a scale factor for a transformation between spherical harmonics and grid data.
     Spatial data over the grid are associated with a specific unit.
@@ -1546,7 +1560,7 @@ def l_factor_conv(
     geocentric_colat : xr.DataArray | None, optional
         Geocentric colatitude for ellipsoidal Earth radius computation in radians,
         the dimension is geographic latitude in degree.
-    radius : xr.DataArray | None, optional
+    radius : xr.DataArray | float | None, optional
         DataArray with the radius of the grid to compute. If not given, the radius is the surface of reference.
 
     ds_love : xr.Dataset | None, optional
@@ -1581,6 +1595,8 @@ def l_factor_conv(
         Degree-dependent scale factor.
     cst: dict
         Attributes for the final dataset
+    radius : xr.DataArray | None, optional
+        DataArray with the radius of the grid if ellipsoidal_earth is True else None.
 
     References
     ----------
@@ -1603,24 +1619,23 @@ def l_factor_conv(
             ds_love = load_default_love_numbers()
         fraction = fraction + ds_love.kl
 
-    a_div_r = None
-    if ellipsoidal_earth and radius is None:
-        # test if geocentric_colat is set
-        if geocentric_colat is None:
-            raise ValueError(
-                "For ellipsoidal Earth, you need to set "
-                "the parameter 'geocentric_colat' in l_factor_conv function"
+    if ellipsoidal_earth:
+        if radius is None:
+            # test if geocentric_colat is set
+            if geocentric_colat is None:
+                raise ValueError(
+                    "For ellipsoidal Earth, you need to set "
+                    "the parameter 'geocentric_colat' in l_factor_conv function"
+                )
+
+            radius = earth_radius(
+                geocentric_colat.latitude,
+                ellipsoidal_earth=ellipsoidal_earth,
+                a_earth=a_earth,
+                f_earth=f_earth,
             )
 
-        # e = sqrt(2f - f**2)
-        e_earth_square = 2 * f_earth - f_earth**2
-        # a_div_r_lat = a / r(theta)  with r(theta) = a(1-f)/sqrt(1 - e**2*sin(theta)**2)
-        a_div_r = np.sqrt(1 - e_earth_square * np.sin(geocentric_colat) ** 2) / (
-            1 - f_earth
-        )
-
-    elif radius is not None:
-        a_div_r = a_earth / radius
+    a_div_r = a_earth / radius if ellipsoidal_earth else None
 
     l_factor = _compute_l_factor(
         l,
@@ -1648,7 +1663,7 @@ def l_factor_conv(
         l_factor_scale = l_factor_scale.chunk(chunks)
 
     cst = {"earth_gravity_constant": earth_gravity_constant, "a_earth": a_earth}
-    return l_factor_scale, cst
+    return l_factor_scale, cst, radius
 
 
 def _assert_plm(plm: xr.DataArray, lmax: int, latitude: np.ndarray) -> bool:

@@ -183,7 +183,7 @@ def test_l_factor_conv(lenapy_paths, l, unit):
         coords={"latitude": latitude},
     )
 
-    l_factor, cst = l_factor_conv(
+    l_factor, cst, _ = l_factor_conv(
         l=l,
         unit=unit,
         include_elastic=True,
