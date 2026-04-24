@@ -422,8 +422,8 @@ class HarmoSet:
 
         Returns
         -------
-        matplotlib.figure.Figure
-            The generated plot of the spherical harmonics.
+        ax : plt.Axes
+            The axis with the generated plot of the spherical harmonics.
         """
         return plot_hs(self._obj, **kwargs)
 
@@ -439,8 +439,8 @@ class HarmoSet:
 
         Returns
         -------
-        matplotlib.figure.Figure
-            The generated plot of the power of the spherical harmonics.
+        ax : plt.Axes
+            The axes with the plot of the power of the spherical harmonics.
         """
         return plot_power(self._obj, **kwargs)
 

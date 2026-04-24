@@ -508,8 +508,8 @@ def sh_to_grid(
 
     xgrid.attrs = {"units": unit, "max_degree": int(lmax)}
     for att in ("radius", "earth_gravity_constant", "modelname", "tide_system"):
-        if att in sub_data.attrs:
-            xgrid.attrs[att] = sub_data.attrs[att]
+        if att in data.attrs:
+            xgrid.attrs[att] = data.attrs[att]
 
     if "latitude" in xgrid.dims and "longitude" in xgrid.dims:
         xgrid = xgrid.transpose("latitude", "longitude", ...)

@@ -358,6 +358,23 @@ class TimeArray:
         """
         plot_timeseries_uncertainty(self._obj, **kwargs)
 
+    def plot_ls_periodogram(self, **kwargs):
+        """
+        Plot the Lomb-Scargle periodogram of a time series.
+        For details on the function, see :func:`lenapy.plots.plotting.plot_power_hs` documentation.
+
+        Parameters
+        ----------
+        **kwargs :
+            Additional parameters to customize the plot.
+
+        Returns
+        -------
+        ax : plt.Axes
+            The axis with the periodogram plot.
+        """
+        plot_ls_periodogram(self._obj, **kwargs)
+
     def to_datetime(self, time_type):
         """
         Convert DataArray time format to standard pandas time format

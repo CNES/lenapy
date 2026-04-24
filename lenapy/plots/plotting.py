@@ -3,9 +3,11 @@ from typing import Literal
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
+import scipy as sc
 import xarray as xr
 from xarray.plot.dataarray_plot import _infer_line_data
 
+from lenapy.constants import LNPY_DAYS_YEAR
 from lenapy.utils.harmo import l_factor_conv
 
 
@@ -450,6 +452,91 @@ class TaylorDiagram(object):
         contours = self.ax.contour(ts, rs, rms, levels, **kwargs)
 
         return contours
+
+
+def plot_ls_periodogram(
+    ds: xr.Dataset,
+    dim_time: str = "time",
+    day_step=LNPY_DAYS_YEAR,
+    period_range: list[float] | None = None,
+    nfreq: int = 1000,
+    window: str = "hamming_symmetric",
+    window_size: int = None,
+    ax: plt.Axes = None,
+    ls_kwargs: dict | None = None,
+    **kwargs,
+) -> plt.Axes:
+    """
+    Plot the Lomb-Scargle periodogram of a time series.
+
+    Parameters
+    ----------
+    ds : xr.DataArray
+        Input time series DataArray with a time dimension.
+    dim_time : str, optional
+        Name of the time dimension, default is 'time'.
+    day_step : int, optional
+        The time unit is defined by its number of day per step. Default is LNPY_DAYS_YEAR for a yearly time step.
+        The time unit also define the expected unit of the 'period_range' parameter.
+    period_range : list of float, optional
+        Period range for the periodogram in the unit define by day_step, as [period_min, period_max].
+        Default is [0.5, length_of_series / 2].
+    nfreq : int, optional
+        Number of frequency samples, default is 1000.
+    window : str, tuple or None, optional
+        Apodization window applied symmetrically at both ends of the series.
+        Accepts any window identifier supported by :func:`scipy.signal.windows.get_window`.
+        Set to None or False to disable apodization. Default is 'hamming_symmetric'.
+    window_size : int, optional
+        Half-width of the apodization window in number of samples.
+        Defaults to min(48, len(ds.[dim_time]) // 5).
+    ax : plt.Axes, optional
+        Axes on which to plot. By default, use the current axes.
+    ls_kwargs : dict, optional
+        Additional keyword arguments passed to :func:`scipy.signal.lombscargle`.
+    **kwargs : optional
+        Additional keyword arguments passed to :func:`matplotlib.pyplot.plot`.
+
+    Returns
+    -------
+    ax : plt.Axes
+        Axes with the plot.
+    """
+    # -- set default param values
+    ax = plt.gca() if ax is None else ax
+    ls_kwargs = {} if ls_kwargs is None else ls_kwargs
+
+    # -- time unit gestion
+    time = (ds[dim_time] - ds[dim_time][0]).dt.days / day_step
+
+    # -- period range
+    time_length = time[-1] - time[0]
+    dt_median = np.median(np.diff(time))
+    if period_range is None:
+        period_range = [2 * dt_median, time_length / 2]
+
+    # Define angular frequencies for the periodogram
+    w = np.linspace(period_range[0] / 2 / np.pi, period_range[1] / 2 / np.pi, nfreq)[
+        ::-1
+    ]
+
+    if window:
+        if window_size is None:
+            window_size = min(48, len(ds[dim_time]) // 5)
+        half_window = sc.signal.windows.get_window(window, window_size)[
+            : window_size // 2
+        ]
+        conv_window = np.concatenate(
+            (half_window, np.ones(len(ds[dim_time]) - window_size), half_window[::-1])
+        )
+    else:
+        conv_window = np.ones(len(ds[dim_time]))
+
+    pgram = sc.signal.lombscargle(time, ds.values * conv_window, w.copy(), **ls_kwargs)
+
+    ax.plot(2 * np.pi / w, pgram, **kwargs)
+
+    return ax
 
 
 def plot_hs(
