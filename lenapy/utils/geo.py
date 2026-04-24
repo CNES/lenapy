@@ -380,29 +380,47 @@ def distance(
                 "You can still use distance function with the argument ellipsoidal_earth=False."
             )
 
-        # create array input for geod.inv() function, with flat shape (pt.size, data.latitude.size, data.longitude.size)
-        lon1 = pt.cf["longitude"].values.repeat(
-            data.cf["latitude"].size * data.cf["longitude"].size
-        )
-        lat1 = pt.cf["latitude"].values.repeat(
-            data.cf["latitude"].size * data.cf["longitude"].size
-        )
-        lon2 = np.tile(
-            data.cf["longitude"].values, pt.longitude.size * data.cf["latitude"].size
-        )
-        lat2 = np.tile(
-            data.cf["latitude"].values.repeat(data.cf["longitude"].size),
-            pt.latitude.size,
-        )
+        # create array input for geod.inv() function, with flat shape (pt.latitude.size, data.latitude.size, data.longitude.size)
+        lon1 = pt.cf["longitude"].values.repeat(data.size)
+        lat1 = pt.cf["latitude"].values.repeat(data.size)
+
+        # case for a grid latitude longitude
+        if (
+            data.size != data.cf["latitude"].size
+            or data.size != data.cf["longitude"].size
+        ):
+            lon2 = np.tile(
+                data.cf["longitude"].values, pt.latitude.size * data.cf["latitude"].size
+            )
+            lat2 = np.tile(
+                data.cf["latitude"].values.repeat(data.cf["longitude"].size),
+                pt.latitude.size,
+            )
+
+        # case for a list of points
+        else:
+            lon2 = np.tile(data.cf["longitude"].values, pt.latitude.size)
+            lat2 = np.tile(
+                data.cf["latitude"].values,
+                pt.latitude.size,
+            )
 
         # call the computation of inverse distance and reshape the output
         geod = pyproj.Geod(a=a_earth, f=f_earth)
         geod_dist = geod.inv(lon1, lat1, lon2, lat2)[2]
 
         # reshape for DataArray creation
-        geod_dist_reshape = geod_dist.reshape(
-            (pt.latitude.size, data.cf["latitude"].size, data.cf["longitude"].size)
-        )
+        if (
+            data.size != data.cf["latitude"].size
+            or data.size != data.cf["longitude"].size
+        ):
+            geod_dist_reshape = geod_dist.reshape(
+                (pt.latitude.size, data.cf["latitude"].size, data.cf["longitude"].size)
+            )
+
+        else:
+            geod_dist_reshape = geod_dist.reshape((pt.latitude.size, data.size))
+
         return xr.DataArray(
             geod_dist_reshape,
             coords={
@@ -412,7 +430,7 @@ def distance(
                 "latitude": data["latitude"],
                 "longitude": data["longitude"],
             },
-            dims=["id", "latitude", "longitude"],
+            dims=pt.latitude.dims + data.dims,
             name="distance",
         )
     else:
