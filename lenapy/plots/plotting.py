@@ -455,13 +455,14 @@ class TaylorDiagram(object):
 
 
 def plot_ls_periodogram(
-    ds: xr.Dataset,
+    ds: xr.DataArray,
     dim_time: str = "time",
     day_step=LNPY_DAYS_YEAR,
     period_range: list[float] | None = None,
     nfreq: int = 1000,
     window: str = "hamming_symmetric",
     window_size: int = None,
+    errors: xr.DataArray | None = None,
     ax: plt.Axes = None,
     ls_kwargs: dict | None = None,
     **kwargs,
@@ -510,13 +511,13 @@ def plot_ls_periodogram(
     time = (ds[dim_time] - ds[dim_time][0]).dt.days / day_step
 
     # -- period range
-    time_length = time[-1] - time[0]
-    dt_median = np.median(np.diff(time))
     if period_range is None:
+        time_length = time[-1] - time[0]
+        dt_median = np.median(np.diff(time))
         period_range = [2 * dt_median, time_length / 2]
 
     # Define angular frequencies for the periodogram
-    w = np.linspace(period_range[0] / 2 / np.pi, period_range[1] / 2 / np.pi, nfreq)[
+    w = np.linspace(2 * np.pi / period_range[0], 2 * np.pi / period_range[1], nfreq)[
         ::-1
     ]
 
@@ -535,6 +536,32 @@ def plot_ls_periodogram(
     pgram = sc.signal.lombscargle(time, ds.values * conv_window, w.copy(), **ls_kwargs)
 
     ax.plot(2 * np.pi / w, pgram, **kwargs)
+
+    if errors is not None:
+        var_win = (errors.values * conv_window) ** 2
+
+        cos_mat = np.cos(np.outer(w, time))
+        sin_mat = np.sin(np.outer(w, time))
+
+        w_c = np.sum(cos_mat**2, axis=1)
+        w_s = np.sum(sin_mat**2, axis=1)
+
+        c_mat = cos_mat @ (ds.values * conv_window)
+        s_mat = sin_mat @ (ds.values * conv_window)
+
+        var_c = cos_mat**2 @ var_win
+        var_s = sin_mat**2 @ var_win
+
+        var_pgram = (4 * c_mat**2 / w_c**2) * var_c + (4 * s_mat**2 / w_s**2) * var_s
+        sigma_pgram = np.sqrt(var_pgram)
+
+        ax.fill_between(
+            2 * np.pi / w,
+            np.maximum(pgram - sigma_pgram, 0),
+            pgram + sigma_pgram,
+            alpha=0.25,
+            **kwargs,
+        )
 
     return ax
 
