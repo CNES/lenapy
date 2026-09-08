@@ -349,7 +349,7 @@ def estimate_normal_gravity(
 
     Parameters
     ----------
-    height: xr.DataArray | float | None, optional
+    height: xr.DataArray | None, optional
         Height above of the surface of reference (sphere or ellipsoid) depending on latitude and possibly other
         dimensions. If not provided, radius parameter is used for the computation.
         Used in priority over radius parameter if both are provided.
@@ -1356,7 +1356,7 @@ def sh_to_deflection_of_vertical(
 
     # deal with normal field
     if normal_field is None:
-        data_residual = normal_zonal_correction(data, **kwargs)
+        data_residual = normal_zonal_correction(data, apply=False, **kwargs)
     else:
         data_residual = data.lnharmo - normal_field
 
