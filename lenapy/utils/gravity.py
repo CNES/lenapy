@@ -571,7 +571,6 @@ def sh_to_gravity_disturbance(
     use_dask: bool = False,
     chunks_lfactor: dict | None = None,
     chunks_plm: dict | None = None,
-    test=True,
     **kwargs,
 ) -> xr.DataArray:
     """
@@ -585,7 +584,9 @@ def sh_to_gravity_disturbance(
         xr.Dataset that corresponds to SH data to convert into spatial representation.
     surface : float | xr.DataArray | Literal[None, "reference", "geoid"], optional
         Surface to consider for the computation of the grid. If None or "reference", consider the reference sphere or
-        ellipsoid. If "geoid", consider the geoid as surface computed from the given field.
+        ellipsoid. If "geoid", consider the geoid as surface computed from the given field : the normal zonal field is
+        removed from `data` before applying Bruns' formula, and the resulting undulation is added to the reference
+        radius. This requires `ellipsoidal_earth` to be True and a field holding the low degrees of the static field.
         If a float or xr.DataArray is given, consider it as the surface height in meter to add to the reference surface.
         If a xr.DataArray is given, it must contain latitude coordinate in degrees
         and might have longitude coordinate in degrees.
@@ -647,7 +648,19 @@ def sh_to_gravity_disturbance(
     -------
     xgrid : xr.DataArray
         Spatial representation of the SH Dataset in gravity disturbance.
+
+    Raises
+    ------
+    ValueError
+        If surface="geoid" is asked for a spherical Earth.
     """
+    if type(surface) is str and surface == "geoid" and not ellipsoidal_earth:
+        raise ValueError(
+            'surface="geoid" requires ellipsoidal_earth=True. On a '
+            "spherical Earth the low degrees of the field are mistaken for geoid signal, which "
+            "places the surface kilometers away from the geoid."
+        )
+
     # Get parameters for computation of the grid and for the unit conversion
     longitude, latitude = _generate_grid(
         bounds,
@@ -705,36 +718,26 @@ def sh_to_gravity_disturbance(
     )
 
     if type(surface) is str and surface == "geoid":
-        if test == 1:
-            h_geoid = (
-                data.lnharmo.normal_zonal_correction(
-                    f_earth=f_earth, omega_earth=omega_earth, apply=False
-                )
-            ).lnharmo.to_grid(
-                unit="geoid",
-                longitude=longitude,
-                latitude=latitude,
-                ellipsoidal_earth=ellipsoidal_earth,
-                plm=plm,
-                normalization_plm=normalization_plm,
-                use_dask=use_dask,
-                chunks_lfactor=chunks_lfactor,
-                **kwargs,
+        # the normal zonal field must be removed before applying Bruns' formula, otherwise the
+        # real C20 is mistaken for geoid signal and the undulation is off by kilometers
+        h_geoid = (
+            data.lnharmo.normal_zonal_correction(
+                f_earth=f_earth, omega_earth=omega_earth, apply=False
             )
-            radius = r_theta + h_geoid
-
-        else:
-            radius = data.lnharmo.to_grid(
-                unit="geoid",
-                longitude=longitude,
-                latitude=latitude,
-                ellipsoidal_earth=ellipsoidal_earth,
-                plm=plm,
-                normalization_plm=normalization_plm,
-                use_dask=use_dask,
-                chunks_lfactor=chunks_lfactor,
-                **kwargs,
-            )
+        ).lnharmo.to_grid(
+            unit="geoid",
+            longitude=longitude,
+            latitude=latitude,
+            ellipsoidal_earth=ellipsoidal_earth,
+            plm=plm,
+            normalization_plm=normalization_plm,
+            use_dask=use_dask,
+            chunks_lfactor=chunks_lfactor,
+            **kwargs,
+        )
+        # h_geoid is labelled with the reference radius to_grid evaluated it at, which would
+        # otherwise survive as the 'radius' coordinate of the output instead of the geoid radius
+        radius = (r_theta + h_geoid).drop_vars("radius", errors="ignore")
 
     elif surface is not None and type(surface) is not str:
         radius = r_theta + surface
@@ -753,6 +756,8 @@ def sh_to_gravity_disturbance(
     potential_dradius = -data.lnharmo.to_grid(
         unit="gravity",
         radius=radius,
+        longitude=longitude,
+        latitude=latitude,
         ellipsoidal_earth=ellipsoidal_earth,
         plm=plm,
         normalization_plm=normalization_plm,
@@ -764,6 +769,8 @@ def sh_to_gravity_disturbance(
     potential_dlongitude = sh_to_potential_partial_derivative_longitude(
         data,
         radius=radius,
+        longitude=longitude,
+        latitude=latitude,
         ellipsoidal_earth=ellipsoidal_earth,
         plm=plm,
         normalization_plm=normalization_plm,
@@ -775,6 +782,8 @@ def sh_to_gravity_disturbance(
     potential_dlatitude = data.lnharmo.to_grid(
         unit="potential",
         radius=radius,
+        longitude=longitude,
+        latitude=latitude,
         ellipsoidal_earth=ellipsoidal_earth,
         plm=dplm_dtheta,
         normalization_plm=normalization_plm,

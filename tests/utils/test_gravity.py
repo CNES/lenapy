@@ -213,6 +213,99 @@ def test_sh_to_gravity_disturbance(lenapy_paths):
     xr.testing.assert_allclose(grid_ref, grid)
 
 
+@pytest.fixture
+def grs80_normal_field():
+    """SH dataset holding exactly the GRS80 normal field, up to degree 8."""
+    lmax = 8
+    degrees = np.arange(lmax + 1)
+    zeros = np.zeros((lmax + 1, lmax + 1))
+    ds = xr.Dataset(
+        {"clm": (("l", "m"), zeros.copy()), "slm": (("l", "m"), zeros.copy())},
+        coords={"l": degrees, "m": degrees.copy()},
+    )
+    ds.attrs["radius"] = LNPY_A_EARTH_GRS80
+    ds.attrs["earth_gravity_constant"] = LNPY_GM_EARTH_GRS80
+
+    # the correction removes the normal field, so the normal field is its opposite
+    correction = ds.lnharmo.normal_zonal_correction(apply=False).clm.sel(m=0).values
+    ds["clm"].data = ds["clm"].data.copy()
+    ds.clm.loc[dict(m=0)] = -correction
+    return ds
+
+
+def test_normal_zonal_correction_matches_grs80(grs80_normal_field):
+    """
+    Check the normal field built by normal_zonal_correction against the published GRS80 zonal
+    harmonics. The normalized coefficients relate to the J_l as Clm = -J_l / sqrt(2l + 1).
+    """
+    j_grs80 = {2: 1.08263e-3, 4: -2.37091222e-6, 6: 6.08347e-9, 8: -1.427e-11}
+
+    assert np.isclose(grs80_normal_field.clm.sel(l=0, m=0), 1.0)
+    for l, j_ref in j_grs80.items():
+        j = -float(grs80_normal_field.clm.sel(l=l, m=0)) * np.sqrt(2 * l + 1)
+        assert np.isclose(j, j_ref, rtol=1e-3), f"J{l} = {j}, expected {j_ref}"
+
+
+def test_sh_to_gravity_disturbance_geoid_surface(grs80_normal_field):
+    """
+    Test the surface="geoid" option against an analytic ground truth.
+
+    The geoid of the GRS80 normal field is, by construction, the GRS80 ellipsoid, on which the
+    normal gravity is exactly the real gravity. So the gravity disturbance must vanish everywhere.
+    A non-zero result means the normal zonal field was not removed before applying Bruns' formula,
+    which leaks the real C20 into the undulation and displaces the surface by kilometers.
+    """
+    latitude = np.array([-89.5, -60.5, -45.5, -30.5, -0.5, 30.5, 45.5, 60.5, 89.5])
+    longitude = np.array([0.0, 90.0, 180.0])
+
+    grid = grs80_normal_field.lnharmo.to_gravity_disturbance(
+        surface="geoid",
+        ellipsoidal_earth=True,
+        latitude=latitude,
+        longitude=longitude,
+        a_earth=LNPY_A_EARTH_GRS80,
+        earth_gravity_constant=LNPY_GM_EARTH_GRS80,
+    )
+
+    # 1e-9 m.s⁻² is 1e-4 mGal, far below any meaningful gravity signal
+    assert np.abs(grid).max() < 1e-9
+
+    # the output must be labelled with the geoid radius, not the reference radius it was built from
+    assert "longitude" in grid.coords["radius"].dims
+
+
+def test_sh_to_gravity_disturbance_geoid_needs_ellipsoid(grs80_normal_field):
+    """
+    A geoid cannot be located on a spherical Earth: the low degrees of the field would be taken
+    for geoid signal and place the surface kilometers away from it, so the case is refused.
+    """
+    with pytest.raises(ValueError):
+        grs80_normal_field.lnharmo.to_gravity_disturbance(
+            surface="geoid", ellipsoidal_earth=False
+        )
+
+
+@pytest.mark.parametrize("surface", [None, "geoid", 250.0])
+@pytest.mark.parametrize("ellipsoidal_earth", [True, False])
+def test_sh_to_gravity_disturbance_honours_grid(
+    grs80_normal_field, surface, ellipsoidal_earth
+):
+    """
+    Test that the requested grid is honoured whatever the surface. The radius does not always
+    carry the grid by itself, being a float on a spherical Earth and latitude-only on the
+    reference ellipsoid, so the grid has to reach the inner conversions another way.
+    """
+    if surface == "geoid" and not ellipsoidal_earth:
+        pytest.skip("geoid surface requires an ellipsoidal Earth")
+
+    grid = grs80_normal_field.lnharmo.to_gravity_disturbance(
+        surface=surface, ellipsoidal_earth=ellipsoidal_earth, dlat=10, dlon=20
+    )
+
+    assert grid.sizes["latitude"] == 18
+    assert grid.sizes["longitude"] == 18
+
+
 def test_sh_to_potential_partial_derivative_longitude(lenapy_paths):
     """
     Test for converting and subsampling a dataset's potential partial derivative longitude grid and comparing it to
