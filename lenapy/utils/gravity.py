@@ -680,28 +680,43 @@ def sh_to_gravity_disturbance(
         latitude, ellipsoidal_earth=ellipsoidal_earth, **kwargs
     )
 
-    # Precomputing plm and dplm for converting to spatial domain
-    plm = compute_plm(
-        data.l.max().values,
-        np.cos(geoc_colat),
-        latitude=latitude,
-        mmax=data.m.max().values,
-        normalization=normalization_plm,
-        dtype=dtype_plm,
-        use_dask=use_dask,
-        chunks=chunks_plm,
-    )
-    dplm = compute_plm(
-        data.l.max().values,
-        np.cos(geoc_colat),
-        latitude=latitude,
-        mmax=data.m.max().values,
-        normalization=normalization_plm,
-        dtype=dtype_plm,
-        use_dask=use_dask,
-        chunks=chunks_plm,
-        derivative=True,
-    )
+    # plm and dplm are both byproducts of a single derivative recursion (see compute_plm), avoiding
+    # two full recursions to get each of them separately. Not available with use_dask=True.
+    if use_dask:
+        plm = compute_plm(
+            data.l.max().values,
+            np.cos(geoc_colat),
+            latitude=latitude,
+            mmax=data.m.max().values,
+            normalization=normalization_plm,
+            dtype=dtype_plm,
+            use_dask=use_dask,
+            chunks=chunks_plm,
+        )
+        dplm = compute_plm(
+            data.l.max().values,
+            np.cos(geoc_colat),
+            latitude=latitude,
+            mmax=data.m.max().values,
+            normalization=normalization_plm,
+            dtype=dtype_plm,
+            use_dask=use_dask,
+            chunks=chunks_plm,
+            derivative=True,
+        )
+    else:
+        dplm, plm = compute_plm(
+            data.l.max().values,
+            np.cos(geoc_colat),
+            latitude=latitude,
+            mmax=data.m.max().values,
+            normalization=normalization_plm,
+            dtype=dtype_plm,
+            use_dask=use_dask,
+            chunks=chunks_plm,
+            derivative=True,
+            return_plm=True,
+        )
 
     # d_geoc_colat / dphi = -1 and d cos() / d_colat = - sin() are multiplied here
     dplm_dtheta = dplm * np.sin(geoc_colat)
@@ -1204,8 +1219,10 @@ def sh_to_potential_partial_derivative_longitude(
     )
 
     # summation over all spherical harmonic degrees
-    d_clm = (plm_lfactor * data.clm * data.m).sum(dim="l")
-    d_slm = (plm_lfactor * data.slm * data.m).sum(dim="l")
+    # skipna=False avoids xarray's NaN-safe summation path (isnull/where masking), which is pure
+    # overhead here since plm and the SH coefficients never contain NaN.
+    d_clm = (plm_lfactor * data.clm * data.m).sum(dim="l", skipna=False)
+    d_slm = (plm_lfactor * data.slm * data.m).sum(dim="l", skipna=False)
 
     # Final calcul on the grid
     xgrid = c_cos.dot(d_slm, dim=["m"]) - s_sin.dot(d_clm, dim=["m"])
@@ -1334,17 +1351,35 @@ def sh_to_deflection_of_vertical(
         latitude, ellipsoidal_earth=ellipsoidal_earth, **kwargs
     )
 
-    dplm = compute_plm(
-        data.l.max().values,
-        np.cos(geoc_colat),
-        latitude=latitude,
-        mmax=data.m.max().values,
-        normalization=normalization_plm,
-        dtype=dtype_plm,
-        use_dask=use_dask,
-        chunks=chunks_plm,
-        derivative=True,
-    )
+    # plm (non-derivative) is requested alongside dplm: sh_to_potential_partial_derivative_longitude
+    # needs it below, and it is already a byproduct of the same recursion used for dplm, so this
+    # avoids a second full Legendre recursion. Not available with use_dask=True (see compute_plm).
+    if use_dask:
+        dplm = compute_plm(
+            data.l.max().values,
+            np.cos(geoc_colat),
+            latitude=latitude,
+            mmax=data.m.max().values,
+            normalization=normalization_plm,
+            dtype=dtype_plm,
+            use_dask=use_dask,
+            chunks=chunks_plm,
+            derivative=True,
+        )
+        plm = None
+    else:
+        dplm, plm = compute_plm(
+            data.l.max().values,
+            np.cos(geoc_colat),
+            latitude=latitude,
+            mmax=data.m.max().values,
+            normalization=normalization_plm,
+            dtype=dtype_plm,
+            use_dask=use_dask,
+            chunks=chunks_plm,
+            derivative=True,
+            return_plm=True,
+        )
 
     # d_geoc_colat / dphi = -1 and d cos() / d_colat = - sin() are multiplied here
     dplm_dtheta = dplm * np.sin(geoc_colat)
@@ -1373,6 +1408,7 @@ def sh_to_deflection_of_vertical(
         data_residual,
         radius=radius,
         ellipsoidal_earth=ellipsoidal_earth,
+        plm=plm,
         normalization_plm=normalization_plm,
         dtype_plm=dtype_plm,
         use_dask=use_dask,

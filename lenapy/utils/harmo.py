@@ -461,16 +461,18 @@ def sh_to_grid(
     )
 
     # summation over all spherical harmonic degrees
+    # skipna=False avoids xarray's NaN-safe summation path (isnull/where masking), which is pure
+    # overhead here since plm and the SH coefficients never contain NaN.
     if not errors:
-        d_clm = (plm_lfactor * sub_data.clm).sum(dim="l")
-        d_slm = (plm_lfactor * sub_data.slm).sum(dim="l")
+        d_clm = (plm_lfactor * sub_data.clm).sum(dim="l", skipna=False)
+        d_slm = (plm_lfactor * sub_data.slm).sum(dim="l", skipna=False)
 
         # Final calcul on the grid
         xgrid = c_cos.dot(d_clm, dim=["m"]) + s_sin.dot(d_slm, dim=["m"])
 
     else:
-        d_clm = (plm_lfactor**2 * sub_data.clm**2).sum(dim="l")
-        d_slm = (plm_lfactor**2 * sub_data.slm**2).sum(dim="l")
+        d_clm = (plm_lfactor**2 * sub_data.clm**2).sum(dim="l", skipna=False)
+        d_slm = (plm_lfactor**2 * sub_data.slm**2).sum(dim="l", skipna=False)
 
         # Final calcul of sigma on the grid
         xgrid = np.sqrt(
@@ -933,7 +935,9 @@ def _compute_plm_vector(
     plm[-1, 1:] *= rescalem[1:]
 
     if derivative:
-        return dplm
+        # plm is returned alongside dplm since it is already fully computed as part of the same
+        # recursion: this lets callers that need both (e.g. sh_to_deflection_of_vertical)
+        return plm, dplm
     else:
         return plm
 
@@ -951,12 +955,14 @@ def _compute_plm_ufunc(
     """
     z = np.atleast_1d(np.asarray(z, dtype=dtype))
 
-    plm = _compute_plm_vector(
+    result = _compute_plm_vector(
         z, lmax, normalization, derivative, dtype, f1, f2, norm_p10, norm_4pi, df
     )
+    if derivative:
+        _, result = result
 
     # move axis to be consistent with xr.apply_ufunc dimension behavior
-    return np.moveaxis(plm[:, : mmax + 1], -1, 0)
+    return np.moveaxis(result[:, : mmax + 1], -1, 0)
 
 
 def compute_plm(
@@ -966,10 +972,11 @@ def compute_plm(
     mmax: int = None,
     normalization: Literal["4pi", "ortho", "schmidt"] = "4pi",
     derivative: bool = False,
+    return_plm: bool = False,
     dtype: complex | float | type[complex] | type[float] = np.longdouble,
     use_dask: bool = False,
     chunks: dict | None = None,
-) -> xr.DataArray:
+) -> xr.DataArray | tuple[xr.DataArray, xr.DataArray]:
     """
     Compute all the associated Legendre functions up to a maximum degree and
     order using the recursion relation from [Holmes2002]_, schematic recursion is in Fig. 2 of the article.
@@ -990,6 +997,11 @@ def compute_plm(
         spherical harmonic functions, respectively. Default is '4pi'.
     derivative : bool, optional
         If True, compute the first derivative of the associated Legendre functions. Default is False.
+    return_plm : bool, optional
+        If True and derivative is True, also return the non-derivative plm, computed as a byproduct of the
+        same recursion used for the derivative. This avoids a second full recursion for callers that need
+        both plm and its derivative (e.g. sh_to_deflection_of_vertical). Ignored if derivative is False.
+        Not supported together with use_dask=True. Default is False.
     dtype : dtype, optional
         Data type of the output array. Default is np.longdouble.
 
@@ -1003,6 +1015,9 @@ def compute_plm(
     plm : xr.DataArray
         Fully-normalized Legendre functions (or first derivative if derivative=True)
         as a DataArray with "l", "m" and "latitude" dimensions.
+    plm_nonderivative : xr.DataArray, optional
+        Only returned if derivative and return_plm are both True: the non-derivative Legendre functions
+        computed as a byproduct of the same recursion.
 
     References
     ----------
@@ -1020,6 +1035,11 @@ def compute_plm(
         warnings.warn(
             "No validation made with lmax > 2200, the "
             "Legendre functions may be unstable near the poles because of IEEE754-2008 norm."
+        )
+
+    if return_plm and use_dask:
+        raise NotImplementedError(
+            "return_plm=True is not supported together with use_dask=True."
         )
 
     # update type to provide more memory for computation (np.float32 create some problems)
@@ -1052,12 +1072,15 @@ def compute_plm(
 
     # Call with vectorized function or call with xr.apply_ufunc for dask compatibility and memory optimization
     if not use_dask:
-        plm = _compute_plm_vector(
+        result = _compute_plm_vector(
             z, lmax, normalization, derivative, dtype, f1, f2, norm_p10, norm_4pi, df
         )
+        plm_nonderivative = None
+        if derivative:
+            plm_nonderivative, result = result
 
         plm_da = xr.DataArray(
-            plm[:, : mmax + 1],
+            result[:, : mmax + 1],
             dims=(
                 "l",
                 "m",
@@ -1070,6 +1093,23 @@ def compute_plm(
             },
             name="plm",
         )
+
+        if return_plm and derivative:
+            plm_nonderivative_da = xr.DataArray(
+                plm_nonderivative[:, : mmax + 1],
+                dims=(
+                    "l",
+                    "m",
+                )
+                + lat_dims,
+                coords={
+                    "l": np.arange(lmax + 1),
+                    "m": np.arange(mmax + 1),
+                    "latitude": (lat_dims, latitude),
+                },
+                name="plm",
+            )
+            return plm_da, plm_nonderivative_da
 
     else:
         z = xr.DataArray(
